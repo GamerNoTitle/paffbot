@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paffbot",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "paffbot",
+      // 真部署时替换成 `wrangler d1 create paffbot` 输出的 database_id。
+      // 本地 `wrangler dev --local` 不校验这个值。
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    // 每分钟扫一次超时的 pending 记录
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    // 非敏感配置；敏感值用 `wrangler secret put` 或 .dev.vars
+    "VERIFY_METHODS": "ssh,quiz,button",
+    "VERIFY_TTL_SECONDS": "300",
+    "QUIZ_PASS_SCORE": "70",
+    "ENVIRONMENT": "production"
+  }
+}

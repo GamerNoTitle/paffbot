@@ -1,0 +1,31 @@
+{
+  "name": "paffbot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Telegram 群组入群验证 / 放行机器人，跑在 Cloudflare Workers + D1 上",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:local": "wrangler d1 migrations apply DB --local",
+    "db:remote": "wrangler d1 migrations apply DB --remote",
+    "webhook": "node scripts/set-webhook.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "tsc --noEmit && vitest run"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

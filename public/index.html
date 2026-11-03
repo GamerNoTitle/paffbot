@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>paffbot · 群验证</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo">🛡</span>
+          <div>
+            <h1>paffbot</h1>
+            <p class="sub" id="whoami">群验证 / 审计</p>
+          </div>
+        </div>
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="verify" role="tab">验证</button>
+          <button class="tab" data-tab="audit" role="tab">审计</button>
+        </nav>
+      </header>
+
+      <section id="view-verify" class="view">
+        <div class="card muted" id="verify-loading">加载中…</div>
+
+        <div class="card hidden" id="verify-empty">
+          <h2>暂无待验证的申请</h2>
+          <p>在群里点击「申请加入」后，我会私聊你一个验证入口。也可以回到群里重新申请。</p>
+          <button class="btn ghost" id="btn-refresh">刷新</button>
+        </div>
+
+        <div class="hidden" id="verify-pending">
+          <div class="card summary">
+            <div class="summary-row">
+              <span class="muted">目标群</span>
+              <strong id="chat-title">—</strong>
+            </div>
+            <div class="summary-row">
+              <span class="muted">剩余时间</span>
+              <strong id="countdown" class="mono">—</strong>
+            </div>
+          </div>
+
+          <div class="chips" id="method-tabs"></div>
+          <div class="card" id="method-panel"></div>
+
+          <div class="card hidden" id="result-card">
+            <h2 id="result-title"></h2>
+            <p id="result-text"></p>
+            <button class="btn" id="btn-close">关闭</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-audit" class="view hidden">
+        <div class="card hidden" id="token-card">
+          <label class="field">
+            <span>浏览器模式：填入 ADMIN_TOKEN</span>
+            <input id="admin-token" type="password" placeholder="仅部署者知道" autocomplete="off" />
+          </label>
+          <button class="btn" id="btn-token">保存并使用</button>
+        </div>
+
+        <div class="card">
+          <label class="field">
+            <span>群组 ID</span>
+            <input id="audit-chat" inputmode="numeric" placeholder="例如 -1001234567890" />
+          </label>
+          <div class="row gap">
+            <button class="btn" id="btn-audit-load">查询</button>
+            <button class="btn ghost" id="btn-audit-csv">导出 CSV</button>
+          </div>
+          <p class="hint" id="audit-hint"></p>
+        </div>
+
+        <div id="audit-body"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
