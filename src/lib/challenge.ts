@@ -8,9 +8,8 @@ import { nowMs } from "./time";
  *   - token 是无状态 HMAC，只承载 nonce，避免信任客户端提交的挑战串
  *
  * payload = { n: nonce, e: 过期时间(ms) }
+ * 有效期与 Telegram 流程一致，取 VERIFY_TTL_SECONDS（默认 300 秒）。
  */
-
-const TTL_MS = 10 * 60 * 1000;
 
 async function signingKey(config: Config): Promise<Uint8Array> {
   return sha256(utf8(`paffbot-challenge:${config.botToken}:${config.webhookSecret}`));
@@ -33,7 +32,7 @@ export async function issueChallenge(
 ): Promise<IssuedChallenge> {
   const nonce = randomToken(18);
   const challenge = challengeForNonce(nonce);
-  const expiresAt = nowMs() + TTL_MS;
+  const expiresAt = nowMs() + config.ttlSeconds * 1000;
 
   await db
     .prepare("INSERT INTO challenges (nonce, ip, created_at, expires_at, used_at) VALUES (?, ?, ?, ?, NULL)")

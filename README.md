@@ -212,7 +212,7 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 
 直接访问站点（不通过 Telegram）时，页面会进入**独立校验模式**：
 
-- 服务端签发一次性挑战（HMAC 令牌，10 分钟有效）
+- 服务端签发一次性挑战（HMAC 令牌，有效期同 `VERIFY_TTL_SECONDS`，默认 5 分钟）
 - 用户填 GitHub 用户名、对挑战串签名、粘回来
 - 服务端拉 `github.com/<用户名>.keys` 验签，只返回校验结果
 - nonce 一次性：校验时原子消费，同一份签名重放返回 409

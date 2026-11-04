@@ -375,14 +375,16 @@ async function loadStandalonePanel() {
     const data = await api("/api/github/challenge");
     state.checkToken = data.token;
     state.challenge = data.challenge;
-    if (typeof data.remaining === "number") {
-      setHero({
-        eyebrow: "PAFFBOT",
-        title: "确认 GitHub 账号",
-        sub: "用该账号已公开的公钥签名，确认归属。",
-        chips: [{ text: `今天还剩 ${data.remaining} 次`, id: "hero-remaining" }],
-      });
-    }
+    setHero({
+      eyebrow: "PAFFBOT",
+      title: "确认 GitHub 账号",
+      sub: "用该账号已公开的公钥签名，确认归属。",
+      chips: [
+        ...(typeof data.remaining === "number" ? [{ text: `今天还剩 ${data.remaining} 次` }] : []),
+        { text: "剩余 05:00", id: "hero-countdown", strong: true },
+      ],
+    });
+    startCountdown(data.expiresAt);
     renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
@@ -424,8 +426,15 @@ function startCountdown(expiresAt) {
     if (chip) chip.textContent = text;
     if (left === 0) {
       clearInterval(state.timer);
-      $("method-panel").innerHTML =
-        '<p class="md-typescale-body-medium muted">这次验证已超时，请回群里重新申请。</p>';
+      if (state.standalone) {
+        $("method-panel").innerHTML = `
+          <p class="md-typescale-body-medium muted">这次校验已过期。</p>
+          <div class="panel__actions"><md-filled-tonal-button id="btn-new-challenge">重新获取</md-filled-tonal-button></div>`;
+        $("btn-new-challenge").addEventListener("click", () => loadStandalonePanel());
+      } else {
+        $("method-panel").innerHTML =
+          '<p class="md-typescale-body-medium muted">这次验证已超时，请回群里重新申请。</p>';
+      }
     }
   };
   tick();
