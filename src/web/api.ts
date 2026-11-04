@@ -1,6 +1,8 @@
 import { Hono, type Context } from "hono";
 import {
   consumeDailyQuota,
+  getGroupPhoto,
+  setGroupPhoto,
   consumeOAuthState,
   createOAuthState,
   getGithubAccount,
@@ -20,7 +22,7 @@ import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 import { verifyGithubOwnership } from "../verify/github-verify";
 import { randomToken } from "../lib/crypto";
 import { displayName } from "../lib/html";
-import { TelegramApi } from "../lib/telegram";
+import { TelegramApi, type TgChat, type TgFile } from "../lib/telegram";
 import { isGroupAdmin, isSuperAdmin } from "../bot/auth";
 import type { BotContext } from "../bot/context";
 import { approveVerification } from "../verify/finalize";
@@ -94,7 +96,7 @@ export function createApi(): Hono<AppBindings> {
       github: bound ? { login: bound.github_login } : null,
       methods: ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description })),
       ttlSeconds: ctx.config.ttlSeconds,
-      verification: open ? publicVerification(open) : null,
+      verification: open ? { ...publicVerification(open), chatPhoto: `/api/group/photo/${open.chat_id}` } : null,
     });
   });
 
@@ -178,6 +180,40 @@ export function createApi(): Hono<AppBindings> {
     }
 
     return c.json({ ok: true, approved: true, chatTitle: verification.chat_title });
+  });
+
+  /** 群头像：从 Telegram 取，浏览器侧不接触 bot token。 */
+  api.get("/api/group/photo/:chatId", async (c) => {
+    const ctx = c.get("ctx");
+    const chatId = Number.parseInt(c.req.param("chatId"), 10);
+    if (!Number.isSafeInteger(chatId)) return c.text("bad request", 400);
+
+    let { fileId, updatedAt } = await getGroupPhoto(ctx.db, chatId);
+    if (!fileId || Date.now() - updatedAt > 6 * 3600 * 1000) {
+      const chat = await ctx.tg.safe<TgChat>("getChat", { chat_id: chatId });
+      const big = chat?.photo?.big_file_id;
+      if (big) {
+        await setGroupPhoto(ctx.db, chatId, big);
+        fileId = big;
+      }
+    }
+    if (!fileId) return c.text("not found", 404);
+
+    const file = await ctx.tg.safe<TgFile>("getFile", { file_id: fileId });
+    if (!file?.file_path) return c.text("not found", 404);
+
+    const res = await ctx.tg.downloadFile(file.file_path);
+    if (!res.ok) return c.text("not found", 404);
+
+    return new Response(res.body, {
+      headers: {
+        "content-type": (() => {
+          const type = res.headers.get("content-type") ?? "";
+          return type.startsWith("image/") ? type : "image/jpeg";
+        })(),
+        "cache-control": "public, max-age=3600",
+      },
+    });
   });
 
   // ------------------------------------------------ GitHub OAuth（仅 Mini App）

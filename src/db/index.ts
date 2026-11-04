@@ -425,6 +425,25 @@ export async function upsertGroup(db: D1Database, chatId: number, title: string 
     .run();
 }
 
+/** 群头像缓存（file_id 由 getChat 取得）。 */
+export async function setGroupPhoto(db: D1Database, chatId: number, fileId: string): Promise<void> {
+  await db
+    .prepare("UPDATE groups SET photo_file_id = ?, photo_updated_at = ? WHERE chat_id = ?")
+    .bind(fileId, nowMs(), chatId)
+    .run();
+}
+
+export async function getGroupPhoto(
+  db: D1Database,
+  chatId: number,
+): Promise<{ fileId: string | null; updatedAt: number }> {
+  const row = await db
+    .prepare("SELECT photo_file_id, photo_updated_at FROM groups WHERE chat_id = ?")
+    .bind(chatId)
+    .first<{ photo_file_id: string | null; photo_updated_at: number | null }>();
+  return { fileId: row?.photo_file_id ?? null, updatedAt: row?.photo_updated_at ?? 0 };
+}
+
 // ---------------------------------------------------------------- admin cache
 
 export async function getCachedAdmin(db: D1Database, chatId: number, userId: number): Promise<boolean | null> {

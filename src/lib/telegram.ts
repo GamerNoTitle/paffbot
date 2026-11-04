@@ -14,6 +14,14 @@ export interface TgChat {
   type: "private" | "group" | "supergroup" | "channel" | string;
   title?: string;
   username?: string;
+  photo?: { small_file_id: string; big_file_id: string };
+}
+
+export interface TgFile {
+  file_id: string;
+  file_unique_id: string;
+  file_size?: number;
+  file_path?: string;
 }
 
 export interface TgMessage {
@@ -164,6 +172,16 @@ export class TelegramApi {
       console.warn(`[telegram] ${method} 失败:`, err instanceof Error ? err.message : err);
       return null;
     }
+  }
+
+  /** 群信息（标题、头像 file_id）。 */
+  getChat(chatId: number) {
+    return this.call<TgChat>("getChat", { chat_id: chatId });
+  }
+
+  /** 下载文件（/file/bot<token>/<path>），返回原始响应。 */
+  async downloadFile(filePath: string): Promise<Response> {
+    return fetch(`${this.base}/file/bot${this.token}/${filePath}`);
   }
 
   sendMessage(params: SendMessageParams) {

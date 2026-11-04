@@ -120,10 +120,17 @@ function toast(message) {
   toastTimer = window.setTimeout(() => el.classList.add("hidden"), 4200);
 }
 
-function setHero({ eyebrow, title, sub, chips = null }) {
+function setHero({ eyebrow, title, sub, chips = null, group = null }) {
   if (eyebrow !== undefined) $("hero-eyebrow").textContent = eyebrow;
   if (title !== undefined) $("hero-title").textContent = title;
-  if (sub !== undefined) $("hero-sub").textContent = sub;
+  if (group) {
+    // 群头像走 /api/group/photo，由服务端带 token 去 Telegram 取，前端拿不到 token
+    $("hero-sub").innerHTML = `<span class="hero__group"><img class="hero__group-avatar" src="${esc(
+      group.photo,
+    )}" alt="" loading="lazy" onerror="this.remove()" /><span>${esc(group.title)}</span></span>`;
+  } else if (sub !== undefined) {
+    $("hero-sub").textContent = sub;
+  }
   if (chips !== null) {
     const box = $("hero-chips");
     box.innerHTML = "";
@@ -178,6 +185,7 @@ async function loadSession() {
       eyebrow: "芙 Bot · 入群验证",
       title: "完成 GitHub 签名即可入群",
       sub: v.chatTitle ?? String(v.chatId),
+      group: { title: v.chatTitle ?? String(v.chatId), photo: v.chatPhoto || "" },
       chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
     });
     applyNavVisibility();
@@ -579,6 +587,7 @@ function renderPreview() {
     eyebrow: "芙 Bot · 入群验证",
     title: "完成 GitHub 签名即可入群",
     sub: "示例群 · Paff 测试群",
+    group: { title: "示例群 · Paff 测试群", photo: "./icon-192.png" },
     chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
   });
 
