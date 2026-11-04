@@ -29,7 +29,7 @@ import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
 import type { BotContext } from "./context";
 import { dmRateLimited, groupJoinNotice } from "./messages";
-import { handleChatSignature } from "./chat-verify";
+import { beginChatVerify, handleChatText } from "./chat-verify";
 import { sendVerificationPrompt } from "./prompt";
 
 export async function handleUpdate(ctx: BotContext, update: TgUpdate): Promise<void> {
@@ -323,9 +323,9 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
     return;
   }
 
-  // 私聊里收到 SSHSIG：走聊天内验证
-  if (message.chat.type === "private" && message.text?.includes("BEGIN SSH SIGNATURE")) {
-    await handleChatSignature(ctx, message);
+  // 私聊里的普通文本：聊天验证（先收用户名，再收签名）
+  if (message.chat.type === "private") {
+    await handleChatText(ctx, message);
   }
 }
 
@@ -340,6 +340,21 @@ async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<
   const verification = await getVerification(ctx.db, verificationId);
   if (!verification) {
     await ctx.tg.answerCallbackQuery(query.id, "记录不存在或已过期", true);
+    return;
+  }
+
+  // 聊天验证按钮由申请人自己点，不走管理员校验
+  if (action === "chat") {
+    if (verification.user_id !== query.from.id) {
+      await ctx.tg.answerCallbackQuery(query.id, "这不是你的验证", true);
+      return;
+    }
+    if (verification.status !== "pending") {
+      await ctx.tg.answerCallbackQuery(query.id, "这条记录已经处理过了");
+      return;
+    }
+    await beginChatVerify(ctx, query.from.id);
+    await ctx.tg.answerCallbackQuery(query.id, "把 GitHub 用户名发给我");
     return;
   }
 

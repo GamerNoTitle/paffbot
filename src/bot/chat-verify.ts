@@ -1,78 +1,111 @@
-import { clearChatVerify, findLatestPendingForUser, getChatVerify } from "../db";
+import {
+  clearChatVerify,
+  findLatestPendingForUser,
+  getChatVerify,
+  setChatVerify,
+  type ChatVerifyRow,
+} from "../db";
+import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 import { escapeHtml } from "../lib/html";
 import type { TgMessage } from "../lib/telegram";
-import { verifyGithubOwnership } from "../verify/github-verify";
 import { approveVerification } from "../verify/finalize";
+import { verifyGithubOwnership } from "../verify/github-verify";
 import { challengeFor } from "../verify/types";
-import { botUsername } from "./identity";
 import type { BotContext } from "./context";
+import { botUsername } from "./identity";
 
-/** /verify <github 用户名>：把用户名暂存下来，并给出签名命令。 */
-export async function startChatVerify(ctx: BotContext, userId: number, username: string): Promise<void> {
+function signCommand(challenge: string): string {
+  return `echo "${challenge}" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -`;
+}
+
+async function say(ctx: BotContext, chatId: number, text: string): Promise<void> {
+  await ctx.tg.trySendMessage({ chat_id: chatId, text, parse_mode: "HTML" });
+}
+
+/** 点「通过聊天验证」按钮后的第一步：先要 GitHub 用户名。 */
+export async function beginChatVerify(ctx: BotContext, userId: number): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) {
-    await ctx.tg.trySendMessage({
-      chat_id: userId,
-      text: "现在没有待验证的入群申请。先在群里点「申请加入」，再回来发 /verify。",
-      parse_mode: "HTML",
-    });
+    await say(ctx, userId, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来点按钮。");
     return;
   }
 
-  await setChatVerifyRow(ctx, userId, username);
-  const challenge = challengeFor(pending);
-  const command = `echo "${challenge}" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -`;
-
-  await ctx.tg.trySendMessage({
-    chat_id: userId,
-    text:
-      `GitHub 用户名：<code>${escapeHtml(username)}</code>\n` +
-      `在终端执行：\n<pre>${escapeHtml(command)}</pre>\n` +
-      `然后把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的整段签名直接发给我（15 分钟内有效）。`,
-    parse_mode: "HTML",
-  });
+  await setChatVerify(ctx.db, userId, "", "username", ctx.config.ttlSeconds * 1000);
+  await say(ctx, userId, "把你的 <b>GitHub 用户名</b>发给我（不带 @，例如 <code>octocat</code>）。");
 }
 
-async function setChatVerifyRow(ctx: BotContext, userId: number, username: string): Promise<void> {
-  const { setChatVerify } = await import("../db");
-  await setChatVerify(ctx.db, userId, username, ctx.config.ttlSeconds * 1000);
+/** /verify <用户名>：跳过问名字这一步，直接给签名命令。 */
+export async function startChatVerify(ctx: BotContext, userId: number, username: string): Promise<void> {
+  const pending = await findLatestPendingForUser(ctx.db, userId);
+  if (!pending) {
+    await say(ctx, userId, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来发这条命令。");
+    return;
+  }
+
+  await sendSignCommand(ctx, userId, username);
 }
 
-/** 私聊里收到 SSHSIG 文本：按暂存的用户名验签并放行。 */
-export async function handleChatSignature(ctx: BotContext, message: TgMessage): Promise<void> {
+async function sendSignCommand(ctx: BotContext, userId: number, username: string): Promise<void> {
+  const pending = await findLatestPendingForUser(ctx.db, userId);
+  if (!pending) return;
+
+  await setChatVerify(ctx.db, userId, username, "signature", ctx.config.ttlSeconds * 1000);
+  await say(
+    ctx,
+    userId,
+    `GitHub 用户名：<code>${escapeHtml(username)}</code>\n` +
+      `在终端执行：\n<pre>${escapeHtml(signCommand(challengeFor(pending)))}</pre>\n` +
+      `然后把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的整段签名发给我。`,
+  );
+}
+
+/** 私聊里的普通文本：按阶段解释成「用户名」或「签名」。 */
+export async function handleChatText(ctx: BotContext, message: TgMessage): Promise<void> {
   const from = message.from;
   if (!from) return;
 
-  const row = await getChatVerify(ctx.db, from.id);
+  const text = (message.text ?? "").trim();
+  if (!text) return;
+
+  const row: ChatVerifyRow | null = await getChatVerify(ctx.db, from.id);
+  const hasSignature = text.includes("BEGIN SSH SIGNATURE");
+
   if (!row || row.expires_at <= Date.now()) {
-    await ctx.tg.trySendMessage({
-      chat_id: from.id,
-      text: "先发 <code>/verify 你的GitHub用户名</code>，我才会在这里等你的签名。",
-      parse_mode: "HTML",
-    });
+    if (hasSignature) {
+      await say(ctx, from.id, "这条签名没有对应的验证会话。先点「通过聊天验证」，或发 <code>/verify 用户名</code>。");
+    }
+    return;
+  }
+
+  if (row.stage === "username") {
+    const name = normalizeGithubUsername(text.split(/\s+/)[0] ?? "");
+    if (!isValidGithubUsername(name)) {
+      await say(ctx, from.id, "这不是有效的 GitHub 用户名，再发一次（不带 @，例如 <code>octocat</code>）。");
+      return;
+    }
+    await sendSignCommand(ctx, from.id, name);
+    return;
+  }
+
+  if (!hasSignature) {
+    await say(ctx, from.id, "现在等你的签名。把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那段整段发给我。");
     return;
   }
 
   const pending = await findLatestPendingForUser(ctx.db, from.id);
   if (!pending) {
     await clearChatVerify(ctx.db, from.id);
-    await ctx.tg.trySendMessage({
-      chat_id: from.id,
-      text: "这条申请已经失效了，回群里重新点「申请加入」吧。",
-      parse_mode: "HTML",
-    });
+    await say(ctx, from.id, "这条申请已经失效了，回群里重新点「申请加入」吧。");
     return;
   }
 
-  const signature = (message.text ?? "").trim();
-  const result = await verifyGithubOwnership(ctx.config, row.username, signature, challengeFor(pending));
-
+  const result = await verifyGithubOwnership(ctx.config, row.username, text, challengeFor(pending));
   if (!result.ok) {
-    await ctx.tg.trySendMessage({
-      chat_id: from.id,
-      text: `签名没通过：${escapeHtml(result.error ?? "校验失败")}\n可以重新发一次签名。`,
-      parse_mode: "HTML",
-    });
+    await say(
+      ctx,
+      from.id,
+      `签名没通过：${escapeHtml(result.error ?? "校验失败")}\n可以重新发一次签名。`,
+    );
     return;
   }
 
@@ -91,13 +124,10 @@ export async function handleChatSignature(ctx: BotContext, message: TgMessage): 
 
   await clearChatVerify(ctx.db, from.id);
 
-  await ctx.tg.trySendMessage({
-    chat_id: from.id,
-    text: approved
-      ? `验证通过，已经放行你加入「${escapeHtml(pending.chat_title ?? String(pending.chat_id))}」。`
-      : "这条申请已经处理过了，回群里看看状态。",
-    parse_mode: "HTML",
-  });
+  // 成功时 approveVerification 已经会私聊通知，这里不再重复发
+  if (!approved) {
+    await say(ctx, from.id, "这条申请已经处理过了，回群里看看状态。");
+  }
 }
 
 /** 群里的 /verify：把用户引到私聊。 */

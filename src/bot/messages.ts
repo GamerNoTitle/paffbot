@@ -1,4 +1,4 @@
-import type { InlineKeyboardMarkup } from "../lib/telegram";
+import type { InlineKeyboardButton, InlineKeyboardMarkup } from "../lib/telegram";
 import { escapeHtml, truncate } from "../lib/html";
 import { formatDuration } from "../lib/time";
 
@@ -8,8 +8,16 @@ export interface MethodSummary {
   description: string;
 }
 
-export function miniAppKeyboard(url: string, text = "🛡 开始验证"): InlineKeyboardMarkup {
-  return { inline_keyboard: [[{ text, web_app: { url } }]] };
+export function miniAppKeyboard(
+  url: string,
+  text = "打开 Miniapp 验证",
+  chatVerifyId?: string,
+): InlineKeyboardMarkup {
+  const rows: InlineKeyboardButton[][] = [[{ text, web_app: { url } }]];
+  if (chatVerifyId) {
+    rows.push([{ text: "通过聊天验证", callback_data: `chat:${chatVerifyId}` }]);
+  }
+  return { inline_keyboard: rows };
 }
 
 export function dmVerificationPrompt(params: {

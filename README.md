@@ -230,10 +230,13 @@ https://verify.bili33.top/api/oauth/github/callback
 
 入口在验证页 hero 的「通过聊天验证」按钮，或私聊直接发命令：
 
-1. 群里点「申请加入」→ 私聊发 `/verify <GitHub用户名>`
-2. 机器人回一条签名命令（挑战串与这次申请绑定）
-3. 把 `-----BEGIN SSH SIGNATURE-----` 开头的整段签名发回来
-4. 服务端验签通过 → 直接放行入群，记录写入同一条 `verifications`
+1. 群里点「申请加入」→ 私聊消息里有**两个按钮**：Mini App / 通过聊天验证
+2. 点「通过聊天验证」→ 机器人问 GitHub 用户名
+3. 回用户名 → 机器人给出签名命令（挑战串与这次申请绑定）
+4. 把 `-----BEGIN SSH SIGNATURE-----` 开头的整段签名发回来
+5. 服务端验签通过 → 直接放行入群，记录写入同一条 `verifications`
+
+也可以直接发 `/verify <用户名>` 跳过第 2 步。
 
 状态存在 `chat_verifications` 表，15 分钟有效（跟随 `VERIFY_TTL_SECONDS`）。
 

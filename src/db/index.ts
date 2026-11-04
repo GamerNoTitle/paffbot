@@ -356,6 +356,7 @@ export async function consumeOAuthState(db: D1Database, state: string): Promise<
 export interface ChatVerifyRow {
   user_id: number;
   username: string;
+  stage: string;
   created_at: number;
   expires_at: number;
 }
@@ -364,16 +365,17 @@ export async function setChatVerify(
   db: D1Database,
   userId: number,
   username: string,
+  stage: "username" | "signature",
   ttlMs: number,
 ): Promise<void> {
   const now = nowMs();
   await db
     .prepare(
-      `INSERT INTO chat_verifications (user_id, username, created_at, expires_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET username = excluded.username,
+      `INSERT INTO chat_verifications (user_id, username, stage, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET username = excluded.username, stage = excluded.stage,
          created_at = excluded.created_at, expires_at = excluded.expires_at`,
     )
-    .bind(userId, username, now, now + ttlMs)
+    .bind(userId, username, stage, now, now + ttlMs)
     .run();
 }
 

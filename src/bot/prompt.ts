@@ -26,7 +26,7 @@ export async function sendVerificationPrompt(
       remaining,
     }),
     parse_mode: "HTML",
-    reply_markup: miniAppKeyboard(url),
+    reply_markup: miniAppKeyboard(url, "打开 Miniapp 验证", verification.id),
   });
 
   if (!message) {
