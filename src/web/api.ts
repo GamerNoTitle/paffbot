@@ -80,7 +80,7 @@ export function createApi(): Hono<AppBindings> {
 
   api.get("/api/session", async (c) => {
     const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);
     const user = auth.user;
     const ctx = c.get("ctx");
 
@@ -102,7 +102,7 @@ export function createApi(): Hono<AppBindings> {
 
   api.get("/api/verify/start", async (c) => {
     const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);
     const user = auth.user;
     const ctx = c.get("ctx");
 
@@ -117,13 +117,13 @@ export function createApi(): Hono<AppBindings> {
       const payload = await provider.start({ config: ctx.config, db: ctx.db, verification, user });
       return c.json({ ok: true, method: provider.id, verification: publicVerification(verification), ...payload });
     } catch (err) {
-      return c.json({ ok: false, error: err instanceof Error ? err.message : "启动验证失败" }, 400);
+      return c.json({ ok: false, error: err instanceof Error ? err.message : "没能开始验证" }, 400);
     }
   });
 
   api.post("/api/verify/submit", async (c) => {
     const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);
     const user = auth.user;
     const ctx = c.get("ctx");
 
@@ -171,7 +171,7 @@ export function createApi(): Hono<AppBindings> {
       proof: result.proof,
     });
 
-    if (!approved) return c.json({ ok: false, error: "这条验证刚刚已被处理，请刷新" }, 409);
+    if (!approved) return c.json({ ok: false, error: "这条验证刚刚已经处理过了，刷新看看" }, 409);
 
     // 签名同样能证明账号归属，顺手建立绑定（OAuth 会补上 github_id）
     const login = (result.proof as { githubUsername?: string } | undefined)?.githubUsername;
@@ -224,7 +224,7 @@ export function createApi(): Hono<AppBindings> {
     if (!oauthEnabled(ctx.config)) return c.json({ ok: false, error: "OAuth 未配置" }, 503);
 
     const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);
 
     const verificationId = c.req.query("verificationId") || null;
     const state = randomToken(24);
@@ -280,7 +280,7 @@ export function createApi(): Hono<AppBindings> {
   api.get("/api/oauth/github/status", async (c) => {
     const ctx = c.get("ctx");
     const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);
 
     const account = await getGithubAccount(ctx.db, auth.user.id);
     return c.json({
@@ -574,7 +574,7 @@ async function authorizeAudit(
   }
 
   const auth = await readInitUser(c);
-  if (!auth.user) return { error: `initData 校验失败（${auth.reason}）`, status: 401 };
+  if (!auth.user) return { error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开`, status: 401 };
   const user = auth.user;
 
   if (isSuperAdmin(ctx.config, user.id)) {

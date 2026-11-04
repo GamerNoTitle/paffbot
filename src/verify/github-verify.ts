@@ -91,11 +91,11 @@ export async function verifyGithubOwnership(
   if (reasons.some((reason) => reason.includes("签名校验失败"))) {
     return {
       ok: false,
-      error: "签名对不上这次的原文（原文 5 分钟有效、用一次就作废）。回群里重新申请一份再签。",
+      error: "这段签名对不上这次的原文。原文 5 分钟内有效，而且只能用一次，回群里重新申请一份再签吧。",
     };
   }
   if (reasons.length > 0 && reasons.every((reason) => reason.includes("命名空间"))) {
-    return { ok: false, error: "签名命名空间不对：请用 -n file 重新签名。" };
+    return { ok: false, error: "签名的命名空间不对，重新签一次，命令里要带 -n file。" };
   }
   return {
     ok: false,

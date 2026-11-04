@@ -171,7 +171,7 @@ async function loadSession() {
       const name = data.user?.name?.split(" ")[0];
       setHero({
         eyebrow: "芙 Bot · 入群验证",
-        title: name ? `你好，${name}` : "暂无待验证",
+        title: name ? `你好，${name}` : "现在没有要验证的申请",
         sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
         chips: [],
       });
@@ -183,7 +183,7 @@ async function loadSession() {
     const v = data.verification;
     setHero({
       eyebrow: "芙 Bot · 入群验证",
-      title: "完成 GitHub 签名即可入群",
+      title: "先证明这个 GitHub 账号是你的",
       sub: v.chatTitle ?? String(v.chatId),
       group: { title: v.chatTitle ?? String(v.chatId), photo: v.chatPhoto || "" },
       chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
@@ -271,21 +271,21 @@ function stopOAuthPolling() {
 function renderOAuthPanel(panel) {
   panel.innerHTML = `
     <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">GitHub OAuth</h2>
+      <h2 class="md-typescale-headline-medium">用 GitHub 授权</h2>
       <p class="md-typescale-body-medium muted">
-        在 GitHub 上授权后自动建立账号绑定，不需要在终端操作，也不读取你的私有仓库。
-        ${state.githubLogin ? `当前已绑定 <b>${esc(state.githubLogin)}</b>。` : ""}
+        去 GitHub 点个同意就行，不用碰终端。只读你的公开资料，不碰仓库。
+        ${state.githubLogin ? `现在已经绑定了 <b>${esc(state.githubLogin)}</b>。` : ""}
       </p>
     </div>
     <div class="actions">
-      <md-filled-button id="oauth-start">使用 GitHub 授权</md-filled-button>
+      <md-filled-button id="oauth-start">去 GitHub 授权</md-filled-button>
     </div>
     <p class="md-typescale-body-small muted" id="oauth-status" style="margin-top:16px"></p>`;
 
   $("oauth-start").addEventListener("click", async () => {
     const button = $("oauth-start");
     button.disabled = true;
-    $("oauth-status").textContent = "正在跳转 GitHub…";
+    $("oauth-status").textContent = "正在打开 GitHub…";
 
     try {
       const data = await api(
@@ -295,7 +295,7 @@ function renderOAuthPanel(panel) {
       if (tg?.openLink) tg.openLink(url);
       else window.open(url, "_blank", "noopener");
 
-      $("oauth-status").textContent = "已在新窗口打开 GitHub，完成授权后这里会自动更新。";
+      $("oauth-status").textContent = "已经打开了，授权完这里会自动更新。";
       stopOAuthPolling();
       state.oauthTimer = window.setInterval(async () => {
         try {
@@ -303,7 +303,7 @@ function renderOAuthPanel(panel) {
           if (status.bound) {
             stopOAuthPolling();
             state.githubLogin = status.bound.login;
-            $("oauth-status").textContent = `已绑定 ${status.bound.login}`;
+            $("oauth-status").textContent = `已经绑上 ${status.bound.login} 了`;
             onApproved({ chatTitle: state.verification?.chatTitle });
           }
         } catch {
@@ -329,25 +329,25 @@ function renderGithubPanel(panel, data, mode = "verify") {
   const standalone = mode === "standalone";
   const requirements = data.requirements || {};
   const notes = [];
-  if (requirements.minAccountAgeDays > 0) notes.push(`账号需注册满 ${requirements.minAccountAgeDays} 天`);
-  if (requirements.requiredOrg) notes.push(`需属于组织 ${requirements.requiredOrg}`);
+  if (requirements.minAccountAgeDays > 0) notes.push(`GitHub 账号要满 ${requirements.minAccountAgeDays} 天`);
+  if (requirements.requiredOrg) notes.push(`得是 ${requirements.requiredOrg} 组织的成员`);
 
   panel.innerHTML = `
     <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">${standalone ? "GitHub 账号校验" : "GitHub SSH"}</h2>
+      <h2 class="md-typescale-headline-medium">${standalone ? "验一下 GitHub 账号" : "用 GitHub 签名"}</h2>
       <p class="md-typescale-body-medium muted">
-        ${standalone ? "用该账号已公开的公钥签名。" : "用已添加到 GitHub 的 SSH 私钥签名。"}
-        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">配置指南</a>
+        ${standalone ? "用它公开的 SSH 公钥签个名就行。" : "用你加到 GitHub 的那把私钥签个名，不碰仓库。"}
+        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">怎么配？</a>
       </p>
-      ${notes.length ? `<p class="md-typescale-body-small muted">额外要求：${esc(notes.join("；"))}</p>` : ""}
+      ${notes.length ? `<p class="md-typescale-body-small muted">另外还要：${esc(notes.join("；"))}</p>` : ""}
     </div>
 
     <ol class="steps">
       <li class="step">
         <div class="step__avatar tone-primary">1</div>
         <div class="step__body">
-          <h3 class="md-typescale-title-medium">输入 GitHub 用户名</h3>
-          <p class="md-typescale-body-medium muted">不带 @，例如 octocat</p>
+          <h3 class="md-typescale-title-medium">填你的 GitHub 用户名</h3>
+          <p class="md-typescale-body-medium muted">不用带 @，比如 octocat</p>
           <md-outlined-text-field id="gh-username" label="GitHub 用户名"></md-outlined-text-field>
         </div>
       </li>
@@ -355,8 +355,8 @@ function renderGithubPanel(panel, data, mode = "verify") {
       <li class="step">
         <div class="step__avatar tone-secondary">2</div>
         <div class="step__body">
-          <h3 class="md-typescale-title-medium">在终端签名</h3>
-          <p class="md-typescale-body-medium muted">私钥路径换成你自己的，输出即签名。</p>
+          <h3 class="md-typescale-title-medium">在终端签个名</h3>
+          <p class="md-typescale-body-medium muted">把 -f 后面换成你自己的私钥路径，跑完屏幕上那段就是签名。</p>
           <div class="code">
             <div class="code__head">
               <div class="segmented segmented--sm" role="tablist" aria-label="终端" id="gh-shells"></div>
@@ -372,14 +372,14 @@ function renderGithubPanel(panel, data, mode = "verify") {
       <li class="step">
         <div class="step__avatar tone-tertiary">3</div>
         <div class="step__body">
-          <h3 class="md-typescale-title-medium">粘贴签名</h3>
-          <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
+          <h3 class="md-typescale-title-medium">把签名贴回来</h3>
+          <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="签名内容"></md-outlined-text-field>
         </div>
       </li>
     </ol>
 
     <div class="panel__actions">
-      <md-filled-button id="gh-submit" disabled>${standalone ? "校验签名" : "验证并放行"}</md-filled-button>
+      <md-filled-button id="gh-submit" disabled>${standalone ? "验一下" : "验证，让我进群"}</md-filled-button>
     </div>
     <p class="md-typescale-body-small hidden" id="gh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
@@ -412,9 +412,9 @@ function renderGithubPanel(panel, data, mode = "verify") {
   $("gh-copy").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(githubCommand(state.shell));
-      toast("命令已复制");
+      toast("已经复制了");
     } catch {
-      toast("复制失败，请手动选中命令");
+      toast("没复制成，手动选中吧");
     }
   });
 
@@ -526,7 +526,7 @@ function onStandaloneResult(result) {
   $("dialog-title").textContent = "校验通过";
   $("dialog-icon").innerHTML = svgIcon("check", 30);
   $("dialog-text").innerHTML =
-    `GitHub 账号 <b>${esc(result.githubUsername)}</b> 校验通过。` +
+    `确认了，<b>${esc(result.githubUsername)}</b> 这个账号确实是你的。` +
     `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>`;
   $("success-dialog").show();
 }
@@ -550,7 +550,7 @@ function onApproved(result) {
   clearInterval(state.timer);
   showResultDialog({
     title: "验证通过",
-    text: `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`,
+    text: `已经放你进「${result.chatTitle || "群组"}」了，可以回群聊了。`,
   });
 }
 
@@ -594,7 +594,7 @@ function renderPreview() {
   showState("pending");
   setHero({
     eyebrow: "芙 Bot · 入群验证",
-    title: "完成 GitHub 签名即可入群",
+    title: "先证明这个 GitHub 账号是你的",
     sub: "示例群 · Paff 测试群",
     group: { title: "示例群 · Paff 测试群", photo: "./icon-192.png" },
     chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
@@ -633,26 +633,26 @@ async function loadAudit() {
   try {
     const query = chatId ? `?chatId=${encodeURIComponent(chatId)}` : "";
     const data = await api(`/api/audit/overview${query}`);
-    $("audit-hint").textContent = `共 ${data.verificationsTotal} 条验证、${data.auditTotal} 条审计。`;
+    $("audit-hint").textContent = `${data.verificationsTotal} 份申请，${data.auditTotal} 条操作记录。`;
     renderAudit(data);
     $("token-card").classList.add("hidden");
   } catch (err) {
-    $("audit-hint").textContent = `加载失败：${err.message}`;
+    $("audit-hint").textContent = `没加载出来：${err.message}`;
     if (err.status === 401) $("token-card").classList.remove("hidden");
   }
 }
 
 const ACTION_LABEL = {
-  "verification.created": "发起验证",
-  "verification.approved": "验证通过",
-  "verification.declined": "验证未通过",
-  "verification.timeout": "验证超时",
-  "verification.banned": "封禁用户",
-  "verification.blocked": "自动拦截",
-  "verification.rate_limited": "触发每日限额",
-  "verification.dm_failed": "私聊发送失败",
-  "telegram.action_failed": "Telegram 操作失败",
-  "group.settings": "群设置更新",
+  "verification.created": "发起申请",
+  "verification.approved": "通过",
+  "verification.declined": "没通过",
+  "verification.timeout": "超时",
+  "verification.banned": "封禁",
+  "verification.blocked": "被拦下",
+  "verification.rate_limited": "次数用超",
+  "verification.dm_failed": "私聊没发出去",
+  "telegram.action_failed": "Telegram 那边没成功",
+  "group.settings": "改了群设置",
 };
 
 const ACTOR_LABEL = { user: "用户", system: "系统", super_admin: "超级管理员", admin: "管理员" };
@@ -666,12 +666,12 @@ const METHOD_LABEL = {
 };
 
 const REASON_LABEL = {
-  expired: "超过有效期",
-  banned: "被管理员封禁",
-  blocked: "命中拦截规则",
-  admin_pass: "管理员手动放行",
-  timeout: "等待超时",
-  ok: "验证通过",
+  expired: "超时没操作",
+  banned: "被管理员封了",
+  blocked: "被自动拦下",
+  admin_pass: "管理员手动放的",
+  timeout: "一直没验证",
+  ok: "通过了",
 };
 
 /** 把 Telegram 的英文报错翻成一句人话。 */
@@ -698,12 +698,12 @@ function describeDetail(detail) {
 }
 
 const STATUS_META = {
-  approved: { label: "已放行", tone: "tone-primary" },
-  pending: { label: "待验证", tone: "tone-secondary" },
+  approved: { label: "已进群", tone: "tone-primary" },
+  pending: { label: "还在等", tone: "tone-secondary" },
   timeout: { label: "超时", tone: "tone-tertiary" },
-  declined: { label: "已拒绝", tone: "tone-tertiary" },
-  banned: { label: "已封禁", tone: "tone-error" },
-  blocked: { label: "自动拦截", tone: "tone-error" },
+  declined: { label: "没通过", tone: "tone-tertiary" },
+  banned: { label: "被封禁", tone: "tone-error" },
+  blocked: { label: "被拦下", tone: "tone-error" },
 };
 
 /** 按浏览器本地时区显示（之前写死 UTC+8，非东八区用户会看到错的时间）。 */
@@ -741,23 +741,23 @@ const auditView = {
 };
 
 const STATUS_OPTIONS = [
-  ["", "全部状态"],
-  ["pending", "待验证"],
-  ["approved", "已放行"],
+  ["", "全部结果"],
+  ["pending", "还在等"],
+  ["approved", "已进群"],
   ["timeout", "超时"],
-  ["declined", "已拒绝"],
-  ["banned", "已封禁"],
-  ["blocked", "自动拦截"],
+  ["declined", "没通过"],
+  ["banned", "被封禁"],
+  ["blocked", "被拦下"],
 ];
 
 const ACTION_OPTIONS = [
-  ["", "全部动作"],
-  ["verification.created", "发起验证"],
-  ["verification.approved", "验证通过"],
-  ["verification.timeout", "验证超时"],
-  ["verification.declined", "验证未通过"],
-  ["verification.rate_limited", "触发限额"],
-  ["telegram.action_failed", "Telegram 操作失败"],
+  ["", "全部操作"],
+  ["verification.created", "发起申请"],
+  ["verification.approved", "通过"],
+  ["verification.timeout", "超时"],
+  ["verification.declined", "没通过"],
+  ["verification.rate_limited", "次数用超"],
+  ["telegram.action_failed", "Telegram 没成功"],
 ];
 
 function selectHtml(id, options) {
@@ -818,12 +818,12 @@ async function loadVerifyPage() {
   tbody.innerHTML = '<tr><td colspan="5" class="muted">加载中…</td></tr>';
   try {
     const data = await api(`/api/audit/verifications?${params.toString()}`);
-    tbody.innerHTML = data.rows.map(verifyRowHtml).join("") || '<tr><td colspan="5" class="muted">没有匹配的记录</td></tr>';
+    tbody.innerHTML = data.rows.map(verifyRowHtml).join("") || '<tr><td colspan="5" class="muted">没找到符合条件的记录</td></tr>';
     $("v-count").textContent = `${data.total} 条`;
     $("v-pager").innerHTML = pagerHtml("v", data.page, data.total, data.pageSize);
     bindPager("v", "verify", loadVerifyPage);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">没加载出来：${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -838,12 +838,12 @@ async function loadLogPage() {
   tbody.innerHTML = '<tr><td colspan="5" class="muted">加载中…</td></tr>';
   try {
     const data = await api(`/api/audit/log?${params.toString()}`);
-    tbody.innerHTML = data.rows.map(auditRowHtml).join("") || '<tr><td colspan="5" class="muted">没有匹配的记录</td></tr>';
+    tbody.innerHTML = data.rows.map(auditRowHtml).join("") || '<tr><td colspan="5" class="muted">没找到符合条件的记录</td></tr>';
     $("a-count").textContent = `${data.total} 条`;
     $("a-pager").innerHTML = pagerHtml("a", data.page, data.total, data.pageSize);
     bindPager("a", "log", loadLogPage);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">没加载出来：${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -865,8 +865,8 @@ function renderAudit(data) {
   const stats = data.stats || {};
   const chain = data.chain || { ok: true, checked: 0 };
   const chainBadge = chain.ok
-    ? `<span class="badge ok">哈希链完整 · ${chain.checked}</span>`
-    : `<span class="badge bad">哈希链在 #${chain.brokenAtId} 断开</span>`;
+    ? `<span class="badge ok">记录都对得上 · ${chain.checked}</span>`
+    : `<span class="badge bad">第 ${chain.brokenAtId} 条对不上，可能被改过</span>`;
 
   auditView.chatId = String(data.chatId ?? "");
 
@@ -888,9 +888,9 @@ function renderAudit(data) {
   $("audit-stats").innerHTML = `
     <div class="card">
       <div class="stats">
-        <div class="stat tone-primary">${svgIcon("check", 18)}<b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
-        <div class="stat tone-secondary">${svgIcon("clock", 18)}<b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
-        <div class="stat tone-tertiary">${svgIcon("stack", 18)}<b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>未通过</span></div>
+        <div class="stat tone-primary">${svgIcon("check", 18)}<b>${Number(stats.approved || 0)}</b><span>已进群</span></div>
+        <div class="stat tone-secondary">${svgIcon("clock", 18)}<b>${Number(stats.pending || 0)}</b><span>等验证</span></div>
+        <div class="stat tone-tertiary">${svgIcon("stack", 18)}<b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>没过</span></div>
       </div>
       <p class="chain">${chainBadge}</p>
     </div>`;
@@ -898,7 +898,7 @@ function renderAudit(data) {
   $("audit-body").innerHTML = `
     <div class="card">
       <div class="table-head">
-        <h2 class="md-typescale-title-medium">验证记录</h2>
+        <h2 class="md-typescale-title-medium">谁申请过</h2>
         <span class="md-typescale-body-small muted" id="v-count"></span>
       </div>
       <div class="toolbar">
@@ -907,7 +907,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>群</th><th>用户</th><th>状态</th><th>说明</th></tr></thead>
+          <thead><tr><th>时间</th><th>群</th><th>谁</th><th>结果</th><th>说明</th></tr></thead>
           <tbody id="v-rows"></tbody>
         </table>
       </div>
@@ -915,7 +915,7 @@ function renderAudit(data) {
     </div>
     <div class="card">
       <div class="table-head">
-        <h2 class="md-typescale-title-medium">审计日志</h2>
+        <h2 class="md-typescale-title-medium">都发生了什么</h2>
         <span class="md-typescale-body-small muted" id="a-count"></span>
       </div>
       <div class="toolbar">
@@ -924,7 +924,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>群</th><th>操作者</th><th>动作</th><th>详情</th></tr></thead>
+          <thead><tr><th>时间</th><th>群</th><th>谁</th><th>做了什么</th><th>详情</th></tr></thead>
           <tbody id="a-rows"></tbody>
         </table>
       </div>
@@ -986,7 +986,7 @@ async function downloadCsv() {
     link.download = `paffbot-${chatId}.csv`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast("CSV 已开始下载");
+    toast("CSV 开始下载了");
   } catch (err) {
     $("audit-hint").textContent = `导出失败：${err.message}`;
   }

@@ -27,19 +27,19 @@ async function say(ctx: BotContext, chatId: number, text: string): Promise<void>
 export async function beginChatVerify(ctx: BotContext, userId: number): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) {
-    await say(ctx, userId, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来点按钮。");
+    await say(ctx, userId, "你现在没有待处理的入群申请。先去群里点「申请加入」，再回来找我。");
     return;
   }
 
   await setChatVerify(ctx.db, userId, "", "username", ctx.config.ttlSeconds * 1000);
-  await say(ctx, userId, "把你的 <b>GitHub 用户名</b>发给我（不带 @，例如 <code>octocat</code>）。");
+  await say(ctx, userId, "先把你的 <b>GitHub 用户名</b>发给我，不用带 @（比如 <code>octocat</code>）。");
 }
 
 /** /verify <用户名>：跳过问名字这一步，直接给签名命令。 */
 export async function startChatVerify(ctx: BotContext, userId: number, username: string): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) {
-    await say(ctx, userId, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来发这条命令。");
+    await say(ctx, userId, "你现在没有待处理的入群申请。先去群里点「申请加入」，再回来发这条命令。");
     return;
   }
 
@@ -54,9 +54,9 @@ async function sendSignCommand(ctx: BotContext, userId: number, username: string
   await say(
     ctx,
     userId,
-    `GitHub 用户名：<code>${escapeHtml(username)}</code>\n` +
-      `在终端执行：\n<pre>${escapeHtml(signCommand(challengeFor(pending)))}</pre>\n` +
-      `然后把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的整段签名发给我。`,
+    `好，GitHub 用户名记下了：<code>${escapeHtml(username)}</code>\n` +
+      `在终端跑这条命令：\n<pre>${escapeHtml(signCommand(challengeFor(pending)))}</pre>\n` +
+      `跑完把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那一整段复制发给我。`,
   );
 }
 
@@ -73,7 +73,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   if (!row || row.expires_at <= Date.now()) {
     if (hasSignature) {
-      await say(ctx, from.id, "这条签名没有对应的验证会话。先点「通过聊天验证」，或发 <code>/verify 用户名</code>。");
+      await say(ctx, from.id, "我不知道这段签名对应哪次申请。先点「通过聊天验证」，或者发 <code>/verify 用户名</code>。");
     }
     return;
   }
@@ -81,7 +81,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
   if (row.stage === "username") {
     const name = normalizeGithubUsername(text.split(/\s+/)[0] ?? "");
     if (!isValidGithubUsername(name)) {
-      await say(ctx, from.id, "这不是有效的 GitHub 用户名，再发一次（不带 @，例如 <code>octocat</code>）。");
+      await say(ctx, from.id, "这个用户名看着不太对，再发一次（不用带 @，比如 <code>octocat</code>）。");
       return;
     }
     await sendSignCommand(ctx, from.id, name);
@@ -89,14 +89,14 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
   }
 
   if (!hasSignature) {
-    await say(ctx, from.id, "现在等你的签名。把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那段整段发给我。");
+    await say(ctx, from.id, "现在就等你的签名了，把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那一整段发给我。");
     return;
   }
 
   const pending = await findLatestPendingForUser(ctx.db, from.id);
   if (!pending) {
     await clearChatVerify(ctx.db, from.id);
-    await say(ctx, from.id, "这条申请已经失效了，回群里重新点「申请加入」吧。");
+    await say(ctx, from.id, "这条申请已经过期了，回群里重新点一次「申请加入」吧。");
     return;
   }
 
@@ -121,7 +121,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
     await say(
       ctx,
       from.id,
-      `签名没通过：${escapeHtml(result.error ?? "校验失败")}\n可以重新发一次签名。`,
+      `没通过：${escapeHtml(result.error ?? "签名不对")}\n你可以再发一次签名。`,
     );
     return;
   }
@@ -143,7 +143,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   // 成功时 approveVerification 已经会私聊通知，这里不再重复发
   if (!approved) {
-    await say(ctx, from.id, "这条申请已经处理过了，回群里看看状态。");
+    await say(ctx, from.id, "这条申请已经处理完了，回群里看看状态吧。");
   }
 }
 

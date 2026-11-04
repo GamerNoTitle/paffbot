@@ -31,12 +31,12 @@ export function dmVerificationPrompt(params: {
   return [
     `👋 <b>${escapeHtml(params.userName)}</b>，你申请加入「<b>${escapeHtml(params.chatTitle)}</b>」。`,
     "",
-    "为防止机器人批量进群，请先完成一次验证：",
+    "为了挡住批量拉人的机器人，进来前先做个验证：",
     list,
     "",
-    `⏳ 有效期 ${escapeHtml(formatDuration(params.ttlSeconds))}，超时后需要重新申请。` +
-      (params.remaining === undefined ? "" : `\n今天还剩 ${params.remaining} 次验证机会。`),
-    "点击下方按钮打开验证页（在 Telegram 内打开）。",
+    `⏳ ${escapeHtml(formatDuration(params.ttlSeconds))} 内有效，过期就得重新申请。` +
+      (params.remaining === undefined ? "" : `\n今天还能试 ${params.remaining} 次。`),
+    "点下面的按钮就能开始。",
   ].join("\n");
 }
 
@@ -48,22 +48,22 @@ export function groupJoinNotice(params: {
 }): string {
   const handle = params.botUsername ? `@${params.botUsername}` : "我";
   return [
-    `👤 <a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a> 已进群，当前处于禁言状态。`,
-    `请在 ${escapeHtml(formatDuration(params.ttlSeconds))} 内私聊 ${escapeHtml(handle)} 发送 /start 完成验证。`,
-    "（Telegram 不允许机器人主动私聊没和它说过话的人，所以需要你先发一条 /start）",
+    `👤 <a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a> 进群了，现在是禁言状态。`,
+    `让 ta 在 ${escapeHtml(formatDuration(params.ttlSeconds))} 内私聊 ${escapeHtml(handle)} 发一句 /start 完成验证。`,
+    "（Telegram 不让机器人主动找没说过话的人，所以要 ta 先发一句。）",
   ].join("\n");
 }
 
 export function dmApproved(chatTitle: string): string {
-  return `✅ 验证通过，已放行你加入「${escapeHtml(chatTitle)}」。`;
+  return `✅ 搞定，已经放你进「${escapeHtml(chatTitle)}」了。`;
 }
 
 export function dmRejected(chatTitle: string, reason: string): string {
-  return `❌ 未能通过验证：${escapeHtml(reason)}\n群：${escapeHtml(chatTitle)}`;
+  return `❌ 没通过：${escapeHtml(reason)}\n群：${escapeHtml(chatTitle)}`;
 }
 
 export function dmTimeout(chatTitle: string): string {
-  return `⌛️ 验证超时，你在「${escapeHtml(chatTitle)}」的入群状态已被取消。需要的话可以重新申请。`;
+  return `⌛️ 超时了，你在「${escapeHtml(chatTitle)}」的申请已经取消。想进的话重新申请一次。`;
 }
 
 export function dmRateLimited(limit: number): string {
@@ -71,21 +71,21 @@ export function dmRateLimited(limit: number): string {
 }
 
 export function dmBlocked(chatTitle: string, reason: string): string {
-  return `🚫 你的入群申请被自动拦截（${escapeHtml(reason)}）。如有疑问请联系群管理员。`;
+  return `🚫 你的申请被自动拦下了（${escapeHtml(reason)}）。有疑问找群管理员。`;
 }
 
 export function commandsHelp(isAdmin: boolean, prefix = ""): string {
   const lines = [
     "<b>命令</b>",
-    "/start — 发起或继续验证",
-    "/id — 查看当前会话 id",
+    "/start — 开始或继续验证",
+    "/id — 看自己的 id",
   ];
   if (isAdmin) {
     lines.push(
-      "/pass &lt;uid&gt; — 放行（也可回复对方消息）",
-      "/ban &lt;uid&gt; — 封禁并移出",
-      "/pending — 当前群待验证人数",
-      "/audit [n] — 最近 n 条审计记录",
+      "/pass &lt;uid&gt; — 放人进来（也可以回复对方消息）",
+      "/ban &lt;uid&gt; — 封了并踢出去",
+      "/pending — 还有几个人在等验证",
+      "/audit [n] — 最近 n 条操作记录",
     );
   }
   return `${prefix}${lines.join("\n")}`;
