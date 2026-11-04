@@ -1,5 +1,5 @@
 import { applyTheme, telegramSeed, DEFAULT_SEED } from "./vendor/material.js";
-import { shapeMask } from "./shapes.js";
+import { shapeMask, shapeSvg } from "./shapes.js";
 
 /* ---------------------------------------------------------------- 基础环境 */
 
@@ -701,6 +701,19 @@ function switchTab(name) {
 }
 
 $("empty-icon").innerHTML = svgIcon("inbox", 28);
+
+/** Hero 右侧的抽象形状组合（不用位图）。 */
+function renderHeroArt() {
+  const art = $("hero-art");
+  if (!art) return;
+  art.innerHTML = [
+    shapeSvg("cookie9", { size: 186, color: "color-mix(in srgb, var(--md-sys-color-primary) 88%, transparent)", className: "hero-shape hero-shape--a" }),
+    shapeSvg("flower", { size: 128, color: "var(--md-sys-color-tertiary-container)", className: "hero-shape hero-shape--b" }),
+    shapeSvg("heart", { size: 72, color: "color-mix(in srgb, var(--md-sys-color-primary) 55%, transparent)", className: "hero-shape hero-shape--c" }),
+    shapeSvg("sunny", { size: 62, color: "color-mix(in srgb, var(--md-sys-color-on-primary-container) 32%, transparent)", className: "hero-shape hero-shape--d" }),
+  ].join("");
+}
+renderHeroArt();
 
 // 形状装饰：空态图标用 cookie9，成功弹窗用 flower
 const root = document.documentElement;

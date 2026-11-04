@@ -250,7 +250,7 @@ export function shapePath(name) {
 
 /** 直接给 <svg> 用的内联标记。 */
 export function shapeSvg(name, { size = 64, color = "currentColor", rotate = 0, className = "" } = {}) {
-  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" class="${className}" aria-hidden="true" style="transform:rotate(${rotate}deg)"><path d="${shapePath(name)}" fill="${color}"/></svg>`;
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" class="${className}" aria-hidden="true" style="transform:rotate(${rotate}deg);fill:${color}"><path d="${shapePath(name)}"/></svg>`;
 }
 
 /** 用作 CSS mask 的 data URI（形状本身是白色，颜色由元素背景决定）。 */
