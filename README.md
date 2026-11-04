@@ -9,6 +9,8 @@ Telegram 群组「入群验证 / 自动放行」机器人。纯 TypeScript 跑�
 - **两种入群模式**：Telegram「入群申请」审核，或直接入群后先禁言再验证。
 - **多选一验证**：GitHub SSH（默认，用 GitHub 账号上已公开的公钥验签）/ 自有公钥签名 / 答题 / 一键确认；新增方式只需实现一个 Provider。
 - **服务端判定，不信客户端**：Mini App 用 Telegram `initData` 验签识别用户；GitHub 验证由 Worker 拉 `github.com/<user>.keys` 并验 SSHSIG；放行动作由服务端直接调用 Telegram，不依赖前端 `sendData` 自证。
+- **Material 3 界面**：官方 [Material Web](https://github.com/material-components/material-web) 组件（tabs / filter chip / outlined text field / filled button / radio…），
+  MD3 动态配色（种子色 → 完整 tonal palette，支持明暗主题、跟随 Telegram 主题色），自托管打包，不依赖 CDN。
 - **审计闭环**：每次申请、放行、拒绝、超时、手动操作都落库，附 `operator_id`，并维护 SHA-256 哈希链，改库可被发现；Mini App 内可查、可导出 CSV。
 - **env 部署**：`wrangler.jsonc` 的 vars + secrets，三条命令上线；`scripts/set-webhook.mjs` 自动注册 webhook 与命令菜单。
 - **管理员模型**：`ADMIN_IDS` 超管 + Telegram 实时群管理员（`can_restrict_members`，缓存 60s），权限跟着群设置走。
@@ -204,9 +206,10 @@ src/
   verify/             Provider 接口、ssh/quiz/button、登记表、状态机出口
   bot/                webhook 分发、命令、私聊提示、管理员判定
   web/                initData 验签、Mini App API
-public/               Mini App（index.html / app.js / style.css）
+public/               Mini App（index.html / app.js / styles.css / vendor/ / fonts/）
+ui/                   Material Web 组件入口与 MD3 配色（esbuild 打包）
 migrations/           D1 迁移
-scripts/              set-webhook.mjs、smoke.mjs
+scripts/              set-webhook.mjs、smoke.mjs、build-ui.mjs
 tests/                SSHSIG 真签名、initData、题库与筛查
 ```
 
@@ -221,7 +224,21 @@ npm test                         # 18 个单测（含真实 ssh-keygen 生成的
 npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完整链路
 ```
 
+> 改了 `ui/` 或 `public/` 的组件后跑 `npm run build:ui` 重新打包（`npm run deploy` 会自动执行）。
+
 `npm run smoke` 不碰真实 Telegram：它起一个 mock Bot API，跑通「入群申请 → 私聊按钮 → 登记公钥 → SSHSIG 验签 → 批准」「直接入群 → 禁言 → 答题失败 → 管理员 /pass → 解除禁言」「超时 → cron → decline」「审计查询 + 哈希链自检 + 越权 403」。
+
+## 界面（Material 3）
+
+- 组件来自官方 `@material/web`，由 `ui/vendor.ts` 统一注册，`scripts/build-ui.mjs` 打成
+  `public/vendor/material.js`（约 62 KiB gzip），本地自托管。
+- 配色是运行时算的：种子色 → `themeFromSourceColor` → 完整 light/dark scheme，
+  写进 `--md-sys-color-*`。surface container 阶梯（`surface-container-low` 等）
+  按 MD3 规范从 neutral 调色板取 tone 值。
+- 种子色优先级：`?seed=` > Telegram 主题的 `button_color` > 默认品牌色。
+- 主题：跟随 `?theme=` / localStorage / Telegram `colorScheme`，右上角可切换。
+- 排版用 `md-typescale-*` 字阶；按钮全圆角；卡片 tonal surface + `outline-variant` 描边。
+- 浏览器预览：`/?preview=1`（示例数据，不会提交），支持 `&theme=dark`、`&seed=%233390EC`。
 
 ## 从 YumeBot 带过来的映射
 
