@@ -119,12 +119,67 @@ export function applyTheme(options: ApplyThemeOptions = {}): AppliedTheme {
   return { seed, dark };
 }
 
-/** 从 Telegram 主题里取一个可用的种子色。 */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 16);
+  return { r: (value >> 16) & 0xff, g: (value >> 8) & 0xff, b: value & 0xff };
+}
+
+/** HSL 饱和度（0-1），用来过滤 Telegram 的灰底色。 */
+function saturationOf(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  if (max === min) return 0;
+  const delta = max - min;
+  return delta / (1 - Math.abs(2 * lightness - 1));
+}
+
+function lightnessOf(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  return (Math.max(rgb.r, rgb.g, rgb.b) + Math.min(rgb.r, rgb.g, rgb.b)) / 510;
+}
+
+/** 太灰/太黑/太白都不适合当种子。 */
+function isUsableSeed(hex: string): boolean {
+  return saturationOf(hex) >= 0.18 && lightnessOf(hex) >= 0.2 && lightnessOf(hex) <= 0.82;
+}
+
+/**
+ * 从 Telegram 主题里取种子色：
+ * button_color → link_color → accent_text_color → header_bg_color → 背景色。
+ * 灰底（用户用了纯灰主题）会被跳过，回落到默认品牌色。
+ *
+ * 浏览器没有读取系统强调色的 API，只能靠 ?seed= 指定，否则用默认色。
+ */
 export function telegramSeed(): string | null {
-  const params = (window as unknown as { Telegram?: { WebApp?: { themeParams?: Record<string, string> } } }).Telegram
-    ?.WebApp?.themeParams;
-  const candidate = params?.button_color ?? params?.secondary_bg_color ?? params?.bg_color ?? null;
-  return candidate ? normalizeSeed(candidate) : null;
+  const params = (
+    window as unknown as { Telegram?: { WebApp?: { themeParams?: Record<string, string | undefined> } } }
+  ).Telegram?.WebApp?.themeParams;
+  if (!params) return null;
+
+  const candidates = [
+    params.button_color,
+    params.link_color,
+    params.accent_text_color,
+    params.header_bg_color,
+    params.secondary_bg_color,
+    params.bg_color,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const hex = normalizeSeed(candidate);
+    if (isUsableSeed(hex)) return hex;
+  }
+  return null;
 }
 
 export { DEFAULT_SEED };

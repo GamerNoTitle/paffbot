@@ -388,7 +388,12 @@ async function loadStandalonePanel() {
     startCountdown(data.expiresAt);
     renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
   } catch (err) {
-    panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
+    panel.innerHTML = `
+      <div class="state">
+        <div class="state__icon">${svgIcon("clock", 26)}</div>
+        <h2 class="md-typescale-headline-small">今天先到这里</h2>
+        <p class="md-typescale-body-medium muted">${esc(err.message)}</p>
+      </div>`;
   }
 }
 

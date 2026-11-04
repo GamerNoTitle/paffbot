@@ -21,7 +21,7 @@
       </div>
     </header>
 
-    <main class="page">
+    <div class="tabs-bar">
       <md-tabs aria-label="页面" class="tabs">
         <md-primary-tab id="tab-verify" active>
           <md-icon slot="icon" id="tab-verify-icon"></md-icon>
@@ -32,6 +32,10 @@
           审计
         </md-primary-tab>
       </md-tabs>
+    </div>
+
+    <main class="page">
+
 
       <section id="view-verify" class="view">
         <div class="hero" id="hero">
@@ -67,37 +71,34 @@
           <h1 class="md-typescale-headline-large">审计</h1>
           <p class="md-typescale-body-medium muted">按群查看验证记录与操作日志</p>
         </header>
-        <div class="audit-layout">
-          <aside class="audit-side">
-            <div class="card hidden" id="token-card">
-              <md-outlined-text-field id="admin-token" label="ADMIN_TOKEN" type="password"></md-outlined-text-field>
-              <div class="filter-actions">
-                <md-filled-button id="btn-token">保存并使用</md-filled-button>
-              </div>
-            </div>
 
-            <div class="card">
-              <md-outlined-text-field
-                id="audit-chat"
-                label="群组 ID"
-                inputmode="numeric"
-                supporting-text="在群里发 /id 可以看到"
-              ></md-outlined-text-field>
-              <div class="filter-actions">
-                <md-filled-button id="btn-audit-load">查询</md-filled-button>
-                <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
-              </div>
-              <p class="md-typescale-body-small muted" id="audit-hint"></p>
-            </div>
-
-            <div id="audit-stats"></div>
-          </aside>
-
-          <div class="audit-main" id="audit-body"></div>
+        <div class="card hidden" id="token-card">
+          <md-outlined-text-field id="admin-token" label="ADMIN_TOKEN" type="password"></md-outlined-text-field>
+          <div class="filter-actions">
+            <md-filled-button id="btn-token">保存并使用</md-filled-button>
+          </div>
         </div>
+
+        <div class="card">
+          <div class="filter-row">
+            <md-outlined-text-field
+              id="audit-chat"
+              label="群组 ID"
+              inputmode="numeric"
+              supporting-text="在群里发 /id 可以看到"
+            ></md-outlined-text-field>
+            <div class="filter-actions">
+              <md-filled-button id="btn-audit-load">查询</md-filled-button>
+              <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
+            </div>
+          </div>
+          <p class="md-typescale-body-small muted" id="audit-hint"></p>
+        </div>
+
+        <div id="audit-stats"></div>
+        <div id="audit-body"></div>
       </section>
 
-      <footer class="foot md-typescale-label-medium">paffbot · Cloudflare Workers + D1</footer>
     </main>
 
     <md-dialog id="success-dialog" type="alert">
