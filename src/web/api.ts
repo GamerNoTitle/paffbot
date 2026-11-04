@@ -50,11 +50,11 @@ function publicVerification(row: VerificationRow) {
   };
 }
 
-async function readInitUser(c: Context<AppBindings>): Promise<InitDataUser | null> {
+async function readInitUser(c: Context<AppBindings>): Promise<{ user: InitDataUser | null; reason: string }> {
   const initData = c.req.header("x-telegram-init-data") ?? "";
   const ctx = c.get("ctx");
   const result = await validateInitData(initData, ctx.config.botToken);
-  return result?.user ?? null;
+  return result.ok ? { user: result.user, reason: "" } : { user: null, reason: result.reason };
 }
 
 export function createApi(): Hono<AppBindings> {
@@ -66,8 +66,9 @@ export function createApi(): Hono<AppBindings> {
   });
 
   api.get("/api/session", async (c) => {
-    const user = await readInitUser(c);
-    if (!user) return c.json({ ok: false, error: "initData 校验失败，请在 Telegram 内打开" }, 401);
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    const user = auth.user;
     const ctx = c.get("ctx");
 
     const open = await findOpenVerification(ctx.db, user.id);
@@ -91,8 +92,9 @@ export function createApi(): Hono<AppBindings> {
   });
 
   api.get("/api/verify/start", async (c) => {
-    const user = await readInitUser(c);
-    if (!user) return c.json({ ok: false, error: "initData 校验失败" }, 401);
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    const user = auth.user;
     const ctx = c.get("ctx");
 
     const method = c.req.query("method") ?? "";
@@ -111,8 +113,9 @@ export function createApi(): Hono<AppBindings> {
   });
 
   api.post("/api/verify/submit", async (c) => {
-    const user = await readInitUser(c);
-    if (!user) return c.json({ ok: false, error: "initData 校验失败" }, 401);
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    const user = auth.user;
     const ctx = c.get("ctx");
 
     const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
@@ -165,8 +168,9 @@ export function createApi(): Hono<AppBindings> {
   });
 
   api.post("/api/verify/ssh/keys", async (c) => {
-    const user = await readInitUser(c);
-    if (!user) return c.json({ ok: false, error: "initData 校验失败" }, 401);
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    const user = auth.user;
     const ctx = c.get("ctx");
 
     const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
@@ -210,8 +214,9 @@ export function createApi(): Hono<AppBindings> {
   });
 
   api.post("/api/verify/ssh/keys/delete", async (c) => {
-    const user = await readInitUser(c);
-    if (!user) return c.json({ ok: false, error: "initData 校验失败" }, 401);
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+    const user = auth.user;
     const ctx = c.get("ctx");
 
     const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
@@ -400,8 +405,9 @@ async function authorizeAudit(
     return { superAdmin: true, chatId: Number.isSafeInteger(chatId) ? chatId : null };
   }
 
-  const user = await readInitUser(c);
-  if (!user) return { error: "initData 校验失败", status: 401 };
+  const auth = await readInitUser(c);
+  if (!auth.user) return { error: `initData 校验失败（${auth.reason}）`, status: 401 };
+  const user = auth.user;
 
   if (isSuperAdmin(ctx.config, user.id)) {
     return { superAdmin: true, chatId: Number.isSafeInteger(chatId) ? chatId : null };

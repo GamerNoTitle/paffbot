@@ -337,7 +337,8 @@ async function handleSelfTest(env: CommandEnv): Promise<void> {
     updateId: null,
     nonce: randomToken(16),
     createdAt,
-    expiresAt: createdAt + env.ctx.config.ttlSeconds * 1000,
+    // 自测没有 Telegram 的 5 分钟私聊窗口限制，给足时间跑签名命令
+    expiresAt: createdAt + 30 * 60 * 1000,
     detail: { selftest: true },
   });
 
