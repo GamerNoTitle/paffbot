@@ -170,7 +170,6 @@ async function loadSession() {
     await loadPanel();
   } catch (err) {
     if (err.status === 401 && !tg?.initData) {
-      $("token-card").classList.remove("hidden");
       await enterStandalone();
     } else {
       showState("empty");
@@ -489,60 +488,96 @@ async function loadAudit() {
   }
 }
 
-function renderAudit(data) {
-  const labels = { pending: "待验证", approved: "已放行", declined: "已拒绝", timeout: "超时", banned: "已封禁", blocked: "自动拦截" };
-  const stats = data.stats || {};
-  const total = Object.values(stats).reduce((sum, n) => sum + Number(n || 0), 0);
+const STATUS_META = {
+  approved: { label: "已放行", tone: "tone-primary" },
+  pending: { label: "待验证", tone: "tone-secondary" },
+  timeout: { label: "超时", tone: "tone-tertiary" },
+  declined: { label: "已拒绝", tone: "tone-tertiary" },
+  banned: { label: "已封禁", tone: "tone-error" },
+  blocked: { label: "自动拦截", tone: "tone-error" },
+};
 
+function fmtTime(ts) {
+  const d = new Date(ts + 8 * 3600 * 1000);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}
+
+/** 状态已经说明了方式时不再重复一行 */
+function methodNote(row) {
+  const method = row.method;
+  if (!method || method === row.status || method === "profile") return "";
+  return `<span class="cell-sub">${esc(method)}</span>`;
+}
+
+function renderAudit(data) {
+  const stats = data.stats || {};
   const chain = data.chain || { ok: true, checked: 0 };
   const chainBadge = chain.ok
     ? `<span class="badge ok">哈希链完整 · ${chain.checked}</span>`
     : `<span class="badge bad">哈希链在 #${chain.brokenAtId} 断开</span>`;
 
+  $("audit-stats").innerHTML = `
+    <div class="card">
+      <div class="stats">
+        <div class="stat tone-primary"><b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
+        <div class="stat tone-secondary"><b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
+        <div class="stat tone-tertiary"><b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>未通过</span></div>
+      </div>
+      <p class="chain">${chainBadge}</p>
+    </div>`;
+
   const verificationRows = (data.verifications || [])
-    .map(
-      (row) => `<tr>
-        <td class="mono">${esc(new Date(row.createdAt).toLocaleString())}</td>
-        <td>${esc(row.userName || row.userId)}<br /><span class="md-typescale-body-small muted mono">${esc(row.userId)}</span></td>
-        <td>${esc(labels[row.status] || row.status)}${row.method ? `<br /><span class="md-typescale-body-small muted">${esc(row.method)}</span>` : ""}</td>
-        <td>${esc(row.reason || "")}${row.operatorId ? `<br /><span class="md-typescale-body-small muted">by ${esc(row.operatorId)}</span>` : ""}</td>
-      </tr>`,
-    )
+    .map((row) => {
+      const meta = STATUS_META[row.status] ?? { label: row.status, tone: "" };
+      return `<tr>
+        <td data-label="时间"><div class="cell mono">${fmtTime(row.createdAt)}</div></td>
+        <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
+        <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
+        <td data-label="原因" class="muted"><div class="cell">${esc(row.reason || "")}${
+          row.operatorId ? `<span class="cell-sub">by ${esc(row.operatorId)}</span>` : ""
+        }</div></td>
+      </tr>`;
+    })
     .join("");
 
   const auditRows = (data.audit || [])
     .map(
       (row) => `<tr>
-        <td class="mono">${esc(new Date(row.ts).toLocaleString())}</td>
-        <td>${esc(row.actorType)}<br /><span class="md-typescale-body-small muted mono">${esc(row.actorId)}</span></td>
-        <td>${esc(row.action)}</td>
-        <td class="wrap">${esc(row.targetUserId || "")}${
-          row.detail
-            ? `<br /><span class="md-typescale-body-small muted">${esc(JSON.stringify(row.detail).slice(0, 120))}</span>`
-            : ""
-        }</td>
+        <td data-label="时间"><div class="cell mono">${fmtTime(row.ts)}</div></td>
+        <td data-label="操作者"><div class="cell">${esc(row.actorType)}<span class="cell-sub mono">${esc(row.actorId)}</span></div></td>
+        <td data-label="动作"><div class="cell">${esc(row.action)}</div></td>
+        <td data-label="目标" class="muted"><div class="cell">${esc(row.targetUserId || "")}${
+          row.detail ? `<span class="cell-sub">${esc(JSON.stringify(row.detail).slice(0, 70))}</span>` : ""
+        }</div></td>
       </tr>`,
     )
     .join("");
 
   $("audit-body").innerHTML = `
     <div class="card">
-      <div class="stats">
-        <div class="stat tone-primary"><b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
-        <div class="stat tone-secondary"><b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
-        <div class="stat tone-tertiary"><b>${total}</b><span>全部记录</span></div>
+      <div class="table-head">
+        <h2 class="md-typescale-title-medium">验证记录</h2>
+        <span class="md-typescale-body-small muted">${data.verificationsTotal ?? 0} 条</span>
       </div>
-      <p style="margin:14px 0 0">${chainBadge}</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>用户</th><th>状态</th><th>原因 / 操作者</th></tr></thead>
+          <tbody>${verificationRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
+        </table>
+      </div>
     </div>
     <div class="card">
-      <h2 class="md-typescale-title-medium">验证记录</h2>
-      <table><thead><tr><th>时间</th><th>用户</th><th>状态</th><th>原因 / 操作者</th></tr></thead>
-      <tbody>${verificationRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody></table>
-    </div>
-    <div class="card">
-      <h2 class="md-typescale-title-medium">审计日志</h2>
-      <table><thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>目标 / 详情</th></tr></thead>
-      <tbody>${auditRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody></table>
+      <div class="table-head">
+        <h2 class="md-typescale-title-medium">审计日志</h2>
+        <span class="md-typescale-body-small muted">${data.auditTotal ?? 0} 条</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>目标 / 详情</th></tr></thead>
+          <tbody>${auditRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
+        </table>
+      </div>
     </div>`;
 }
 

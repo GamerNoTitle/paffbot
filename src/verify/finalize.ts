@@ -117,7 +117,7 @@ export async function rejectVerification(
       if (options.status === "banned" || options.status === "blocked") {
         await deps.tg.banChatMember(row.chat_id, row.user_id);
       }
-    } else {
+    } else if (row.source === "group_join") {
       if (options.status === "banned" || options.status === "blocked") {
         await deps.tg.banChatMember(row.chat_id, row.user_id);
       } else {
@@ -125,6 +125,7 @@ export async function rejectVerification(
         await deps.tg.unbanChatMember(row.chat_id, row.user_id);
       }
     }
+    // source=admin（自测）只落库，不动群成员
   } catch (err) {
     console.warn(`[finalize] 移除动作失败 verification=${row.id}:`, err instanceof Error ? err.message : err);
     await appendAudit(deps.db, {

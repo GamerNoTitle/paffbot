@@ -10,13 +10,15 @@
   </head>
   <body>
     <header class="app-bar">
-      <div class="app-bar__brand">
-        <span class="brand-mark">P</span>
-        <span class="md-typescale-title-medium">paffbot</span>
+      <div class="app-bar__inner">
+        <div class="app-bar__brand">
+          <span class="brand-mark">P</span>
+          <span class="md-typescale-title-medium">paffbot</span>
+        </div>
+        <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
+          <md-icon id="theme-icon"></md-icon>
+        </md-icon-button>
       </div>
-      <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
-        <md-icon id="theme-icon"></md-icon>
-      </md-icon-button>
     </header>
 
     <main class="page">
@@ -61,33 +63,34 @@
       </section>
 
       <section id="view-audit" class="view hidden">
-        <div class="card hidden" id="token-card">
-          <md-outlined-text-field
-            id="admin-token"
-            label="ADMIN_TOKEN"
-            type="password"
-            supporting-text="浏览器模式需要部署时设置的 ADMIN_TOKEN"
-          ></md-outlined-text-field>
-          <div class="actions">
-            <md-filled-button id="btn-token">保存并使用</md-filled-button>
-          </div>
-        </div>
+        <div class="audit-layout">
+          <aside class="audit-side">
+            <div class="card hidden" id="token-card">
+              <md-outlined-text-field id="admin-token" label="ADMIN_TOKEN" type="password"></md-outlined-text-field>
+              <div class="filter-actions">
+                <md-filled-button id="btn-token">保存并使用</md-filled-button>
+              </div>
+            </div>
 
-        <div class="card">
-          <md-outlined-text-field
-            id="audit-chat"
-            label="群组 ID"
-            inputmode="numeric"
-            supporting-text="在群里发 /id 可以看到"
-          ></md-outlined-text-field>
-          <div class="actions">
-            <md-filled-button id="btn-audit-load">查询</md-filled-button>
-            <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
-          </div>
-          <p class="md-typescale-body-small muted" id="audit-hint"></p>
-        </div>
+            <div class="card">
+              <md-outlined-text-field
+                id="audit-chat"
+                label="群组 ID"
+                inputmode="numeric"
+                supporting-text="在群里发 /id 可以看到"
+              ></md-outlined-text-field>
+              <div class="filter-actions">
+                <md-filled-button id="btn-audit-load">查询</md-filled-button>
+                <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
+              </div>
+              <p class="md-typescale-body-small muted" id="audit-hint"></p>
+            </div>
 
-        <div id="audit-body"></div>
+            <div id="audit-stats"></div>
+          </aside>
+
+          <div class="audit-main" id="audit-body"></div>
+        </div>
       </section>
 
       <footer class="foot md-typescale-label-medium">paffbot · Cloudflare Workers + D1</footer>
