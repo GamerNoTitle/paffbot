@@ -95,6 +95,21 @@ body {
   margin-bottom: 20px;
 }
 
+.page-top__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex: none;
+  background: var(--md-sys-color-surface-container-high);
+}
+
 /* MD3 segmented：浅色轨道 + 选中态药丸（对应 m3 文档的内页导航） */
 .segmented {
   display: inline-flex;

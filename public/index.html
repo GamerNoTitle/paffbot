@@ -4,16 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#5060B0" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./icon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>芙 Bot · 入群验证</title>
-    <link rel="stylesheet" href="./styles.css?v=14" />
+    <link rel="stylesheet" href="./styles.css?v=15" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
     <div class="page">
       <div class="page-top">
-        <div class="segmented" role="tablist" aria-label="页面" id="nav">
+        <div class="page-top__left">
+          <img class="logo" src="./icon-192.png" alt="芙 Bot" width="40" height="40" />
+          <div class="segmented" role="tablist" aria-label="页面" id="nav">
           <button type="button" role="tab" data-view="verify" aria-selected="true">验证</button>
-          <button type="button" role="tab" data-view="audit" aria-selected="false">审计</button>
+            <button type="button" role="tab" data-view="audit" aria-selected="false">审计</button>
+          </div>
         </div>
         <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
           <md-icon id="theme-icon"></md-icon>
@@ -114,6 +120,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=14"></script>
+    <script type="module" src="./app.js?v=15"></script>
   </body>
 </html>
