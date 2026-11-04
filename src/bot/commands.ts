@@ -157,6 +157,13 @@ async function handleStart(env: CommandEnv): Promise<void> {
     env,
     commandsHelp(env.superAdmin, `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`),
   );
+
+  // 管理员额外给一个审计入口（普通用户看不到这个标签页）
+  if (env.superAdmin) {
+    await reply(env, "你是超级管理员，可以在网页端查看审计。", {
+      inline_keyboard: [[{ text: "打开审计面板", web_app: { url: `${miniAppUrl(env.ctx)}/admin` } }]],
+    });
+  }
 }
 
 async function handleVerifyChat(env: CommandEnv): Promise<void> {

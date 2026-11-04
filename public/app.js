@@ -56,6 +56,7 @@ const state = {
   timer: 0,
   token: localStorage.getItem("paffbot.token") || "",
   botUsername: "",
+  superAdmin: false,
   oauthEnabled: false,
   githubLogin: "",
   oauthTimer: 0,
@@ -163,6 +164,7 @@ async function loadSession() {
         sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
         chips: [],
       });
+      applyNavVisibility();
       showState("empty");
       return;
     }
@@ -174,6 +176,7 @@ async function loadSession() {
       sub: v.chatTitle ?? String(v.chatId),
       chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
     });
+    applyNavVisibility();
     showState("pending");
     startCountdown(v.expiresAt);
     await loadPanel();
@@ -345,9 +348,11 @@ function renderGithubPanel(panel, data, mode = "verify") {
           <div class="code">
             <div class="code__head">
               <div class="segmented segmented--sm" role="tablist" aria-label="终端" id="gh-shells"></div>
-              <md-text-button id="gh-copy">${svgIcon("copy", 18)}<span>复制</span></md-text-button>
             </div>
             <pre id="gh-cmd"></pre>
+            <div class="code__foot">
+              <md-text-button id="gh-copy">${svgIcon("copy", 18)}<span>复制</span></md-text-button>
+            </div>
           </div>
         </div>
       </li>
@@ -802,6 +807,14 @@ async function downloadCsv() {
 
 /* ---------------------------------------------------------------- 初始化 */
 
+/** 审计只给管理员：Mini App 里 superAdmin，或网页端直接访问 /admin。 */
+function applyNavVisibility() {
+  const isAdmin = state.superAdmin || location.pathname === "/admin" || params.get("admin") === "1";
+  const auditButton = $("nav").querySelector('button[data-view="audit"]');
+  if (auditButton) auditButton.classList.toggle("hidden", !isAdmin);
+  if (isAdmin && location.pathname === "/admin") switchTab("audit");
+}
+
 function switchTab(name) {
   $("view-verify").classList.toggle("hidden", name !== "verify");
   $("view-audit").classList.toggle("hidden", name !== "audit");
@@ -917,7 +930,9 @@ $("btn-token").addEventListener("click", () => {
   state.token = $("admin-token").value.trim();
   localStorage.setItem("paffbot.token", state.token);
   $("token-card").classList.add("hidden");
-  loadSession();
+  applyNavVisibility();
+loadSession();
 });
 
+applyNavVisibility();
 loadSession();

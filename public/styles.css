@@ -644,9 +644,15 @@ md-outlined-text-field {
   --md-filter-chip-label-text-size: 12.5px;
 }
 
+.code__foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 10px 8px;
+}
+
 .code pre {
   margin: 0;
-  padding: 4px 18px 18px;
+  padding: 4px 18px 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.7;

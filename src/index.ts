@@ -58,6 +58,13 @@ app.post("/tg/:secret", async (c) => {
 app.route("/", createApi());
 
 // 其余请求交给 Static Assets（Mini App 的 index.html / app.js / style.css）
+// /admin 直接给同一份 SPA，前端按路径打开审计视图
+app.get("/admin", (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/";
+  return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw));
+});
+
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 export default {
