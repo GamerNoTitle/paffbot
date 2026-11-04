@@ -273,7 +273,7 @@ function renderOAuthPanel(panel) {
     <div class="panel__head">
       <h2 class="md-typescale-headline-medium">用 GitHub 授权</h2>
       <p class="md-typescale-body-medium muted">
-        去 GitHub 点个同意就行，不用碰终端。只读你的公开资料，不碰仓库。
+        在 GitHub 上点一下同意就行，不用在终端里操作。
         ${state.githubLogin ? `现在已经绑定了 <b>${esc(state.githubLogin)}</b>。` : ""}
       </p>
     </div>
@@ -336,8 +336,8 @@ function renderGithubPanel(panel, data, mode = "verify") {
     <div class="panel__head">
       <h2 class="md-typescale-headline-medium">${standalone ? "验一下 GitHub 账号" : "用 GitHub 签名"}</h2>
       <p class="md-typescale-body-medium muted">
-        ${standalone ? "用它公开的 SSH 公钥签个名就行。" : "用你加到 GitHub 的那把私钥签个名，不碰仓库。"}
-        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">怎么配？</a>
+        用你电脑里的 SSH 私钥签一段话，再把签名贴回来。
+        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">查看配置步骤</a>
       </p>
       ${notes.length ? `<p class="md-typescale-body-small muted">另外还要：${esc(notes.join("；"))}</p>` : ""}
     </div>
@@ -356,7 +356,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
         <div class="step__avatar tone-secondary">2</div>
         <div class="step__body">
           <h3 class="md-typescale-title-medium">在终端签个名</h3>
-          <p class="md-typescale-body-medium muted">把 -f 后面换成你自己的私钥路径，跑完屏幕上那段就是签名。</p>
+          <p class="md-typescale-body-medium muted">把 -f 后面的路径换成你自己的私钥，回车后会打印出签名。</p>
           <div class="code">
             <div class="code__head">
               <div class="segmented segmented--sm" role="tablist" aria-label="终端" id="gh-shells"></div>
@@ -373,13 +373,13 @@ function renderGithubPanel(panel, data, mode = "verify") {
         <div class="step__avatar tone-tertiary">3</div>
         <div class="step__body">
           <h3 class="md-typescale-title-medium">把签名贴回来</h3>
-          <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="签名内容"></md-outlined-text-field>
+          <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="粘贴整段签名"></md-outlined-text-field>
         </div>
       </li>
     </ol>
 
     <div class="panel__actions">
-      <md-filled-button id="gh-submit" disabled>${standalone ? "验一下" : "验证，让我进群"}</md-filled-button>
+      <md-filled-button id="gh-submit" disabled>${standalone ? "验证一下" : "验证并让我进群"}</md-filled-button>
     </div>
     <p class="md-typescale-body-small hidden" id="gh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
@@ -412,9 +412,9 @@ function renderGithubPanel(panel, data, mode = "verify") {
   $("gh-copy").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(githubCommand(state.shell));
-      toast("已经复制了");
+      toast("已复制");
     } catch {
-      toast("没复制成，手动选中吧");
+      toast("复制失败，请手动选择命令");
     }
   });
 
@@ -610,7 +610,7 @@ function renderPreview() {
 
   const banner = document.createElement("div");
   banner.className = "preview-banner";
-  banner.innerHTML = `<md-icon>${svgIcon("error", 20)}</md-icon><span>界面预览：示例数据，不会真正提交。真实验证请在 Telegram 里从 @P4ffBot 打开。</span>`;
+  banner.innerHTML = `<md-icon>${svgIcon("error", 20)}</md-icon><span>这是预览，数据都是假的。真实验证请从 Telegram 里的 @P4ffBot 打开。</span>`;
   $("view-verify").insertBefore(banner, $("pending"));
 
   state.verification = {
