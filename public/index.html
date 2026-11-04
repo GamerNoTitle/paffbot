@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>芙 Bot · 入群验证</title>
-    <link rel="stylesheet" href="./styles.css?v=22" />
+    <link rel="stylesheet" href="./styles.css?v=24" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -85,14 +85,8 @@
 
         <div class="card">
           <div class="filter-row">
-            <md-outlined-text-field
-              id="audit-chat"
-              label="群组 ID"
-              inputmode="numeric"
-              supporting-text="在群里发 /id 可以看到"
-            ></md-outlined-text-field>
+            <select class="select" id="audit-group" aria-label="按群筛选"></select>
             <div class="filter-actions">
-              <md-filled-button id="btn-audit-load">查询</md-filled-button>
               <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
             </div>
           </div>
@@ -119,6 +113,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=23"></script>
+    <script type="module" src="./app.js?v=24"></script>
   </body>
 </html>

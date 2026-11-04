@@ -57,6 +57,7 @@ const state = {
   token: localStorage.getItem("paffbot.token") || "",
   botUsername: "",
   superAdmin: false,
+  auditLoaded: false,
   oauthEnabled: false,
   githubLogin: "",
   oauthTimer: 0,
@@ -609,20 +610,16 @@ function renderPreview() {
 /* ---------------------------------------------------------------- 审计 */
 
 async function loadAudit() {
-  const chatId = $("audit-chat").value.trim();
-  if (!chatId) {
-    $("audit-hint").textContent = "请先填写群组 ID（群里发 /id 可以看到）。";
-    return;
-  }
-  localStorage.setItem("paffbot.chat", chatId);
-  $("audit-hint").textContent = "查询中…";
+  const chatId = $("audit-group")?.value ?? "";
+  $("audit-hint").textContent = "加载中…";
   try {
-    const data = await api(`/api/audit/overview?chatId=${encodeURIComponent(chatId)}`);
+    const query = chatId ? `?chatId=${encodeURIComponent(chatId)}` : "";
+    const data = await api(`/api/audit/overview${query}`);
     $("audit-hint").textContent = `共 ${data.verificationsTotal} 条验证、${data.auditTotal} 条审计。`;
     renderAudit(data);
     $("token-card").classList.add("hidden");
   } catch (err) {
-    $("audit-hint").textContent = `查询失败：${err.message}`;
+    $("audit-hint").textContent = `加载失败：${err.message}`;
     if (err.status === 401) $("token-card").classList.remove("hidden");
   }
 }
@@ -751,10 +748,18 @@ function selectHtml(id, options) {
     .join("")}</select>`;
 }
 
+function groupCell(title, id) {
+  if (!title && !id) return '<div class="cell muted">—</div>';
+  return `<div class="cell">${esc(title || String(id))}${
+    title && id ? `<span class="cell-sub mono">${esc(id)}</span>` : ""
+  }</div>`;
+}
+
 function verifyRowHtml(row) {
   const meta = STATUS_META[row.status] ?? { label: row.status, tone: "" };
   return `<tr>
     <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.createdAt))}">${fmtTime(row.createdAt)}</div></td>
+    <td data-label="群">${groupCell(row.chatTitle, row.chatId)}</td>
     <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
     <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span></div></td>
     <td data-label="说明" class="muted"><div class="cell">${esc(
@@ -766,6 +771,7 @@ function verifyRowHtml(row) {
 function auditRowHtml(row) {
   return `<tr>
     <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.ts))}">${fmtTime(row.ts)}</div></td>
+    <td data-label="群">${groupCell(row.chatTitle, row.chatId)}</td>
     <td data-label="操作者"><div class="cell">${esc(ACTOR_LABEL[row.actorType] ?? row.actorType)}${
       row.actorId ? `<span class="cell-sub mono">${esc(row.actorId)}</span>` : ""
     }</div></td>
@@ -791,15 +797,15 @@ async function loadVerifyPage() {
 
   const tbody = $("v-rows");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="muted">加载中…</td></tr>';
   try {
     const data = await api(`/api/audit/verifications?${params.toString()}`);
-    tbody.innerHTML = data.rows.map(verifyRowHtml).join("") || '<tr><td colspan="4" class="muted">没有匹配的记录</td></tr>';
+    tbody.innerHTML = data.rows.map(verifyRowHtml).join("") || '<tr><td colspan="5" class="muted">没有匹配的记录</td></tr>';
     $("v-count").textContent = `${data.total} 条`;
     $("v-pager").innerHTML = pagerHtml("v", data.page, data.total, data.pageSize);
     bindPager("v", "verify", loadVerifyPage);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">加载失败：${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -811,15 +817,15 @@ async function loadLogPage() {
 
   const tbody = $("a-rows");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="muted">加载中…</td></tr>';
   try {
     const data = await api(`/api/audit/log?${params.toString()}`);
-    tbody.innerHTML = data.rows.map(auditRowHtml).join("") || '<tr><td colspan="4" class="muted">没有匹配的记录</td></tr>';
+    tbody.innerHTML = data.rows.map(auditRowHtml).join("") || '<tr><td colspan="5" class="muted">没有匹配的记录</td></tr>';
     $("a-count").textContent = `${data.total} 条`;
     $("a-pager").innerHTML = pagerHtml("a", data.page, data.total, data.pageSize);
     bindPager("a", "log", loadLogPage);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">加载失败：${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -844,7 +850,20 @@ function renderAudit(data) {
     ? `<span class="badge ok">哈希链完整 · ${chain.checked}</span>`
     : `<span class="badge bad">哈希链在 #${chain.brokenAtId} 断开</span>`;
 
-  auditView.chatId = String(data.chatId ?? auditView.chatId);
+  auditView.chatId = String(data.chatId ?? "");
+
+  const groupSelect = $("audit-group");
+  if (groupSelect) {
+    const current = groupSelect.value || auditView.chatId;
+    const options = [["", "全部群"]].concat(
+      (data.groups ?? []).map((g) => [String(g.chatId), g.title || String(g.chatId)]),
+    );
+    groupSelect.innerHTML = options
+      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+      .join("");
+    groupSelect.value = options.some(([v]) => v === current) ? current : "";
+    auditView.chatId = groupSelect.value;
+  }
   auditView.verify = { page: 1, status: "", q: "" };
   auditView.log = { page: 1, action: "", q: "" };
 
@@ -870,7 +889,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>用户</th><th>状态</th><th>说明</th></tr></thead>
+          <thead><tr><th>时间</th><th>群</th><th>用户</th><th>状态</th><th>说明</th></tr></thead>
           <tbody id="v-rows"></tbody>
         </table>
       </div>
@@ -887,7 +906,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>详情</th></tr></thead>
+          <thead><tr><th>时间</th><th>群</th><th>操作者</th><th>动作</th><th>详情</th></tr></thead>
           <tbody id="a-rows"></tbody>
         </table>
       </div>
@@ -932,15 +951,15 @@ function bindSearch(id, apply, reload) {
 }
 
 async function downloadCsv() {
-  const chatId = $("audit-chat").value.trim();
-  if (!chatId) return;
+  const chatId = $("audit-group")?.value ?? "";
   try {
     const headers = tg?.initData
       ? { "X-Telegram-Init-Data": tg.initData }
       : state.token
         ? { Authorization: `Bearer ${state.token}` }
         : {};
-    const res = await fetch(`/api/audit/export.csv?chatId=${encodeURIComponent(chatId)}`, { headers });
+    const query = chatId ? `?chatId=${encodeURIComponent(chatId)}` : "";
+    const res = await fetch(`/api/audit/export.csv${query}`, { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -973,9 +992,9 @@ function switchTab(name) {
   }
   if (name === "audit") {
     if (!tg?.initData && !state.token) $("token-card").classList.remove("hidden");
-    if (!$("audit-chat").value) {
-      const fromUrl = new URLSearchParams(location.search).get("chat");
-      $("audit-chat").value = fromUrl || localStorage.getItem("paffbot.chat") || "";
+    if (!state.auditLoaded) {
+      state.auditLoaded = true;
+      loadAudit();
     }
   }
 }
@@ -1058,7 +1077,11 @@ for (const button of $("nav").querySelectorAll("button")) {
 $("refresh").addEventListener("click", loadSession);
 $("btn-standalone").addEventListener("click", () => enterStandalone());
 $("dialog-close").addEventListener("click", () => $("success-dialog").close());
-$("btn-audit-load").addEventListener("click", loadAudit);
+$("audit-group").addEventListener("change", () => {
+  auditView.verify.page = 1;
+  auditView.log.page = 1;
+  loadAudit();
+});
 $("btn-audit-csv").addEventListener("click", downloadCsv);
 $("btn-token").addEventListener("click", () => {
   state.token = $("admin-token").value.trim();

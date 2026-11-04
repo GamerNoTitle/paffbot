@@ -366,6 +366,8 @@ export function createApi(): Hono<AppBindings> {
       total,
       rows: rows.map((row) => ({
         ...publicVerification(row),
+        chatId: row.chat_id,
+        chatTitle: row.chat_title ?? null,
         userId: row.user_id,
         userName: row.display_name ?? row.username,
         status: row.status,
@@ -405,6 +407,10 @@ export function createApi(): Hono<AppBindings> {
     if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
 
     const chatId = auth.chatId;
+    const groups = await ctx.db
+      .prepare("SELECT chat_id, title FROM groups ORDER BY updated_at DESC LIMIT 200")
+      .all<{ chat_id: number; title: string | null }>();
+
     const [stats, chain, recent, verifications] = await Promise.all([
       verificationStats(ctx.db, chatId ?? undefined),
       verifyAuditChain(ctx.db, 2000),
@@ -418,6 +424,7 @@ export function createApi(): Hono<AppBindings> {
       superAdmin: auth.superAdmin,
       stats,
       chain,
+      groups: (groups.results ?? []).map((g) => ({ chatId: g.chat_id, title: g.title })),
       audit: recent.rows.map(serializeAudit),
       auditTotal: recent.total,
       verifications: verifications.rows.map((row) => ({
@@ -471,6 +478,8 @@ export function createApi(): Hono<AppBindings> {
       total,
       rows: rows.map((row) => ({
         ...publicVerification(row),
+        chatId: row.chat_id,
+        chatTitle: row.chat_title ?? null,
         userId: row.user_id,
         userName: row.display_name ?? row.username,
         reason: row.reason,
@@ -581,6 +590,7 @@ async function authorizeAudit(
 
 function serializeAudit(row: {
   id: number;
+  chat_title?: string | null;
   ts: number;
   actor_id: number;
   actor_type: string;
@@ -605,6 +615,7 @@ function serializeAudit(row: {
     actorType: row.actor_type,
     action: row.action,
     chatId: row.chat_id,
+    chatTitle: row.chat_title ?? null,
     targetUserId: row.target_user_id,
     verificationId: row.verification_id,
     detail,

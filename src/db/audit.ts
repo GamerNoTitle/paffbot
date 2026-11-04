@@ -21,6 +21,7 @@ export interface AuditInput {
 }
 
 export interface AuditRow {
+  chat_title?: string | null;
   id: number;
   ts: number;
   actor_id: number;
@@ -114,21 +115,21 @@ export async function listAudit(db: D1Database, filter: AuditFilter = {}): Promi
   const where: string[] = [];
   const params: (string | number)[] = [];
   if (filter.chatId) {
-    where.push("chat_id = ?");
+    where.push("a.chat_id = ?");
     params.push(filter.chatId);
   }
   if (filter.targetUserId) {
-    where.push("target_user_id = ?");
+    where.push("a.target_user_id = ?");
     params.push(filter.targetUserId);
   }
   if (filter.action) {
-    where.push("action = ?");
+    where.push("a.action = ?");
     params.push(filter.action);
   }
   if (filter.query) {
     const q = `%${filter.query}%`;
     where.push(
-      "(action LIKE ? OR CAST(target_user_id AS TEXT) LIKE ? OR CAST(actor_id AS TEXT) LIKE ? OR detail LIKE ?)",
+      "(a.action LIKE ? OR CAST(a.target_user_id AS TEXT) LIKE ? OR CAST(a.actor_id AS TEXT) LIKE ? OR a.detail LIKE ?)",
     );
     params.push(q, q, q, q);
   }
@@ -137,24 +138,27 @@ export async function listAudit(db: D1Database, filter: AuditFilter = {}): Promi
   const offset = Math.max(0, filter.offset ?? 0);
 
   const totalRow = await db
-    .prepare(`SELECT COUNT(*) AS total FROM audit_log ${clause}`)
+    .prepare(`SELECT COUNT(*) AS total FROM audit_log a ${clause}`)
     .bind(...params)
     .first<{ total: number }>();
   const { results } = await db
-    .prepare(`SELECT * FROM audit_log ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`)
+    .prepare(
+      `SELECT a.*, g.title AS chat_title FROM audit_log a
+       LEFT JOIN groups g ON g.chat_id = a.chat_id
+       ${clause} ORDER BY a.id DESC LIMIT ? OFFSET ?`,
+    )
     .bind(...params, limit, offset)
-    .all<AuditRow>();
+    .all<AuditRow & { chat_title: string | null }>();
 
   return { rows: results ?? [], total: totalRow?.total ?? 0 };
 }
-
 export interface ChainVerification {
   ok: boolean;
   checked: number;
   brokenAtId: number | null;
 }
 
-/** 从头重算哈希链。审计页上的 "完整性" 徽标用它。 */
+/** 逐条校验哈希链，审计页的「完整性」徽标用它。 */
 export async function verifyAuditChain(db: D1Database, limit = 5000): Promise<ChainVerification> {
   const { results } = await db
     .prepare("SELECT * FROM audit_log ORDER BY id ASC LIMIT ?")
