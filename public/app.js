@@ -756,10 +756,10 @@ function verifyRowHtml(row) {
   return `<tr>
     <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.createdAt))}">${fmtTime(row.createdAt)}</div></td>
     <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
-    <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
+    <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span></div></td>
     <td data-label="说明" class="muted"><div class="cell">${esc(
       REASON_LABEL[row.reason] ?? row.reason ?? "",
-    )}${row.operatorId ? `<span class="cell-sub">操作者 ${esc(row.operatorId)}</span>` : ""}</div></td>
+    )}${methodNote(row)}${row.operatorId ? `<span class="cell-sub">操作者 ${esc(row.operatorId)}</span>` : ""}</div></td>
   </tr>`;
 }
 
