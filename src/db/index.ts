@@ -227,6 +227,53 @@ export async function verificationStats(db: D1Database, chatId?: number): Promis
   return out;
 }
 
+// ---------------------------------------------------------------- rate limits
+
+/** 北京时间（UTC+8）的日序号，用于「一天内」的窗口。 */
+export function dayIndexOf(now = nowMs()): number {
+  return Math.floor((now + 8 * 3600 * 1000) / 86_400_000);
+}
+
+export interface QuotaResult {
+  allowed: boolean;
+  used: number;
+  limit: number;
+}
+
+/**
+ * 消耗一次每日配额。达到上限后返回 allowed=false（不再自增，避免持续膨胀）。
+ */
+export async function consumeDailyQuota(
+  db: D1Database,
+  key: string,
+  limit: number,
+  day = dayIndexOf(),
+): Promise<QuotaResult> {
+  const row = await db
+    .prepare("SELECT count FROM rate_limits WHERE key = ? AND day = ?")
+    .bind(key, day)
+    .first<{ count: number }>();
+  const used = row?.count ?? 0;
+
+  if (used >= limit) return { allowed: false, used, limit };
+
+  await db
+    .prepare(
+      `INSERT INTO rate_limits (key, day, count, updated_at) VALUES (?, ?, 1, ?)
+       ON CONFLICT(key, day) DO UPDATE SET count = count + 1, updated_at = excluded.updated_at`,
+    )
+    .bind(key, day, nowMs())
+    .run();
+
+  return { allowed: true, used: used + 1, limit };
+}
+
+export async function pruneRateLimits(db: D1Database, keepDays = 7): Promise<number> {
+  const cutoff = dayIndexOf() - keepDays;
+  const result = await db.prepare("DELETE FROM rate_limits WHERE day < ?").bind(cutoff).run();
+  return result.meta.changes ?? 0;
+}
+
 // ---------------------------------------------------------------- groups
 
 export async function upsertGroup(db: D1Database, chatId: number, title: string | null): Promise<void> {

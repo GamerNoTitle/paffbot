@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 import {
+  consumeDailyQuota,
   findOpenVerification,
   getVerification,
   listVerifications,
@@ -10,7 +11,7 @@ import {
 } from "../db";
 import { appendAudit, listAudit, verifyAuditChain } from "../db/audit";
 import { loadConfig, type Env } from "../env";
-import { issueChallenge, readChallenge } from "../lib/challenge";
+import { consumeChallenge, issueChallenge, readChallenge } from "../lib/challenge";
 import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 import { verifyGithubOwnership } from "../verify/github-verify";
 import { randomToken } from "../lib/crypto";
@@ -163,8 +164,15 @@ export function createApi(): Hono<AppBindings> {
   /** 签发一次性挑战，供浏览器直接跑 GitHub 签名校验（不会放行任何群）。 */
   api.get("/api/github/challenge", async (c) => {
     const ctx = c.get("ctx");
-    const issued = await issueChallenge(ctx.config);
-    return c.json({ ok: true, ...issued });
+    const quota = await consumeDailyQuota(ctx.db, `ip:${clientIp(c)}`, ctx.config.dailyAttempts);
+    if (!quota.allowed) {
+      return c.json(
+        { ok: false, error: `今天的校验次数用完了（每天 ${quota.limit} 次），明天再来`, remaining: 0 },
+        429,
+      );
+    }
+    const issued = await issueChallenge(ctx.config, ctx.db, clientIp(c));
+    return c.json({ ok: true, ...issued, remaining: quota.limit - quota.used });
   });
 
   api.post("/api/github/check", async (c) => {
@@ -182,10 +190,13 @@ export function createApi(): Hono<AppBindings> {
     }
     if (signature.length > 20_000) return c.json({ ok: false, error: "签名内容过长" }, 400);
 
-    const challenge = await readChallenge(ctx.config, token);
-    if (!challenge) return c.json({ ok: false, error: "校验会话已过期，请刷新页面重试" }, 400);
+    const claim = await readChallenge(ctx.config, token);
+    if (!claim) return c.json({ ok: false, error: "校验已失效，刷新页面重新来" }, 400);
+    if (!(await consumeChallenge(ctx.db, claim.nonce))) {
+      return c.json({ ok: false, error: "这次校验已经用过了，刷新页面重新来" }, 409);
+    }
 
-    const result = await verifyGithubOwnership(ctx.config, username, signature, challenge);
+    const result = await verifyGithubOwnership(ctx.config, username, signature, claim.challenge);
     if (!result.ok) return c.json({ ok: false, error: result.error ?? "校验失败" }, 400);
 
     return c.json({
@@ -409,6 +420,13 @@ function serializeAudit(row: {
     verificationId: row.verification_id,
     detail,
   };
+}
+
+function clientIp(c: Context<AppBindings>): string {
+  const direct = c.req.header("cf-connecting-ip");
+  if (direct) return direct;
+  const forwarded = c.req.header("x-forwarded-for");
+  return forwarded?.split(",")[0]?.trim() || "local";
 }
 
 function parseOptionalInt(raw: string | undefined): number | undefined {

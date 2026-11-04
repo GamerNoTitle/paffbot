@@ -171,7 +171,7 @@ async function loadSession() {
   } catch (err) {
     if (err.status === 401 && !tg?.initData) {
       $("token-card").classList.remove("hidden");
-      await enterStandalone("浏览器直接访问：只校验 GitHub 签名归属，不会放行任何群。");
+      await enterStandalone();
     } else {
       showState("empty");
       $("empty-title").textContent = "加载失败";
@@ -224,9 +224,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
     <div class="panel__head">
       <h2 class="md-typescale-headline-medium">${standalone ? "GitHub 账号校验" : "GitHub SSH"}</h2>
       <p class="md-typescale-body-medium muted">
-        ${standalone
-          ? "独立校验：用你 GitHub 账号上已公开的公钥签名，证明账号归属。不会放行任何群。"
-          : "用已添加到 GitHub 的 SSH 私钥签名，无需 OAuth，也不读取你的私有数据。"}
+        ${standalone ? "用该账号已公开的公钥签名。" : "用已添加到 GitHub 的 SSH 私钥签名。"}
         <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">配置指南</a>
       </p>
       ${notes.length ? `<p class="md-typescale-body-small muted">额外要求：${esc(notes.join("；"))}</p>` : ""}
@@ -238,7 +236,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
         <div class="step__body">
           <h3 class="md-typescale-title-medium">输入 GitHub 用户名</h3>
           <p class="md-typescale-body-medium muted">不带 @，例如 octocat</p>
-          <md-outlined-text-field id="gh-username" label="GitHub 用户名" supporting-text="会读取该账号公开的 SSH 公钥"></md-outlined-text-field>
+          <md-outlined-text-field id="gh-username" label="GitHub 用户名"></md-outlined-text-field>
         </div>
       </li>
 
@@ -261,7 +259,6 @@ function renderGithubPanel(panel, data, mode = "verify") {
         <div class="step__avatar tone-tertiary">3</div>
         <div class="step__body">
           <h3 class="md-typescale-title-medium">粘贴签名</h3>
-          <p class="md-typescale-body-medium muted">以 -----BEGIN SSH SIGNATURE----- 开头</p>
           <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
         </div>
       </li>
@@ -350,20 +347,23 @@ function renderGithubPanel(panel, data, mode = "verify") {
       toast(err.message);
       submit.disabled = false;
       submit.textContent = standalone ? "校验签名" : "验证并放行";
+      if (standalone && (err.status === 409 || err.status === 400)) {
+        await loadStandalonePanel();
+      }
     }
   });
 }
 
 /* ---------------------------------------------------------------- 独立校验（无 Telegram） */
 
-async function enterStandalone(reason) {
+async function enterStandalone() {
   state.standalone = true;
   showState("pending");
   setHero({
-    eyebrow: "PAFFBOT · 独立校验",
-    title: "校验 GitHub 账号",
-    sub: reason,
-    chips: [{ text: "不涉及群操作" }],
+    eyebrow: "PAFFBOT",
+    title: "确认 GitHub 账号",
+    sub: "用该账号已公开的公钥签名，确认归属。",
+    chips: [],
   });
   await loadStandalonePanel();
 }
@@ -375,6 +375,14 @@ async function loadStandalonePanel() {
     const data = await api("/api/github/challenge");
     state.checkToken = data.token;
     state.challenge = data.challenge;
+    if (typeof data.remaining === "number") {
+      setHero({
+        eyebrow: "PAFFBOT",
+        title: "确认 GitHub 账号",
+        sub: "用该账号已公开的公钥签名，确认归属。",
+        chips: [{ text: `今天还剩 ${data.remaining} 次`, id: "hero-remaining" }],
+      });
+    }
     renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
@@ -386,8 +394,7 @@ function onStandaloneResult(result) {
   $("dialog-icon").innerHTML = svgIcon("check", 30);
   $("dialog-text").innerHTML =
     `GitHub 账号 <b>${esc(result.githubUsername)}</b> 校验通过。` +
-    `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>` +
-    `<br><span class="md-typescale-body-small muted">此结果不会放行任何群成员。</span>`;
+    `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>`;
   $("success-dialog").show();
 }
 
@@ -575,7 +582,7 @@ $("empty-icon").innerHTML = svgIcon("inbox", 28);
 $("tab-verify").addEventListener("click", () => switchTab("verify"));
 $("tab-audit").addEventListener("click", () => switchTab("audit"));
 $("refresh").addEventListener("click", loadSession);
-$("btn-standalone").addEventListener("click", () => enterStandalone("只做签名校验，不会放行任何群。"));
+$("btn-standalone").addEventListener("click", () => enterStandalone());
 $("dialog-close").addEventListener("click", () => $("success-dialog").close());
 $("btn-audit-load").addEventListener("click", loadAudit);
 $("btn-audit-csv").addEventListener("click", downloadCsv);

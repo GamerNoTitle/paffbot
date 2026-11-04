@@ -16,6 +16,7 @@ export interface Env {
   ADMIN_TOKEN?: string;
 
   VERIFY_TTL_SECONDS?: string;
+  VERIFY_DAILY_LIMIT?: string;
 
   MINI_APP_URL?: string;
   TELEGRAM_API_BASE?: string;
@@ -36,6 +37,7 @@ export interface Config {
   adminIds: number[];
   adminToken: string | null;
   ttlSeconds: number;
+  dailyAttempts: number;
   miniAppUrl: string | null;
   apiBase: string;
   githubToken: string | null;
@@ -102,6 +104,7 @@ export function loadConfig(env: Env): Config {
     adminIds: parseIntList(env.ADMIN_IDS),
     adminToken: (env.ADMIN_TOKEN ?? "").trim() || null,
     ttlSeconds: parseIntOr(env.VERIFY_TTL_SECONDS, 300, 60, 24 * 3600),
+    dailyAttempts: parseIntOr(env.VERIFY_DAILY_LIMIT, 3, 1, 50),
     miniAppUrl: (env.MINI_APP_URL ?? "").trim() || null,
     apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
     githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,

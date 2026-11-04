@@ -1,4 +1,5 @@
-import { listExpiredPending, pruneOldVerifications } from "./db";
+import { listExpiredPending, pruneOldVerifications, pruneRateLimits } from "./db";
+import { pruneChallenges } from "./lib/challenge";
 import { verifyAuditChain } from "./db/audit";
 import { loadConfig, type Env } from "./env";
 import { TelegramApi } from "./lib/telegram";
@@ -35,7 +36,11 @@ export async function runScheduled(env: Env): Promise<void> {
   const now = new Date();
   if (now.getUTCHours() === 3 && now.getUTCMinutes() < 2) {
     const pruned = await pruneOldVerifications(env.DB, config.retentionDays);
+    const challenges = await pruneChallenges(env.DB);
+    const quotas = await pruneRateLimits(env.DB);
     const chain = await verifyAuditChain(env.DB, 2000);
-    console.log(`[cron] 清理验证记录 ${pruned} 条；审计链 ${chain.ok ? "完整" : `在 #${chain.brokenAtId} 断开`}`);
+    console.log(
+      `[cron] 清理验证记录 ${pruned} 条、挑战 ${challenges} 条、配额 ${quotas} 条；审计链 ${chain.ok ? "完整" : `在 #${chain.brokenAtId} 断开`}`,
+    );
   }
 }

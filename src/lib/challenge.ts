@@ -1,12 +1,13 @@
 import type { Config } from "../env";
 import { constantTimeEqual, fromBase64Url, hmacSha256, randomToken, sha256, toBase64Url, utf8 } from "../lib/crypto";
+import { nowMs } from "./time";
 
 /**
- * 浏览器独立校验用的一次性挑战令牌：
- *   token = base64url(payload) + "." + base64url(HMAC(key, payload))
- *   payload = { c: challenge, e: 过期时间(ms) }
+ * 浏览器独立校验用的一次性挑战：
+ *   - nonce 落库（challenges 表），校验时原子消费，重放直接失败
+ *   - token 是无状态 HMAC，只承载 nonce，避免信任客户端提交的挑战串
  *
- * 无状态、不落库；密钥由 BOT_TOKEN + WEBHOOK_SECRET 派生，换密钥即全部失效。
+ * payload = { n: nonce, e: 过期时间(ms) }
  */
 
 const TTL_MS = 10 * 60 * 1000;
@@ -21,15 +22,35 @@ export interface IssuedChallenge {
   expiresAt: number;
 }
 
-export async function issueChallenge(config: Config): Promise<IssuedChallenge> {
-  const challenge = `paffbot-check:v1:${randomToken(24)}`;
-  const expiresAt = Date.now() + TTL_MS;
-  const body = toBase64Url(utf8(JSON.stringify({ c: challenge, e: expiresAt })));
+export function challengeForNonce(nonce: string): string {
+  return `paffbot-check:v1:${nonce}`;
+}
+
+export async function issueChallenge(
+  config: Config,
+  db: D1Database,
+  ip: string,
+): Promise<IssuedChallenge> {
+  const nonce = randomToken(18);
+  const challenge = challengeForNonce(nonce);
+  const expiresAt = nowMs() + TTL_MS;
+
+  await db
+    .prepare("INSERT INTO challenges (nonce, ip, created_at, expires_at, used_at) VALUES (?, ?, ?, ?, NULL)")
+    .bind(nonce, ip, nowMs(), expiresAt)
+    .run();
+
+  const body = toBase64Url(utf8(JSON.stringify({ n: nonce, e: expiresAt })));
   const signature = toBase64Url(await hmacSha256(await signingKey(config), body));
   return { challenge, token: `${body}.${signature}`, expiresAt };
 }
 
-export async function readChallenge(config: Config, token: string): Promise<string | null> {
+export interface ChallengeClaim {
+  nonce: string;
+  challenge: string;
+}
+
+export async function readChallenge(config: Config, token: string): Promise<ChallengeClaim | null> {
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;
 
@@ -37,11 +58,29 @@ export async function readChallenge(config: Config, token: string): Promise<stri
   if (!constantTimeEqual(expected, fromBase64Url(signature))) return null;
 
   try {
-    const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as { c?: unknown; e?: unknown };
-    if (typeof payload.c !== "string" || typeof payload.e !== "number") return null;
-    if (payload.e < Date.now()) return null;
-    return payload.c;
+    const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as { n?: unknown; e?: unknown };
+    if (typeof payload.n !== "string" || typeof payload.e !== "number") return null;
+    if (payload.e < nowMs()) return null;
+    return { nonce: payload.n, challenge: challengeForNonce(payload.n) };
   } catch {
     return null;
   }
+}
+
+/**
+ * 原子消费 nonce：只有「未使用且未过期」的才返回 true。
+ * 先消费再验签，失败的尝试也会烧掉 nonce。
+ */
+export async function consumeChallenge(db: D1Database, nonce: string): Promise<boolean> {
+  const now = nowMs();
+  const result = await db
+    .prepare("UPDATE challenges SET used_at = ? WHERE nonce = ? AND used_at IS NULL AND expires_at > ?")
+    .bind(now, nonce, now)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
+export async function pruneChallenges(db: D1Database, keepMs = 24 * 3600 * 1000): Promise<number> {
+  const result = await db.prepare("DELETE FROM challenges WHERE expires_at < ?").bind(nowMs() - keepMs).run();
+  return result.meta.changes ?? 0;
 }

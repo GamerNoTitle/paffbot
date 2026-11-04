@@ -17,6 +17,7 @@ export function dmVerificationPrompt(params: {
   chatTitle: string;
   methods: MethodSummary[];
   ttlSeconds: number;
+  remaining?: number;
 }): string {
   const list = params.methods.map((m) => `• <b>${escapeHtml(m.label)}</b> — ${escapeHtml(m.description)}`).join("\n");
   return [
@@ -25,7 +26,8 @@ export function dmVerificationPrompt(params: {
     "为防止机器人批量进群，请先完成一次验证：",
     list,
     "",
-    `⏳ 有效期 ${escapeHtml(formatDuration(params.ttlSeconds))}，超时后需要重新申请。`,
+    `⏳ 有效期 ${escapeHtml(formatDuration(params.ttlSeconds))}，超时后需要重新申请。` +
+      (params.remaining === undefined ? "" : `\n今天还剩 ${params.remaining} 次验证机会。`),
     "点击下方按钮打开验证页（在 Telegram 内打开）。",
   ].join("\n");
 }
@@ -54,6 +56,10 @@ export function dmRejected(chatTitle: string, reason: string): string {
 
 export function dmTimeout(chatTitle: string): string {
   return `⌛️ 验证超时，你在「${escapeHtml(chatTitle)}」的入群状态已被取消。需要的话可以重新申请。`;
+}
+
+export function dmRateLimited(limit: number): string {
+  return `今天的验证次数用完了（每天 ${limit} 次），明天再来。`;
 }
 
 export function dmBlocked(chatTitle: string, reason: string): string {

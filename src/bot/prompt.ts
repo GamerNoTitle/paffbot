@@ -11,6 +11,7 @@ export async function sendVerificationPrompt(
   ctx: BotContext,
   verification: VerificationRow,
   user: TgUser,
+  remaining?: number,
 ): Promise<boolean> {
   const methods = ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description }));
   const url = `${miniAppUrl(ctx)}/?chat=${verification.chat_id}`;
@@ -22,6 +23,7 @@ export async function sendVerificationPrompt(
       chatTitle: verification.chat_title ?? String(verification.chat_id),
       methods,
       ttlSeconds: ctx.config.ttlSeconds,
+      remaining,
     }),
     parse_mode: "HTML",
     reply_markup: miniAppKeyboard(url),

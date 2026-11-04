@@ -1,4 +1,5 @@
 import {
+  consumeDailyQuota,
   createVerification,
   dedupeUpdate,
   findOpenVerificationForChat,
@@ -23,11 +24,11 @@ import {
 } from "../lib/telegram";
 import { nowMs, toUnixSeconds } from "../lib/time";
 import { approveVerification, rejectVerification } from "../verify/finalize";
-import { isGroupAdmin } from "./auth";
+import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
 import type { BotContext } from "./context";
-import { groupJoinNotice } from "./messages";
+import { dmRateLimited, groupJoinNotice } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
 
 export async function handleUpdate(ctx: BotContext, update: TgUpdate): Promise<void> {
@@ -73,6 +74,27 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   if (existing) {
     await sendVerificationPrompt(ctx, existing, user);
     return;
+  }
+
+  // 超管不占用每日次数（自测用）
+  let remaining: number | undefined;
+  if (!isSuperAdmin(ctx.config, user.id)) {
+    const quota = await consumeDailyQuota(ctx.db, `tg:${user.id}`, ctx.config.dailyAttempts);
+    if (!quota.allowed) {
+      await ctx.tg.safe("declineChatJoinRequest", { chat_id: request.chat.id, user_id: user.id });
+      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(quota.limit), parse_mode: "HTML" });
+      await appendAudit(ctx.db, {
+        actorId: 0,
+        actorType: "system",
+        action: "verification.rate_limited",
+        chatId: request.chat.id,
+        targetUserId: user.id,
+        verificationId: null,
+        detail: { scope: "telegram", used: quota.used, limit: quota.limit },
+      });
+      return;
+    }
+    remaining = quota.limit - quota.used;
   }
 
   const verificationId = crypto.randomUUID();
@@ -129,7 +151,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     return;
   }
 
-  await sendVerificationPrompt(ctx, verification, user);
+  await sendVerificationPrompt(ctx, verification, user, remaining);
 }
 
 async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, updateId: number): Promise<void> {
@@ -156,6 +178,27 @@ async function startDirectJoinVerification(
   user: TgUser,
   updateId: number | null,
 ): Promise<void> {
+  let remaining: number | undefined;
+  if (!isSuperAdmin(ctx.config, user.id)) {
+    const quota = await consumeDailyQuota(ctx.db, `tg:${user.id}`, ctx.config.dailyAttempts);
+    if (!quota.allowed) {
+      await ctx.tg.banChatMember(chatId, user.id).catch(() => undefined);
+      await ctx.tg.unbanChatMember(chatId, user.id).catch(() => undefined);
+      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(quota.limit), parse_mode: "HTML" });
+      await appendAudit(ctx.db, {
+        actorId: 0,
+        actorType: "system",
+        action: "verification.rate_limited",
+        chatId,
+        targetUserId: user.id,
+        verificationId: null,
+        detail: { scope: "telegram", used: quota.used, limit: quota.limit, mode: "group_join" },
+      });
+      return;
+    }
+    remaining = quota.limit - quota.used;
+  }
+
   const verificationId = crypto.randomUUID();
   const createdAt = nowMs();
   const expiresAt = createdAt + ctx.config.ttlSeconds * 1000;
@@ -202,7 +245,7 @@ async function startDirectJoinVerification(
     });
   }
 
-  await sendVerificationPrompt(ctx, verification, user);
+  await sendVerificationPrompt(ctx, verification, user, remaining);
 
   const notice = await ctx.tg.trySendMessage({
     chat_id: chatId,
