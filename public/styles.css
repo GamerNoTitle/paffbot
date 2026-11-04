@@ -46,15 +46,37 @@
   box-sizing: border-box;
 }
 
+html {
+  background: var(--md-sys-color-surface);
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
   font-family: var(--md-ref-typeface-plain);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: transparent;
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: 100vh;
+}
+
+/* 环境光：用主题色淡化出的柔光，替代参考图里的壁纸 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 42% at 8% -4%, color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent), transparent 72%),
+    radial-gradient(48% 38% at 96% 6%, color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent), transparent 70%),
+    radial-gradient(60% 45% at 50% 104%, color-mix(in srgb, var(--md-sys-color-secondary) 18%, transparent), transparent 72%);
 }
 
 /* ---------------------------------------------------------------- 顶栏 */
@@ -64,8 +86,8 @@ body {
   top: 0;
   z-index: 10;
   padding: 10px 16px;
-  background: color-mix(in srgb, var(--md-sys-color-surface) 92%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--md-sys-color-surface) 72%, transparent);
+  backdrop-filter: blur(16px);
 }
 
 .app-bar__inner {
@@ -97,6 +119,8 @@ body {
 
 .tabs {
   margin: 0 0 4px;
+  background: transparent;
+  --md-primary-tab-container-color: transparent;
 }
 
 /* ---------------------------------------------------------------- 布局 */
@@ -133,6 +157,16 @@ body {
     flex-direction: column;
     gap: 18px;
   }
+}
+
+.page-head h1 {
+  margin: 0 0 6px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.page-head p {
+  margin: 0;
 }
 
 .filter-actions {
@@ -183,10 +217,16 @@ body {
 
 .hero {
   position: relative;
-  background: var(--md-sys-color-primary-container);
+  background: linear-gradient(
+    145deg,
+    var(--md-sys-color-primary-container),
+    color-mix(in srgb, var(--md-sys-color-tertiary-container) 78%, var(--md-sys-color-primary-container))
+  );
   color: var(--md-sys-color-on-primary-container);
-  border-radius: 28px;
-  padding: 26px 24px 22px;
+  border-radius: 32px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-primary-container) 10%, transparent);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
+  padding: 28px 24px 24px;
   overflow: hidden;
 }
 
@@ -253,8 +293,10 @@ body {
   text-align: center;
   gap: 12px;
   padding: 36px 20px;
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: 28px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-low) 94%, transparent);
+  border-radius: 30px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 48%, transparent);
+  backdrop-filter: blur(14px);
 }
 
 .state__icon {
@@ -279,10 +321,12 @@ body {
 /* ---------------------------------------------------------------- 面板（无边框 elevation） */
 
 .panel {
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: 28px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-low) 94%, transparent);
+  border-radius: 30px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 48%, transparent);
   padding: 24px;
-  box-shadow: var(--elevation-1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(14px);
 }
 
 .panel__head h2 {
@@ -427,10 +471,12 @@ md-filled-tonal-button {
 /* ---------------------------------------------------------------- 卡片（审计） */
 
 .card {
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: 28px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-low) 92%, transparent);
+  border-radius: 30px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 48%, transparent);
   padding: 22px;
-  box-shadow: var(--elevation-1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(14px);
 }
 
 .stats {
@@ -444,16 +490,30 @@ md-filled-tonal-button {
   padding: 16px 14px;
 }
 
+.stat {
+  position: relative;
+  border-radius: 24px;
+  padding: 18px 16px;
+}
+
 .stat b {
   display: block;
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .stat span {
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.75;
+}
+
+.stat svg {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+  opacity: 0.5;
 }
 
 .badge {

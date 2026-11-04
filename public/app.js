@@ -20,6 +20,8 @@ const ICONS = {
     '<path d="M19 3H5a2 2 0 0 0-2 2v14l4-4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12H6.17L5 16.17V5h14v10Z"/>',
   copy: '<path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/>',
   error: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/>',
+  clock: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-13h-2v6l5 3 1-1.7-4-2.3V7Z"/>',
+  stack: '<path d="M12 3 2 8l10 5 10-5-10-5Zm0 7.8L4.5 7 12 3.2 19.5 7 12 10.8ZM2 16l10 5 10-5-1.8-.9L12 18.8 3.8 15.1 2 16Zm0-4 10 5 10-5-1.8-.9L12 14.8 3.8 11.1 2 12Z"/>',
 };
 
 function svgIcon(name, size = 20) {
@@ -520,9 +522,9 @@ function renderAudit(data) {
   $("audit-stats").innerHTML = `
     <div class="card">
       <div class="stats">
-        <div class="stat tone-primary"><b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
-        <div class="stat tone-secondary"><b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
-        <div class="stat tone-tertiary"><b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>未通过</span></div>
+        <div class="stat tone-primary">${svgIcon("check", 18)}<b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
+        <div class="stat tone-secondary">${svgIcon("clock", 18)}<b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
+        <div class="stat tone-tertiary">${svgIcon("stack", 18)}<b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>未通过</span></div>
       </div>
       <p class="chain">${chainBadge}</p>
     </div>`;
