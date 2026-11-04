@@ -441,8 +441,11 @@ function startCountdown(expiresAt) {
         : "已过期";
     const chip = $("hero-countdown");
     if (chip) chip.textContent = text;
-    const rect = $("wavy-rect");
-    if (rect) rect.setAttribute("width", String(Math.max(0, Math.min(1, left / totalMs)) * 100));
+    const mask = $("wavy-mask");
+    if (mask) {
+      const pct = Math.max(0, Math.min(1, left / totalMs)) * 100;
+      mask.style.setProperty("--pct", `${pct}%`);
+    }
     if (left === 0) {
       clearInterval(state.timer);
       if (state.standalone) {

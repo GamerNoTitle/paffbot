@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#5060B0" />
     <title>paffbot · 入群验证</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -28,17 +28,16 @@
             <p class="hero__sub" id="hero-sub">稍等，正在读取你的验证状态</p>
             <div class="hero__chips" id="hero-chips"></div>
             <div class="hero__progress hidden" id="hero-progress" role="progressbar" aria-label="剩余时间">
-              <svg class="wavy" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <clipPath id="wavy-clip">
-                    <rect id="wavy-rect" x="0" y="-2" width="100" height="14" rx="2" />
-                  </clipPath>
-                </defs>
-                <path class="wavy__track" id="wavy-track" d="" />
-                <g clip-path="url(#wavy-clip)">
-                  <path class="wavy__bar" id="wavy-bar" d="" />
-                </g>
-              </svg>
+              <div class="wavy">
+                <svg class="wavy__svg" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                  <path class="wavy__track" id="wavy-track" d="" />
+                </svg>
+                <div class="wavy__mask" id="wavy-mask">
+                  <svg class="wavy__svg" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="wavy__bar" id="wavy-bar" d="" />
+                  </svg>
+                </div>
+              </div>
             </div>
             <md-filled-button id="hero-cta" class="hidden">开始验证</md-filled-button>
           </div>
@@ -115,6 +114,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./app.js?v=6"></script>
   </body>
 </html>

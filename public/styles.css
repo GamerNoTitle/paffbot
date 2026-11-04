@@ -338,12 +338,26 @@ body {
   max-width: 320px;
 }
 
-/* M3 Expressive 波浪进度条 */
+/* M3 Expressive 波浪进度条
+   裁切放在外层 .wavy__mask（clip-path），波形在里面位移；
+   这样裁切边界只由 --pct 决定，动画不会把进度终点带偏。 */
 .wavy {
-  display: block;
-  width: 100%;
+  position: relative;
   height: 14px;
+}
+
+.wavy__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
+}
+
+.wavy__mask {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 calc(100% - var(--pct, 100%)) 0 0);
 }
 
 .wavy__track,
