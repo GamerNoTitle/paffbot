@@ -398,6 +398,12 @@ async function loadStandalonePanel() {
     startCountdown(data.expiresAt);
     renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
   } catch (err) {
+    // 没有可用挑战：hero 里的进度条和按钮都不该再显示
+    clearInterval(state.timer);
+    $("hero-progress").classList.add("hidden");
+    $("hero-cta").classList.add("hidden");
+    setHero({ chips: [] });
+
     panel.innerHTML = `
       <div class="state">
         <div class="state__icon">${svgIcon("clock", 26)}</div>
