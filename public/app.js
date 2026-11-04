@@ -702,12 +702,19 @@ function switchTab(name) {
 
 $("empty-icon").innerHTML = svgIcon("inbox", 28);
 
-/** 正弦波路径：wavy progress 用。 */
+/**
+ * 正弦波路径：wavy progress 用。
+ *
+ * 路径要比视口宽出一个波长（左右各一段），这样动画 translateX(-波长) 时
+ * 右端仍然覆盖到裁切边界，不会露出缺口、也不会在循环重启时「弹回去」。
+ */
 function wavePath(width = 100, height = 10, amplitude = 2.6, wavelength = 10) {
   const mid = height / 2;
-  let d = `M0 ${mid}`;
-  for (let x = 0; x < width; x += wavelength / 2) {
-    const up = Math.round(x / (wavelength / 2)) % 2 === 0;
+  const start = -wavelength;
+  const end = width + wavelength;
+  let d = `M${start} ${mid}`;
+  for (let x = start; x < end; x += wavelength / 2) {
+    const up = Math.round((x - start) / (wavelength / 2)) % 2 === 0;
     d += ` Q${x + wavelength / 4} ${mid + (up ? -amplitude : amplitude)} ${x + wavelength / 2} ${mid}`;
   }
   return d;
