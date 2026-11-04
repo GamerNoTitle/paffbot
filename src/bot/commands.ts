@@ -1,10 +1,8 @@
 import {
   countPending,
   createVerification,
-  deleteSshKey,
   findOpenVerificationForChat,
   getVerification,
-  listSshKeys,
   listVerifications,
   type VerificationRow,
 } from "../db";
@@ -94,9 +92,6 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
         `会话 id：<code>${chat.id}</code>\n你的 id：<code>${from.id}</code>\n类型：${escapeHtml(chat.type)}`,
       );
       return;
-    case "keys":
-      await handleKeys(env);
-      return;
     case "pass":
       await handlePass(env);
       return;
@@ -108,9 +103,6 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       return;
     case "audit":
       await handleAudit(env);
-      return;
-    case "unlink":
-      await handleUnlink(env);
       return;
     case "selftest":
       await handleSelfTest(env);
@@ -153,23 +145,6 @@ async function handleStart(env: CommandEnv): Promise<void> {
     env,
     commandsHelp(env.superAdmin, `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`),
   );
-}
-
-async function handleKeys(env: CommandEnv): Promise<void> {
-  if (!env.isPrivate) {
-    await reply(env, "公钥管理只能在私聊里做。");
-    return;
-  }
-  const keys = await listSshKeys(env.ctx.db, env.userId);
-  if (keys.length === 0) {
-    await reply(env, "你还没有登记任何 SSH 公钥。打开验证页即可粘贴公钥登记。");
-    return;
-  }
-  const lines = keys.map(
-    (k, index) =>
-      `${index + 1}. <code>${escapeHtml(k.fingerprint)}</code>\n   ${escapeHtml(k.key_type)} · ${escapeHtml(k.label ?? "无备注")} · 登记于 ${formatDateTime(k.created_at)}`,
-  );
-  await reply(env, `<b>已登记的公钥</b>\n${lines.join("\n")}\n\n删除：/unlink &lt;指纹&gt;`);
 }
 
 async function handlePass(env: CommandEnv): Promise<void> {
@@ -365,34 +340,4 @@ async function handleSelfTest(env: CommandEnv): Promise<void> {
       ? "已私聊发送验证入口（自测记录，放行不会真的改动群成员）。"
       : "私聊发送失败：请先给 bot 发过一条消息，或检查是否屏蔽了 bot。",
   );
-}
-
-async function handleUnlink(env: CommandEnv): Promise<void> {
-  const fingerprintArg = env.isPrivate && env.args.length === 1 ? env.args[0] : env.args[1];
-  const target = env.args.length >= 2 ? Number.parseInt(env.args[0] ?? "", 10) : env.userId;
-
-  if (!fingerprintArg || !Number.isSafeInteger(target)) {
-    await reply(env, "用法：私聊 /unlink <指纹>；管理员 /unlink <用户id> <指纹>");
-    return;
-  }
-  if (target !== env.userId && !env.superAdmin) {
-    await reply(env, "只有超管可以删除别人的公钥。");
-    return;
-  }
-
-  const removed = await deleteSshKey(env.ctx.db, target, fingerprintArg);
-  if (!removed) {
-    await reply(env, "没找到这把公钥。");
-    return;
-  }
-  await appendAudit(env.ctx.db, {
-    actorId: env.userId,
-    actorType: env.superAdmin ? "super_admin" : "user",
-    action: "ssh_key.deleted",
-    chatId: env.chatId,
-    targetUserId: target,
-    verificationId: null,
-    detail: { fingerprint: fingerprintArg },
-  });
-  await reply(env, "已删除。");
 }

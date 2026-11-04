@@ -7,7 +7,7 @@ Telegram 群组「入群验证 / 自动放行」机器人。纯 TypeScript 跑�
 ## 特性
 
 - **两种入群模式**：Telegram「入群申请」审核，或直接入群后先禁言再验证。
-- **多选一验证**：GitHub SSH（默认，用 GitHub 账号上已公开的公钥验签）/ 自有公钥签名 / 答题 / 一键确认；新增方式只需实现一个 Provider。
+- **验证方式**：GitHub SSH —— 用 GitHub 账号上已公开的公钥验签，不需要 OAuth；Provider 接口保留，后续可扩展别的验证方式。
 - **服务端判定，不信客户端**：Mini App 用 Telegram `initData` 验签识别用户；GitHub 验证由 Worker 拉 `github.com/<user>.keys` 并验 SSHSIG；放行动作由服务端直接调用 Telegram，不依赖前端 `sendData` 自证。
 - **Material 3 界面**：官方 [Material Web](https://github.com/material-components/material-web) 组件（tabs / filter chip / outlined text field / filled button / radio…），
   MD3 动态配色（种子色 → 完整 tonal palette，支持明暗主题、跟随 Telegram 主题色），自托管打包，不依赖 CDN。
@@ -69,7 +69,7 @@ npm run db:remote
 npm run deploy
 
 # 5. 注册 webhook
-npm run webhook -- --url https://paffbot.<你的子域>.workers.dev
+npm run webhook -- --url https://verify.bili33.top
 ```
 
 Telegram 侧还要做三件事（漏了会白干）：
@@ -86,10 +86,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `WEBHOOK_SECRET` | ✅ | 同时用作路径段和 `secret_token`，≥16 字符（secret） |
 | `ADMIN_IDS` | ⭕ | 超管 Telegram user id，逗号分隔；可跨群操作、看全量审计 |
 | `ADMIN_TOKEN` | ⭕ | 浏览器直接访问审计 API 的 Bearer token（secret） |
-| `VERIFY_METHODS` | ⭕ | 启用的验证方式，默认 `ssh,quiz,button` |
 | `VERIFY_TTL_SECONDS` | ⭕ | 验证有效期，默认 300（与 Telegram 入群申请私聊窗口一致） |
-| `QUIZ_PASS_SCORE` | ⭕ | 答题通过分，默认 70 |
-| `QUIZ_BANK` | ⭕ | JSON 题库覆盖内置题库 |
 | `MINI_APP_URL` | ⭕ | Mini App 绝对地址；不填则用 webhook 请求的 origin |
 | `TELEGRAM_API_BASE` | ⭕ | 自定义 Bot API 地址（本地 mock / 自建网关用） |
 | `GITHUB_TOKEN` | ⭕ | 只在启用下面两个门槛时才需要（`api.github.com` 未鉴权 60 次/小时） |
@@ -117,30 +114,11 @@ Telegram 侧还要做三件事（漏了会白干）：
 - 支持 ed25519 / RSA（rsa-sha2-256/512）/ ECDSA p256·384·521；`sk-*` 硬件密钥浏览器内无法校验，会提示换普通密钥
 - 签名既接受 `echo` 产生的尾随换行，也接受无换行；命名空间 `file` 与 `paffbot` 都认
 
-### 自有公钥签名（可选）
+### 后续扩展
 
-不经过 GitHub，公钥直接登记在 bot 里。用户首次粘贴公钥（`cat ~/.ssh/id_ed25519.pub`），之后每次验证：
-
-```bash
-# 挑战串由页面给出，原样写入，不要加换行
-printf '%s' 'paffbot-verify:v1:<id>:<nonce>' > msg.txt
-ssh-keygen -Y sign -n paffbot -f ~/.ssh/id_ed25519 msg.txt
-cat msg.txt.sig        # 粘回页面
-```
-
-服务端用 WebCrypto 校验 SSHSIG（ed25519 / RSA-SHA2 / ECDSA P-256·384·521），并确认指纹属于当前 Telegram 账号。签名绑定一次性挑战串与命名空间 `paffbot`，无法重放到另一次验证。
-
-### 答题
-
-内置 5 题常识题，正确率达标即通过；题库可用 `QUIZ_BANK` 覆盖，题目选择与作答次数存在 `verifications.detail`。
-
-### 一键确认
-
-最低强度，仅适合测试或兜底；`VERIFY_METHODS` 里去掉即可禁用。
-
-### 加一种新方式
-
-实现 `src/verify/types.ts` 的 `VerifyProvider`（`start` + `submit`），在 `src/verify/registry.ts` 注册，然后在 `VERIFY_METHODS` 里启用。状态机、审计、超时、放行逻辑都不用动。
+`src/verify/providers/github.ts` 实现了 `VerifyProvider` 接口（`start` + `submit`）。
+要加新的验证方式：实现接口 → 在 `src/verify/registry.ts` 的 `ALL` 里注册 → 前端
+`loadPanel` 里按 id 选择面板。
 
 ## 管理员与命令
 
@@ -152,13 +130,11 @@ cat msg.txt.sig        # 粘回页面
 | 命令 | 说明 |
 |---|---|
 | `/start` | 私聊：继续未完成的验证 / 查看帮助 |
-| `/keys` | 私聊：查看已登记公钥 |
 | `/id` | 当前群 id、自己的 id |
 | `/pass [uid]` | 放行（也可回复对方消息） |
 | `/ban [uid]` | 封禁并移出 |
 | `/pending` | 当前群待验证人数 |
 | `/audit [n]` | 最近 n 条审计 |
-| `/unlink <指纹>` | 删除自己登记的公钥（超管可指定用户） |
 | `/selftest` | 超管：生成一条自测验证并私聊发入口（不改群成员，用于验证全链路） |
 
 ## 审计
@@ -228,6 +204,17 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 > 改了 `ui/` 或 `public/` 的组件后跑 `npm run build:ui` 重新打包（`npm run deploy` 会自动执行）。
 
 `npm run smoke` 不碰真实 Telegram：它起一个 mock Bot API，跑通「入群申请 → 私聊按钮 → 登记公钥 → SSHSIG 验签 → 批准」「直接入群 → 禁言 → 答题失败 → 管理员 /pass → 解除禁言」「超时 → cron → decline」「审计查询 + 哈希链自检 + 越权 403」。
+
+## 浏览器独立校验
+
+直接访问站点（不通过 Telegram）时，页面会进入**独立校验模式**：
+
+- 服务端签发一次性挑战（HMAC 令牌，10 分钟有效）
+- 用户填 GitHub 用户名、对挑战串签名、粘回来
+- 服务端拉 `github.com/<用户名>.keys` 验签，只返回校验结果
+- **不会放行任何群成员**，也不写 `verifications`；与 Telegram 无关
+
+接口：`GET /api/github/challenge` → `POST /api/github/check`。
 
 ## 界面（Material 3）
 

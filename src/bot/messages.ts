@@ -64,7 +64,6 @@ export function commandsHelp(isAdmin: boolean, prefix = ""): string {
   const lines = [
     "<b>命令</b>",
     "/start — 发起或继续验证",
-    "/keys — 查看已登记的 SSH 公钥",
     "/id — 查看当前会话 id",
   ];
   if (isAdmin) {
@@ -73,7 +72,6 @@ export function commandsHelp(isAdmin: boolean, prefix = ""): string {
       "/ban &lt;uid&gt; — 封禁并移出",
       "/pending — 当前群待验证人数",
       "/audit [n] — 最近 n 条审计记录",
-      "/unlink &lt;uid&gt; &lt;fingerprint&gt; — 删除用户登记的某把公钥",
     );
   }
   return `${prefix}${lines.join("\n")}`;

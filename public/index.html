@@ -49,11 +49,13 @@
           <p class="md-typescale-body-medium muted" id="empty-text">
             在群里点击「申请加入」后，我会私聊你一个验证入口。
           </p>
-          <md-filled-tonal-button id="refresh">刷新状态</md-filled-tonal-button>
+          <div class="actions">
+            <md-filled-tonal-button id="refresh">刷新状态</md-filled-tonal-button>
+            <md-outlined-button id="btn-standalone">单独校验 GitHub 账号</md-outlined-button>
+          </div>
         </div>
 
         <div id="pending" class="hidden">
-          <md-outlined-segmented-button-set id="method-switch" class="method-switch"></md-outlined-segmented-button-set>
           <div class="panel" id="method-panel"></div>
         </div>
       </section>
@@ -92,7 +94,7 @@
     </main>
 
     <md-dialog id="success-dialog" type="alert">
-      <div slot="headline" class="md-typescale-headline-small">验证通过</div>
+      <div slot="headline" class="md-typescale-headline-small" id="dialog-title">验证通过</div>
       <div slot="content" class="dialog-body">
         <div class="dialog-icon"><md-icon id="dialog-icon"></md-icon></div>
         <p class="md-typescale-body-medium" id="dialog-text"></p>

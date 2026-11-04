@@ -20,9 +20,6 @@ const ICONS = {
     '<path d="M19 3H5a2 2 0 0 0-2 2v14l4-4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12H6.17L5 16.17V5h14v10Z"/>',
   copy: '<path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/>',
   error: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/>',
-  key: '<path d="M14 2a8 8 0 0 0-7.6 10.6L2 17v5h5v-3h3v-3h2l1.6-1.6A8 8 0 1 0 14 2Zm3 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>',
-  quiz: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 16h-2v-2h2v2Zm1.8-6.4-.9.9c-.6.6-.9 1.1-.9 2.1h-2c0-1.5.5-2.3 1.3-3.1l1.2-1.2c.4-.3.6-.8.6-1.3a2 2 0 1 0-4 0H8a4 4 0 1 1 6.8 2.6Z"/>',
-  hand: '<path d="M18 8h-2V5a3 3 0 0 0-6 0v3H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-6-3a1 1 0 0 1 2 0v3h-2V5Z"/>',
 };
 
 function svgIcon(name, size = 20) {
@@ -32,8 +29,6 @@ function svgIcon(name, size = 20) {
 const $ = (id) => document.getElementById(id);
 const esc = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
-
-const METHOD_SHORT = { github: "GitHub", ssh: "SSH", quiz: "答题", button: "确认", };
 
 /* ---------------------------------------------------------------- 主题 */
 
@@ -50,11 +45,10 @@ let dark = themeParam
       : window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 const state = {
-  session: null,
   verification: null,
-  activeMethod: null,
-  methods: [],
   challenge: "",
+  standalone: false,
+  checkToken: "",
   shell: "bash",
   timer: 0,
   token: localStorage.getItem("paffbot.token") || "",
@@ -128,7 +122,7 @@ function setHero({ eyebrow, title, sub, chips = null }) {
     for (const chip of chips) {
       const el = document.createElement("span");
       el.className = chip.strong ? "chip chip--strong" : "chip";
-      el.id = chip.id ?? "";
+      if (chip.id) el.id = chip.id;
       el.textContent = chip.text;
       box.appendChild(el);
     }
@@ -150,14 +144,13 @@ async function loadSession() {
   }
   try {
     const data = await api("/api/session");
-    state.session = data;
     state.verification = data.verification;
-    state.methods = data.methods ?? [];
 
     if (!data.verification) {
+      const name = data.user?.name?.split(" ")[0];
       setHero({
         eyebrow: "PAFFBOT · 入群验证",
-        title: data.user?.name ? `你好，${data.user.name.split(" ")[0]}` : "暂无待验证",
+        title: name ? `你好，${name}` : "暂无待验证",
         sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
         chips: [],
       });
@@ -168,76 +161,45 @@ async function loadSession() {
     const v = data.verification;
     setHero({
       eyebrow: "PAFFBOT · 入群验证",
-      title: "完成验证即可入群",
+      title: "完成 GitHub 签名即可入群",
       sub: v.chatTitle ?? String(v.chatId),
-      chips: [
-        { text: `方式：${methodLabel(state.methods, v.method)}` },
-        { text: "剩余 05:00", id: "hero-countdown", strong: true },
-      ],
+      chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
     });
     showState("pending");
-    renderMethodSwitch(state.methods);
     startCountdown(v.expiresAt);
-    await selectMethod(state.activeMethod || state.methods[0]?.id);
+    await loadPanel();
   } catch (err) {
     if (err.status === 401 && !tg?.initData) {
-      showState("empty");
-      $("empty-title").textContent = "请在 Telegram 内打开";
-      $("empty-text").textContent =
-        "验证页需要 Telegram 的 initData 来识别账号。从 @P4ffBot 的验证按钮进入即可，也可以先看界面预览或审计。";
-      $("refresh").textContent = "界面预览";
-      $("refresh").addEventListener("click", () => (location.search = "?preview=1"), { once: true });
       $("token-card").classList.remove("hidden");
-      setHero({ eyebrow: "PAFFBOT", title: "需要 Telegram 环境", sub: "浏览器里只能查看审计或预览界面" });
+      await enterStandalone("浏览器直接访问：只校验 GitHub 签名归属，不会放行任何群。");
     } else {
       showState("empty");
       $("empty-title").textContent = "加载失败";
       $("empty-text").textContent = err.message;
-      setHero({ eyebrow: "PAFFBOT", title: "出错了", sub: err.message });
+      setHero({ eyebrow: "PAFFBOT", title: "出错了", sub: err.message, chips: [] });
     }
   }
 }
 
-function methodLabel(methods, id) {
-  return methods.find((m) => m.id === id)?.label ?? "多选一";
-}
-
-function renderMethodSwitch(methods) {
-  const set = $("method-switch");
-  set.innerHTML = "";
-  set.classList.toggle("hidden", methods.length <= 1);
-  for (const method of methods) {
-    const button = document.createElement("md-outlined-segmented-button");
-    button.setAttribute("label", METHOD_SHORT[method.id] ?? method.label);
-    button.dataset.method = method.id;
-    button.selected = method.id === state.activeMethod || (!state.activeMethod && method === methods[0]);
-    button.addEventListener("click", () => selectMethod(method.id));
-    set.appendChild(button);
-  }
-}
-
-async function selectMethod(methodId) {
-  if (!methodId) return;
-  state.activeMethod = methodId;
-  for (const button of $("method-switch").querySelectorAll("md-outlined-segmented-button")) {
-    button.selected = button.dataset.method === methodId;
-  }
-
+async function loadPanel() {
   const panel = $("method-panel");
   panel.innerHTML = '<p class="md-typescale-body-medium muted">加载中…</p>';
   if (PREVIEW) {
-    renderPreviewPanel(methodId);
+    renderGithubPanel(panel, {
+      challenge: state.challenge,
+      requirements: { minAccountAgeDays: 0, requiredOrg: null },
+    });
+    const button = $("gh-submit");
+    button.disabled = true;
+    button.textContent = "预览模式（不可提交）";
     return;
   }
   try {
     const data = await api(
-      `/api/verify/start?method=${encodeURIComponent(methodId)}&verificationId=${encodeURIComponent(state.verification.id)}`,
+      `/api/verify/start?method=github&verificationId=${encodeURIComponent(state.verification.id)}`,
     );
     state.challenge = data.challenge || "";
-    if (methodId === "github") renderGithubPanel(panel, data);
-    else if (methodId === "ssh") renderSshPanel(panel, data);
-    else if (methodId === "quiz") renderQuizPanel(panel, data);
-    else renderButtonPanel(panel, data);
+    renderGithubPanel(panel, data);
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
   }
@@ -251,7 +213,8 @@ function githubCommand(shell) {
     : `echo "${state.challenge}" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -`;
 }
 
-function renderGithubPanel(panel, data) {
+function renderGithubPanel(panel, data, mode = "verify") {
+  const standalone = mode === "standalone";
   const requirements = data.requirements || {};
   const notes = [];
   if (requirements.minAccountAgeDays > 0) notes.push(`账号需注册满 ${requirements.minAccountAgeDays} 天`);
@@ -259,9 +222,11 @@ function renderGithubPanel(panel, data) {
 
   panel.innerHTML = `
     <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">GitHub SSH</h2>
+      <h2 class="md-typescale-headline-medium">${standalone ? "GitHub 账号校验" : "GitHub SSH"}</h2>
       <p class="md-typescale-body-medium muted">
-        用已添加到 GitHub 的 SSH 私钥签名，无需 OAuth，也不读取你的私有数据。
+        ${standalone
+          ? "独立校验：用你 GitHub 账号上已公开的公钥签名，证明账号归属。不会放行任何群。"
+          : "用已添加到 GitHub 的 SSH 私钥签名，无需 OAuth，也不读取你的私有数据。"}
         <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">配置指南</a>
       </p>
       ${notes.length ? `<p class="md-typescale-body-small muted">额外要求：${esc(notes.join("；"))}</p>` : ""}
@@ -303,7 +268,7 @@ function renderGithubPanel(panel, data) {
     </ol>
 
     <div class="panel__actions">
-      <md-filled-button id="gh-submit" disabled>验证并放行</md-filled-button>
+      <md-filled-button id="gh-submit" disabled>${standalone ? "校验签名" : "验证并放行"}</md-filled-button>
     </div>
     <p class="md-typescale-body-small hidden" id="gh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
@@ -352,9 +317,23 @@ function renderGithubPanel(panel, data) {
 
   submit.addEventListener("click", async () => {
     submit.disabled = true;
-    submit.textContent = "验证中…";
+    submit.textContent = standalone ? "校验中…" : "验证中…";
     $("gh-error").classList.add("hidden");
     try {
+      if (standalone) {
+        const result = await api("/api/github/check", {
+          method: "POST",
+          body: JSON.stringify({
+            token: state.checkToken,
+            username: username.value.trim(),
+            signature: signature.value.trim(),
+          }),
+        });
+        onStandaloneResult(result);
+        submit.disabled = false;
+        submit.textContent = "校验签名";
+        return;
+      }
       const result = await api("/api/verify/submit", {
         method: "POST",
         body: JSON.stringify({
@@ -370,209 +349,53 @@ function renderGithubPanel(panel, data) {
       $("gh-error").classList.remove("hidden");
       toast(err.message);
       submit.disabled = false;
-      submit.textContent = "验证并放行";
+      submit.textContent = standalone ? "校验签名" : "验证并放行";
     }
   });
 }
 
-/* ---------------------------------------------------------------- 自有公钥 */
+/* ---------------------------------------------------------------- 独立校验（无 Telegram） */
 
-function renderSshPanel(panel, data) {
-  panel.innerHTML = `
-    <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">SSH 公钥</h2>
-      <p class="md-typescale-body-medium muted">用你登记过的公钥对挑战串签名，签名只对本次验证有效。</p>
-    </div>
-    <ol class="steps">
-      <li class="step">
-        <div class="step__avatar tone-secondary">1</div>
-        <div class="step__body">
-          <h3 class="md-typescale-title-medium">挑战串</h3>
-          <md-outlined-text-field id="ssh-challenge" readonly label="挑战串"></md-outlined-text-field>
-        </div>
-      </li>
-      <li class="step">
-        <div class="step__avatar tone-tertiary">2</div>
-        <div class="step__body">
-          <h3 class="md-typescale-title-medium">粘贴签名</h3>
-          <md-outlined-text-field id="ssh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
-        </div>
-      </li>
-    </ol>
-    <div class="panel__actions"><md-filled-button id="ssh-submit">提交签名</md-filled-button></div>
-    <p class="md-typescale-body-small hidden" id="ssh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
-    <div class="step" style="margin-top:22px">
-      <div class="step__avatar tone-primary">+</div>
-      <div class="step__body">
-        <h3 class="md-typescale-title-medium">已登记的公钥</h3>
-        <div id="ssh-keys"></div>
-        <md-outlined-text-field id="ssh-pubkey" type="textarea" rows="2" label="粘贴新公钥" supporting-text="cat ~/.ssh/id_ed25519.pub"></md-outlined-text-field>
-        <div class="actions"><md-outlined-button id="ssh-save">保存公钥</md-outlined-button></div>
-      </div>
-    </div>
-  `;
-
-  $("ssh-challenge").value = data.challenge || "";
-  renderKeys($("ssh-keys"), data.keys || []);
-
-  $("ssh-save").addEventListener("click", async () => {
-    const publicKey = $("ssh-pubkey").value.trim();
-    if (!publicKey) return;
-    try {
-      await api("/api/verify/ssh/keys", { method: "POST", body: JSON.stringify({ publicKey }) });
-      toast("公钥已登记");
-      await selectMethod("ssh");
-    } catch (err) {
-      toast(err.message);
-    }
+async function enterStandalone(reason) {
+  state.standalone = true;
+  showState("pending");
+  setHero({
+    eyebrow: "PAFFBOT · 独立校验",
+    title: "校验 GitHub 账号",
+    sub: reason,
+    chips: [{ text: "不涉及群操作" }],
   });
-
-  $("ssh-submit").addEventListener("click", async () => {
-    const signature = $("ssh-signature").value.trim();
-    if (!signature) return;
-    const button = $("ssh-submit");
-    button.disabled = true;
-    button.textContent = "校验中…";
-    try {
-      const result = await api("/api/verify/submit", {
-        method: "POST",
-        body: JSON.stringify({ method: "ssh", verificationId: state.verification.id, signature }),
-      });
-      onApproved(result);
-    } catch (err) {
-      $("ssh-error").textContent = err.message;
-      $("ssh-error").classList.remove("hidden");
-      button.disabled = false;
-      button.textContent = "提交签名";
-    }
-  });
+  await loadStandalonePanel();
 }
 
-function renderKeys(container, keys) {
-  container.innerHTML = "";
-  if (!keys.length) {
-    container.innerHTML = '<p class="md-typescale-body-small muted">还没有登记公钥。</p>';
-    return;
-  }
-  for (const key of keys) {
-    const row = document.createElement("div");
-    row.style.cssText =
-      "display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--md-sys-color-outline-variant)";
-    row.innerHTML = `<div><div class="mono">${esc(key.fingerprint)}</div>
-      <div class="md-typescale-body-small muted">${esc(key.label || key.keyType)}</div></div>`;
-    const remove = document.createElement("md-text-button");
-    remove.textContent = "删除";
-    remove.addEventListener("click", async () => {
-      try {
-        await api("/api/verify/ssh/keys/delete", {
-          method: "POST",
-          body: JSON.stringify({ fingerprint: key.fingerprint }),
-        });
-        await selectMethod("ssh");
-      } catch (err) {
-        toast(err.message);
-      }
-    });
-    row.appendChild(remove);
-    container.appendChild(row);
+async function loadStandalonePanel() {
+  const panel = $("method-panel");
+  panel.innerHTML = '<p class="md-typescale-body-medium muted">准备挑战串…</p>';
+  try {
+    const data = await api("/api/github/challenge");
+    state.checkToken = data.token;
+    state.challenge = data.challenge;
+    renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
+  } catch (err) {
+    panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
   }
 }
 
-/* ---------------------------------------------------------------- 答题 / 按钮 */
-
-function renderQuizPanel(panel, data) {
-  panel.innerHTML = `
-    <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">答题</h2>
-      <p class="md-typescale-body-medium muted">${esc(data.note || "")}</p>
-    </div>
-    <div id="quiz-form" class="steps"></div>
-    <div class="panel__actions"><md-filled-button id="quiz-submit">提交答案</md-filled-button></div>
-    <p class="md-typescale-body-small hidden" id="quiz-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
-  `;
-
-  const form = $("quiz-form");
-  (data.questions || []).forEach((question, index) => {
-    const block = document.createElement("div");
-    block.className = "step";
-    block.innerHTML = `
-      <div class="step__avatar tone-${index % 2 === 0 ? "secondary" : "tertiary"}">${index + 1}</div>
-      <div class="step__body">
-        <h3 class="md-typescale-title-small">${esc(question.question)}</h3>
-      </div>`;
-    const body = block.querySelector(".step__body");
-    question.options.forEach((option, optionIndex) => {
-      const label = document.createElement("label");
-      label.className = "option";
-      label.innerHTML = `<md-radio name="q${index}" value="${optionIndex}"></md-radio><span class="md-typescale-body-medium">${esc(option)}</span>`;
-      label.addEventListener("click", () => {
-        label.querySelector("md-radio").checked = true;
-      });
-      body.appendChild(label);
-    });
-    form.appendChild(block);
-  });
-
-  $("quiz-submit").addEventListener("click", async () => {
-    const answers = (data.questions || []).map((_, index) => {
-      const checked = form.querySelector(`md-radio[name="q${index}"][checked]`);
-      return checked ? Number(checked.getAttribute("value")) : -1;
-    });
-    if (answers.some((answer) => answer < 0)) {
-      $("quiz-error").textContent = "还有题没答。";
-      $("quiz-error").classList.remove("hidden");
-      return;
-    }
-    const button = $("quiz-submit");
-    button.disabled = true;
-    button.textContent = "判分中…";
-    try {
-      const result = await api("/api/verify/submit", {
-        method: "POST",
-        body: JSON.stringify({ method: "quiz", verificationId: state.verification.id, answers }),
-      });
-      onApproved(result);
-    } catch (err) {
-      $("quiz-error").textContent = err.message;
-      $("quiz-error").classList.remove("hidden");
-      button.disabled = false;
-      button.textContent = "提交答案";
-    }
-  });
-}
-
-function renderButtonPanel(panel, data) {
-  panel.innerHTML = `
-    <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">一键确认</h2>
-      <p class="md-typescale-body-medium muted">${esc(data.note || "点一下确认你是真人")}</p>
-    </div>
-    <div class="panel__actions"><md-filled-button id="button-submit">我是真人，放行</md-filled-button></div>
-    <p class="md-typescale-body-small hidden" id="button-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
-  `;
-  $("button-submit").addEventListener("click", async () => {
-    const button = $("button-submit");
-    button.disabled = true;
-    button.textContent = "处理中…";
-    try {
-      const result = await api("/api/verify/submit", {
-        method: "POST",
-        body: JSON.stringify({ method: "button", verificationId: state.verification.id }),
-      });
-      onApproved(result);
-    } catch (err) {
-      $("button-error").textContent = err.message;
-      $("button-error").classList.remove("hidden");
-      button.disabled = false;
-      button.textContent = "我是真人，放行";
-    }
-  });
+function onStandaloneResult(result) {
+  $("dialog-title").textContent = "校验通过";
+  $("dialog-icon").innerHTML = svgIcon("check", 30);
+  $("dialog-text").innerHTML =
+    `GitHub 账号 <b>${esc(result.githubUsername)}</b> 校验通过。` +
+    `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>` +
+    `<br><span class="md-typescale-body-small muted">此结果不会放行任何群成员。</span>`;
+  $("success-dialog").show();
 }
 
 /* ---------------------------------------------------------------- 状态 */
 
 function onApproved(result) {
   clearInterval(state.timer);
+  $("dialog-title").textContent = "验证通过";
   $("dialog-icon").innerHTML = svgIcon("check", 30);
   $("dialog-text").textContent = `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`;
   $("success-dialog").show();
@@ -586,7 +409,10 @@ function startCountdown(expiresAt) {
   const tick = () => {
     const left = Math.max(0, expiresAt - Date.now());
     const total = Math.floor(left / 1000);
-    const text = left > 0 ? `剩余 ${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}` : "已过期";
+    const text =
+      left > 0
+        ? `剩余 ${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+        : "已过期";
     const chip = $("hero-countdown");
     if (chip) chip.textContent = text;
     if (left === 0) {
@@ -601,34 +427,13 @@ function startCountdown(expiresAt) {
 
 /* ---------------------------------------------------------------- 预览 */
 
-function renderPreviewPanel(methodId) {
-  if (methodId === "github") {
-    renderGithubPanel($("method-panel"), {
-      challenge: state.challenge,
-      requirements: { minAccountAgeDays: 0, requiredOrg: null },
-    });
-    const button = $("gh-submit");
-    button.disabled = true;
-    button.textContent = "预览模式（不可提交）";
-    return;
-  }
-  $("method-panel").innerHTML = `
-    <div class="panel__head">
-      <h2 class="md-typescale-headline-medium">${methodId === "quiz" ? "答题" : "一键确认"}</h2>
-      <p class="md-typescale-body-medium muted">预览模式只渲染 GitHub 面板作为样例。</p>
-    </div>`;
-}
-
 function renderPreview() {
   showState("pending");
   setHero({
     eyebrow: "PAFFBOT · 入群验证",
-    title: "完成验证即可入群",
+    title: "完成 GitHub 签名即可入群",
     sub: "示例群 · Paff 测试群",
-    chips: [
-      { text: "方式：GitHub SSH" },
-      { text: "剩余 05:00", id: "hero-countdown", strong: true },
-    ],
+    chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
   });
 
   const banner = document.createElement("div");
@@ -636,16 +441,15 @@ function renderPreview() {
   banner.innerHTML = `<md-icon>${svgIcon("error", 20)}</md-icon><span>界面预览：示例数据，不会真正提交。真实验证请在 Telegram 里从 @P4ffBot 打开。</span>`;
   $("view-verify").insertBefore(banner, $("pending"));
 
-  state.verification = { id: "preview", chatId: -1001234567890, chatTitle: "示例群 · Paff 测试群", expiresAt: Date.now() + 300_000 };
-  state.methods = [
-    { id: "github", label: "GitHub SSH" },
-    { id: "quiz", label: "答题" },
-    { id: "button", label: "一键确认" },
-  ];
+  state.verification = {
+    id: "preview",
+    chatId: -1001234567890,
+    chatTitle: "示例群 · Paff 测试群",
+    expiresAt: Date.now() + 300_000,
+  };
   state.challenge = "paffbot-verify:v1:preview-demo:8f3a1c2b";
-  renderMethodSwitch(state.methods);
   startCountdown(state.verification.expiresAt);
-  selectMethod("github");
+  loadPanel();
 }
 
 /* ---------------------------------------------------------------- 审计 */
@@ -771,6 +575,7 @@ $("empty-icon").innerHTML = svgIcon("inbox", 28);
 $("tab-verify").addEventListener("click", () => switchTab("verify"));
 $("tab-audit").addEventListener("click", () => switchTab("audit"));
 $("refresh").addEventListener("click", loadSession);
+$("btn-standalone").addEventListener("click", () => enterStandalone("只做签名校验，不会放行任何群。"));
 $("dialog-close").addEventListener("click", () => $("success-dialog").close());
 $("btn-audit-load").addEventListener("click", loadAudit);
 $("btn-audit-csv").addEventListener("click", downloadCsv);

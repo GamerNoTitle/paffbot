@@ -15,15 +15,13 @@ export interface Env {
   ADMIN_IDS?: string;
   ADMIN_TOKEN?: string;
 
-  VERIFY_METHODS?: string;
   VERIFY_TTL_SECONDS?: string;
-  QUIZ_PASS_SCORE?: string;
-  QUIZ_BANK?: string;
 
   MINI_APP_URL?: string;
   TELEGRAM_API_BASE?: string;
 
   GITHUB_TOKEN?: string;
+  GITHUB_KEYS_BASE?: string;
   GITHUB_MIN_ACCOUNT_AGE_DAYS?: string;
   GITHUB_REQUIRED_ORG?: string;
 
@@ -37,21 +35,17 @@ export interface Config {
   webhookSecret: string;
   adminIds: number[];
   adminToken: string | null;
-  methods: string[];
   ttlSeconds: number;
-  quizPassScore: number;
-  quizBankRaw: string | undefined;
   miniAppUrl: string | null;
   apiBase: string;
   githubToken: string | null;
+  githubKeysBase: string;
   githubMinAccountAgeDays: number;
   githubRequiredOrg: string | null;
   retentionDays: number;
   screenKeywords: string[];
   environment: string;
 }
-
-export const DEFAULT_METHODS = ["github", "ssh", "quiz", "button"] as const;
 
 const DEFAULT_SCREEN_KEYWORDS = [
   "博彩",
@@ -97,11 +91,6 @@ export function loadConfig(env: Env): Config {
   if (!webhookSecret) throw new Error("WEBHOOK_SECRET 未配置");
   if (webhookSecret.length < 16) throw new Error("WEBHOOK_SECRET 至少 16 个字符（它同时是 URL 路径段）");
 
-  const methods = (env.VERIFY_METHODS ?? DEFAULT_METHODS.join(","))
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-
   const keywords = (env.SCREEN_KEYWORDS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
@@ -112,13 +101,11 @@ export function loadConfig(env: Env): Config {
     webhookSecret,
     adminIds: parseIntList(env.ADMIN_IDS),
     adminToken: (env.ADMIN_TOKEN ?? "").trim() || null,
-    methods: methods.length > 0 ? methods : [...DEFAULT_METHODS],
     ttlSeconds: parseIntOr(env.VERIFY_TTL_SECONDS, 300, 60, 24 * 3600),
-    quizPassScore: parseIntOr(env.QUIZ_PASS_SCORE, 70, 1, 100),
-    quizBankRaw: env.QUIZ_BANK,
     miniAppUrl: (env.MINI_APP_URL ?? "").trim() || null,
     apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
     githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,
+    githubKeysBase: (env.GITHUB_KEYS_BASE ?? "https://github.com").replace(/\/+$/, ""),
     githubMinAccountAgeDays: parseIntOr(env.GITHUB_MIN_ACCOUNT_AGE_DAYS, 0, 0, 3650),
     githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
     retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),

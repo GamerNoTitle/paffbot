@@ -40,17 +40,6 @@ export interface NewVerification {
   detail?: Record<string, unknown> | null;
 }
 
-export interface SshKeyRow {
-  id: string;
-  user_id: number;
-  fingerprint: string;
-  key_type: string;
-  public_key: string;
-  label: string | null;
-  created_at: number;
-  last_used_at: number | null;
-}
-
 const PENDING = "pending";
 
 /** 返回 true 表示这条 update 是第一次见到（应该继续处理）。 */
@@ -236,42 +225,6 @@ export async function verificationStats(db: D1Database, chatId?: number): Promis
   const out: Record<string, number> = {};
   for (const row of results ?? []) out[row.status] = row.total;
   return out;
-}
-
-// ---------------------------------------------------------------- SSH keys
-
-export async function addSshKey(
-  db: D1Database,
-  key: { id: string; userId: number; fingerprint: string; keyType: string; publicKey: string; label: string | null },
-): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO ssh_keys (id, user_id, fingerprint, key_type, public_key, label, created_at, last_used_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-       ON CONFLICT(user_id, fingerprint) DO UPDATE SET label = excluded.label`,
-    )
-    .bind(key.id, key.userId, key.fingerprint, key.keyType, key.publicKey, key.label, nowMs())
-    .run();
-}
-
-export async function listSshKeys(db: D1Database, userId: number): Promise<SshKeyRow[]> {
-  const { results } = await db
-    .prepare("SELECT * FROM ssh_keys WHERE user_id = ? ORDER BY created_at DESC")
-    .bind(userId)
-    .all<SshKeyRow>();
-  return results ?? [];
-}
-
-export async function touchSshKey(db: D1Database, id: string): Promise<void> {
-  await db.prepare("UPDATE ssh_keys SET last_used_at = ? WHERE id = ?").bind(nowMs(), id).run();
-}
-
-export async function deleteSshKey(db: D1Database, userId: number, fingerprint: string): Promise<boolean> {
-  const result = await db
-    .prepare("DELETE FROM ssh_keys WHERE user_id = ? AND fingerprint = ?")
-    .bind(userId, fingerprint)
-    .run();
-  return (result.meta.changes ?? 0) > 0;
 }
 
 // ---------------------------------------------------------------- groups

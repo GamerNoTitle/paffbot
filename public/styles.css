@@ -221,20 +221,6 @@ body {
   max-width: 34ch;
 }
 
-/* ---------------------------------------------------------------- 方式切换（segmented button） */
-
-.method-switch {
-  width: 100%;
-}
-
-.method-switch md-outlined-segmented-button {
-  flex: 1;
-  --md-outlined-segmented-button-container-height: 46px;
-  --md-outlined-segmented-button-label-text-size: 13px;
-  --md-outlined-segmented-button-label-text-line-height: 18px;
-  --md-outlined-segmented-button-icon-size: 18px;
-}
-
 /* ---------------------------------------------------------------- 面板（无边框 elevation） */
 
 .panel {

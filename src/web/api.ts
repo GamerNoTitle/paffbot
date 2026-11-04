@@ -1,10 +1,7 @@
 import { Hono, type Context } from "hono";
 import {
-  addSshKey,
-  deleteSshKey,
   findOpenVerification,
   getVerification,
-  listSshKeys,
   listVerifications,
   parseDetail,
   updateVerificationDetail,
@@ -13,9 +10,11 @@ import {
 } from "../db";
 import { appendAudit, listAudit, verifyAuditChain } from "../db/audit";
 import { loadConfig, type Env } from "../env";
+import { issueChallenge, readChallenge } from "../lib/challenge";
+import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
+import { verifyGithubOwnership } from "../verify/github-verify";
 import { randomToken } from "../lib/crypto";
 import { displayName } from "../lib/html";
-import { fingerprintOf, parsePublicKeyLine } from "../lib/ssh/keys";
 import { TelegramApi } from "../lib/telegram";
 import { isGroupAdmin, isSuperAdmin } from "../bot/auth";
 import type { BotContext } from "../bot/context";
@@ -32,7 +31,7 @@ export function buildContext(env: Env, origin: string): BotContext {
     config,
     db: env.DB,
     tg: new TelegramApi(config.botToken, config.apiBase),
-    providers: createProviderRegistry(config),
+    providers: createProviderRegistry(),
     origin,
   };
 }
@@ -72,7 +71,6 @@ export function createApi(): Hono<AppBindings> {
     const ctx = c.get("ctx");
 
     const open = await findOpenVerification(ctx.db, user.id);
-    const keys = await listSshKeys(ctx.db, user.id);
 
     return c.json({
       ok: true,
@@ -80,13 +78,6 @@ export function createApi(): Hono<AppBindings> {
       superAdmin: isSuperAdmin(ctx.config, user.id),
       methods: ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description })),
       ttlSeconds: ctx.config.ttlSeconds,
-      keys: keys.map((k) => ({
-        fingerprint: k.fingerprint,
-        keyType: k.key_type,
-        label: k.label,
-        createdAt: k.created_at,
-        lastUsedAt: k.last_used_at,
-      })),
       verification: open ? publicVerification(open) : null,
     });
   });
@@ -167,75 +158,43 @@ export function createApi(): Hono<AppBindings> {
     return c.json({ ok: true, approved: true, chatTitle: verification.chat_title });
   });
 
-  api.post("/api/verify/ssh/keys", async (c) => {
-    const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
-    const user = auth.user;
+  // ------------------------------------------------ 浏览器独立校验（无 Telegram）
+
+  /** 签发一次性挑战，供浏览器直接跑 GitHub 签名校验（不会放行任何群）。 */
+  api.get("/api/github/challenge", async (c) => {
     const ctx = c.get("ctx");
-
-    const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
-    const publicKey = typeof body.publicKey === "string" ? body.publicKey : "";
-    const label = typeof body.label === "string" ? body.label.slice(0, 64) : null;
-    if (!publicKey) return c.json({ ok: false, error: "公钥为空" }, 400);
-
-    let parsed;
-    try {
-      parsed = parsePublicKeyLine(publicKey);
-    } catch (err) {
-      return c.json({ ok: false, error: err instanceof Error ? err.message : "公钥格式不对" }, 400);
-    }
-
-    const existing = await listSshKeys(ctx.db, user.id);
-    const fingerprint = await fingerprintOf(parsed.blob);
-    if (!existing.some((k) => k.fingerprint === fingerprint) && existing.length >= 5) {
-      return c.json({ ok: false, error: "每个账号最多登记 5 把公钥，请先删除不用的" }, 400);
-    }
-
-    await addSshKey(ctx.db, {
-      id: crypto.randomUUID(),
-      userId: user.id,
-      fingerprint,
-      keyType: parsed.type,
-      publicKey: publicKey.trim(),
-      label,
-    });
-
-    await appendAudit(ctx.db, {
-      actorId: user.id,
-      actorType: "user",
-      action: "ssh_key.added",
-      chatId: null,
-      targetUserId: user.id,
-      verificationId: null,
-      detail: { fingerprint, keyType: parsed.type, label },
-    });
-
-    return c.json({ ok: true, fingerprint, keyType: parsed.type });
+    const issued = await issueChallenge(ctx.config);
+    return c.json({ ok: true, ...issued });
   });
 
-  api.post("/api/verify/ssh/keys/delete", async (c) => {
-    const auth = await readInitUser(c);
-    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
-    const user = auth.user;
+  api.post("/api/github/check", async (c) => {
     const ctx = c.get("ctx");
-
     const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
-    const fingerprint = typeof body.fingerprint === "string" ? body.fingerprint : "";
-    if (!fingerprint) return c.json({ ok: false, error: "缺少指纹" }, 400);
 
-    const removed = await deleteSshKey(ctx.db, user.id, fingerprint);
-    if (removed) {
-      await appendAudit(ctx.db, {
-        actorId: user.id,
-        actorType: "user",
-        action: "ssh_key.deleted",
-        chatId: null,
-        targetUserId: user.id,
-        verificationId: null,
-        detail: { fingerprint },
-      });
+    const username = normalizeGithubUsername(typeof body.username === "string" ? body.username : "");
+    const signature = typeof body.signature === "string" ? body.signature.trim() : "";
+    const token = typeof body.token === "string" ? body.token : "";
+
+    if (!isValidGithubUsername(username)) return c.json({ ok: false, error: "GitHub 用户名格式不正确" }, 400);
+    if (!signature) return c.json({ ok: false, error: "请粘贴签名结果" }, 400);
+    if (!signature.includes("BEGIN SSH SIGNATURE")) {
+      return c.json({ ok: false, error: "这不是 SSHSIG 签名（缺少 BEGIN SSH SIGNATURE 标记）" }, 400);
     }
-    return c.json({ ok: removed });
+    if (signature.length > 20_000) return c.json({ ok: false, error: "签名内容过长" }, 400);
+
+    const challenge = await readChallenge(ctx.config, token);
+    if (!challenge) return c.json({ ok: false, error: "校验会话已过期，请刷新页面重试" }, 400);
+
+    const result = await verifyGithubOwnership(ctx.config, username, signature, challenge);
+    if (!result.ok) return c.json({ ok: false, error: result.error ?? "校验失败" }, 400);
+
+    return c.json({
+      ok: true,
+      githubUsername: username,
+      fingerprint: result.fingerprint,
+      keyType: result.keyType,
+      namespace: result.namespace,
+    });
   });
 
   // ------------------------------------------------------------ 审计（管理者）

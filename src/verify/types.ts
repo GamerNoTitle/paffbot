@@ -9,23 +9,8 @@ export interface VerifyContext {
   user: TgUser;
 }
 
-export interface PublicQuestion {
-  id: string;
-  question: string;
-  options: string[];
-}
-
-export interface PublicSshKey {
-  fingerprint: string;
-  keyType: string;
-  label: string | null;
-  createdAt: number;
-}
-
 export interface ProviderStart {
   challenge?: string;
-  questions?: PublicQuestion[];
-  keys?: PublicSshKey[];
   note?: string;
   /** 给前端的额外门槛提示（如 GitHub 账号年龄、组织要求） */
   requirements?: Record<string, unknown>;

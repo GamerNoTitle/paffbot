@@ -57,8 +57,12 @@ export interface GithubKey {
 
 const UA = "paffbot (+https://github.com/GamerNoTitle/paffbot)";
 
-export async function fetchGithubKeys(username: string, token: string | null): Promise<GithubKey[]> {
-  const url = `https://github.com/${encodeURIComponent(username)}.keys`;
+export async function fetchGithubKeys(
+  username: string,
+  token: string | null,
+  base = "https://github.com",
+): Promise<GithubKey[]> {
+  const url = `${base.replace(/\/+$/, "")}/${encodeURIComponent(username)}.keys`;
   const res = await fetch(url, {
     headers: { "user-agent": UA, accept: "text/plain" },
     redirect: "follow",
