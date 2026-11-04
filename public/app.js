@@ -711,6 +711,15 @@ function switchTab(name) {
 
 $("empty-icon").innerHTML = svgIcon("inbox", 28);
 
+/** 版权：起始年固定，跨年后自动变成区间。 */
+function renderFooter() {
+  const START_YEAR = 2026;
+  const year = new Date().getFullYear();
+  const range = year > START_YEAR ? `${START_YEAR} - ${year}` : `${START_YEAR}`;
+  $("foot").innerHTML = `©️ ${range} <a href="https://bili33.top" target="_blank" rel="noreferrer">GamerNoTitle</a>`;
+}
+renderFooter();
+
 /**
  * 正弦波路径：wavy progress 用。
  *
