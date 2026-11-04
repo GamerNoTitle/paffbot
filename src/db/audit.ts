@@ -105,6 +105,7 @@ export interface AuditFilter {
   chatId?: number;
   targetUserId?: number;
   action?: string;
+  query?: string;
   limit?: number;
   offset?: number;
 }
@@ -123,6 +124,13 @@ export async function listAudit(db: D1Database, filter: AuditFilter = {}): Promi
   if (filter.action) {
     where.push("action = ?");
     params.push(filter.action);
+  }
+  if (filter.query) {
+    const q = `%${filter.query}%`;
+    where.push(
+      "(action LIKE ? OR CAST(target_user_id AS TEXT) LIKE ? OR CAST(actor_id AS TEXT) LIKE ? OR detail LIKE ?)",
+    );
+    params.push(q, q, q, q);
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const limit = Math.min(500, Math.max(1, filter.limit ?? 50));

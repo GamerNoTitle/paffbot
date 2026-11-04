@@ -304,6 +304,65 @@ export function createApi(): Hono<AppBindings> {
 
   // ------------------------------------------------------------ 审计（管理者）
 
+  /** 验证记录：分页 + 状态筛选 + 关键字搜索。 */
+  api.get("/api/audit/verifications", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await authorizeAudit(c, ctx);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const page = Math.max(1, Number.parseInt(c.req.query("page") ?? "1", 10) || 1);
+    const pageSize = Math.min(100, Math.max(5, Number.parseInt(c.req.query("pageSize") ?? "20", 10) || 20));
+    const status = c.req.query("status") || undefined;
+    const query = (c.req.query("q") ?? "").trim() || undefined;
+
+    const { rows, total } = await listVerifications(ctx.db, {
+      chatId: auth.chatId ?? undefined,
+      status,
+      query,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+
+    return c.json({
+      ok: true,
+      page,
+      pageSize,
+      total,
+      rows: rows.map((row) => ({
+        ...publicVerification(row),
+        userId: row.user_id,
+        userName: row.display_name ?? row.username,
+        status: row.status,
+        method: row.method,
+        reason: row.reason,
+        operatorId: row.operator_id,
+        decidedAt: row.decided_at,
+      })),
+    });
+  });
+
+  /** 审计日志：分页 + 动作筛选 + 关键字搜索。 */
+  api.get("/api/audit/log", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await authorizeAudit(c, ctx);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const page = Math.max(1, Number.parseInt(c.req.query("page") ?? "1", 10) || 1);
+    const pageSize = Math.min(100, Math.max(5, Number.parseInt(c.req.query("pageSize") ?? "20", 10) || 20));
+    const action = c.req.query("action") || undefined;
+    const query = (c.req.query("q") ?? "").trim() || undefined;
+
+    const { rows, total } = await listAudit(ctx.db, {
+      chatId: auth.chatId ?? undefined,
+      action,
+      query,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+
+    return c.json({ ok: true, page, pageSize, total, rows: rows.map(serializeAudit) });
+  });
+
   api.get("/api/audit/overview", async (c) => {
     const ctx = c.get("ctx");
     const auth = await authorizeAudit(c, ctx);

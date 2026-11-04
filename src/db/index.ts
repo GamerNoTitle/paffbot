@@ -170,6 +170,7 @@ export interface VerifyFilter {
   chatId?: number;
   userId?: number;
   status?: string;
+  query?: string;
   limit?: number;
   offset?: number;
 }
@@ -191,6 +192,13 @@ export async function listVerifications(
   if (filter.status) {
     where.push("status = ?");
     params.push(filter.status);
+  }
+  if (filter.query) {
+    const q = `%${filter.query}%`;
+    where.push(
+      "(CAST(user_id AS TEXT) LIKE ? OR display_name LIKE ? OR username LIKE ? OR id LIKE ? OR method LIKE ? OR reason LIKE ?)",
+    );
+    params.push(q, q, q, q, q, q);
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const limit = Math.min(200, Math.max(1, filter.limit ?? 50));

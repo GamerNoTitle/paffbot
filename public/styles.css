@@ -847,6 +847,61 @@ md-filled-tonal-button {
 
 /* ---------------------------------------------------------------- 表格 */
 
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 6px;
+}
+
+.toolbar md-outlined-text-field {
+  flex: 1 1 220px;
+}
+
+.select {
+  appearance: auto;
+  border: var(--hairline);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--shape-pill);
+  padding: 11px 16px;
+  font: 500 13px/1 var(--md-ref-typeface-plain);
+  cursor: pointer;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.pager__btn {
+  border: 0;
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font: 500 13px/1 var(--md-ref-typeface-plain);
+  padding: 9px 14px;
+  border-radius: var(--shape-pill);
+  cursor: pointer;
+}
+
+.pager__btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+.pager__btn:disabled {
+  color: var(--md-sys-color-outline);
+  cursor: default;
+}
+
+.pager__info {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 .table-wrap {
   overflow-x: auto;
   margin: 0 -8px;

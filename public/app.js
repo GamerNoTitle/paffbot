@@ -708,12 +708,134 @@ function methodNote(row) {
   return label ? `<span class="cell-sub">${esc(label)}</span>` : "";
 }
 
+const auditView = {
+  chatId: "",
+  verify: { page: 1, status: "", q: "" },
+  log: { page: 1, action: "", q: "" },
+};
+
+const STATUS_OPTIONS = [
+  ["", "全部状态"],
+  ["pending", "待验证"],
+  ["approved", "已放行"],
+  ["timeout", "超时"],
+  ["declined", "已拒绝"],
+  ["banned", "已封禁"],
+  ["blocked", "自动拦截"],
+];
+
+const ACTION_OPTIONS = [
+  ["", "全部动作"],
+  ["verification.created", "发起验证"],
+  ["verification.approved", "验证通过"],
+  ["verification.timeout", "验证超时"],
+  ["verification.declined", "验证未通过"],
+  ["verification.rate_limited", "触发限额"],
+  ["telegram.action_failed", "Telegram 操作失败"],
+];
+
+function selectHtml(id, options) {
+  return `<select class="select" id="${id}">${options
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    .join("")}</select>`;
+}
+
+function verifyRowHtml(row) {
+  const meta = STATUS_META[row.status] ?? { label: row.status, tone: "" };
+  return `<tr>
+    <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.createdAt))}">${fmtTime(row.createdAt)}</div></td>
+    <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
+    <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
+    <td data-label="说明" class="muted"><div class="cell">${esc(
+      REASON_LABEL[row.reason] ?? row.reason ?? "",
+    )}${row.operatorId ? `<span class="cell-sub">操作者 ${esc(row.operatorId)}</span>` : ""}</div></td>
+  </tr>`;
+}
+
+function auditRowHtml(row) {
+  return `<tr>
+    <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.ts))}">${fmtTime(row.ts)}</div></td>
+    <td data-label="操作者"><div class="cell">${esc(ACTOR_LABEL[row.actorType] ?? row.actorType)}${
+      row.actorId ? `<span class="cell-sub mono">${esc(row.actorId)}</span>` : ""
+    }</div></td>
+    <td data-label="动作"><div class="cell">${esc(ACTION_LABEL[row.action] ?? row.action)}</div></td>
+    <td data-label="详情" class="muted"><div class="cell">${
+      esc(describeDetail(row.detail)) || "—"
+    }${row.targetUserId ? `<span class="cell-sub mono">用户 ${esc(row.targetUserId)}</span>` : ""}</div></td>
+  </tr>`;
+}
+
+function pagerHtml(prefix, page, total, pageSize) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  return `<button type="button" class="pager__btn" id="${prefix}-prev" ${page <= 1 ? "disabled" : ""}>上一页</button>
+    <span class="pager__info">第 ${page} / ${pages} 页 · 共 ${total} 条</span>
+    <button type="button" class="pager__btn" id="${prefix}-next" ${page >= pages ? "disabled" : ""}>下一页</button>`;
+}
+
+async function loadVerifyPage() {
+  const view = auditView.verify;
+  const params = new URLSearchParams({ chatId: auditView.chatId, page: String(view.page), pageSize: "20" });
+  if (view.status) params.set("status", view.status);
+  if (view.q) params.set("q", view.q);
+
+  const tbody = $("v-rows");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中…</td></tr>';
+  try {
+    const data = await api(`/api/audit/verifications?${params.toString()}`);
+    tbody.innerHTML = data.rows.map(verifyRowHtml).join("") || '<tr><td colspan="4" class="muted">没有匹配的记录</td></tr>';
+    $("v-count").textContent = `${data.total} 条`;
+    $("v-pager").innerHTML = pagerHtml("v", data.page, data.total, data.pageSize);
+    bindPager("v", "verify", loadVerifyPage);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function loadLogPage() {
+  const view = auditView.log;
+  const params = new URLSearchParams({ chatId: auditView.chatId, page: String(view.page), pageSize: "20" });
+  if (view.action) params.set("action", view.action);
+  if (view.q) params.set("q", view.q);
+
+  const tbody = $("a-rows");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中…</td></tr>';
+  try {
+    const data = await api(`/api/audit/log?${params.toString()}`);
+    tbody.innerHTML = data.rows.map(auditRowHtml).join("") || '<tr><td colspan="4" class="muted">没有匹配的记录</td></tr>';
+    $("a-count").textContent = `${data.total} 条`;
+    $("a-pager").innerHTML = pagerHtml("a", data.page, data.total, data.pageSize);
+    bindPager("a", "log", loadLogPage);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">加载失败：${esc(err.message)}</td></tr>`;
+  }
+}
+
+function bindPager(prefix, key, reload) {
+  const view = auditView[key];
+  $(`${prefix}-prev`)?.addEventListener("click", () => {
+    if (view.page > 1) {
+      view.page -= 1;
+      reload();
+    }
+  });
+  $(`${prefix}-next`)?.addEventListener("click", () => {
+    view.page += 1;
+    reload();
+  });
+}
+
 function renderAudit(data) {
   const stats = data.stats || {};
   const chain = data.chain || { ok: true, checked: 0 };
   const chainBadge = chain.ok
     ? `<span class="badge ok">哈希链完整 · ${chain.checked}</span>`
     : `<span class="badge bad">哈希链在 #${chain.brokenAtId} 断开</span>`;
+
+  auditView.chatId = String(data.chatId ?? auditView.chatId);
+  auditView.verify = { page: 1, status: "", q: "" };
+  auditView.log = { page: 1, action: "", q: "" };
 
   $("audit-stats").innerHTML = `
     <div class="card">
@@ -725,60 +847,77 @@ function renderAudit(data) {
       <p class="chain">${chainBadge}</p>
     </div>`;
 
-  const verificationRows = (data.verifications || [])
-    .map((row) => {
-      const meta = STATUS_META[row.status] ?? { label: row.status, tone: "" };
-      return `<tr>
-        <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.createdAt))}">${fmtTime(row.createdAt)}</div></td>
-        <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
-        <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
-        <td data-label="说明" class="muted"><div class="cell">${esc(
-          REASON_LABEL[row.reason] ?? row.reason ?? "",
-        )}${row.operatorId ? `<span class="cell-sub">操作者 ${esc(row.operatorId)}</span>` : ""}</div></td>
-      </tr>`;
-    })
-    .join("");
-
-  const auditRows = (data.audit || [])
-    .map(
-      (row) => `<tr>
-        <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.ts))}">${fmtTime(row.ts)}</div></td>
-        <td data-label="操作者"><div class="cell">${esc(ACTOR_LABEL[row.actorType] ?? row.actorType)}${
-          row.actorId ? `<span class="cell-sub mono">${esc(row.actorId)}</span>` : ""
-        }</div></td>
-        <td data-label="动作"><div class="cell">${esc(ACTION_LABEL[row.action] ?? row.action)}</div></td>
-        <td data-label="详情" class="muted"><div class="cell">${
-          esc(describeDetail(row.detail)) || "—"
-        }${row.targetUserId ? `<span class="cell-sub mono">用户 ${esc(row.targetUserId)}</span>` : ""}</div></td>
-      </tr>`,
-    )
-    .join("");
-
   $("audit-body").innerHTML = `
     <div class="card">
       <div class="table-head">
         <h2 class="md-typescale-title-medium">验证记录</h2>
-        <span class="md-typescale-body-small muted">${data.verificationsTotal ?? 0} 条</span>
+        <span class="md-typescale-body-small muted" id="v-count"></span>
+      </div>
+      <div class="toolbar">
+        <md-outlined-text-field id="v-q" label="搜索用户 / 记录 ID"></md-outlined-text-field>
+        ${selectHtml("v-status", STATUS_OPTIONS)}
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>时间</th><th>用户</th><th>状态</th><th>说明</th></tr></thead>
-          <tbody>${verificationRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
+          <tbody id="v-rows"></tbody>
         </table>
       </div>
+      <div class="pager" id="v-pager"></div>
     </div>
     <div class="card">
       <div class="table-head">
         <h2 class="md-typescale-title-medium">审计日志</h2>
-        <span class="md-typescale-body-small muted">${data.auditTotal ?? 0} 条</span>
+        <span class="md-typescale-body-small muted" id="a-count"></span>
+      </div>
+      <div class="toolbar">
+        <md-outlined-text-field id="a-q" label="搜索动作 / 用户 / 详情"></md-outlined-text-field>
+        ${selectHtml("a-action", ACTION_OPTIONS)}
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>详情</th></tr></thead>
-          <tbody>${auditRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
+          <tbody id="a-rows"></tbody>
         </table>
       </div>
+      <div class="pager" id="a-pager"></div>
     </div>`;
+
+  bindFilter("v", "verify", (value) => (auditView.verify.status = value), loadVerifyPage, "change");
+  bindFilter("a", "log", (value) => (auditView.log.action = value), loadLogPage, "change");
+  bindSearch("v-q", (value) => (auditView.verify.q = value), () => {
+    auditView.verify.page = 1;
+    loadVerifyPage();
+  });
+  bindSearch("a-q", (value) => (auditView.log.q = value), () => {
+    auditView.log.page = 1;
+    loadLogPage();
+  });
+
+  loadVerifyPage();
+  loadLogPage();
+}
+
+function bindFilter(prefix, _key, apply, reload, event) {
+  const el = $(`${prefix}-${prefix === "v" ? "status" : "action"}`);
+  el?.addEventListener(event, () => {
+    apply(el.value);
+    auditView[prefix === "v" ? "verify" : "log"].page = 1;
+    reload();
+  });
+}
+
+function bindSearch(id, apply, reload) {
+  const el = $(id);
+  if (!el) return;
+  let timer = 0;
+  el.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      apply(el.value.trim());
+      reload();
+    }, 300);
+  });
 }
 
 async function downloadCsv() {
