@@ -636,9 +636,21 @@ box-shadow:0 18px 40px rgba(0,0,0,.08)}
 h1{font-size:26px;font-weight:500;margin:0 0 12px}
 p{margin:0;color:#5A5A66}
 @media (prefers-color-scheme: dark){p{color:#A9A3B3}}
-a{display:inline-block;margin-top:22px;padding:12px 24px;border-radius:999px;background:#5060B0;color:#fff;text-decoration:none}
+button{margin-top:22px;padding:13px 28px;border:0;border-radius:999px;background:#5060B0;color:#fff;
+font:500 15px/1 inherit;cursor:pointer}
+button:hover{background:#41509c}
+.fallback{margin-top:14px;font-size:13px;color:#8b8b96}
 </style></head><body><div class="card"><h1>${title}</h1><p>${message}</p>
-<a href="https://verify.bili33.top/">回到验证页</a></div></body></html>`;
+<button type="button" id="done">好的，我知道了</button>
+<p class="fallback" id="fallback" hidden>如果没有自动关闭，直接关掉这个页面即可。</p>
+</div>
+<script>
+document.getElementById("done").addEventListener("click", function () {
+  window.close();
+  // close() 被浏览器拦下时（例如在 Telegram 内置浏览器里），给一句兜底提示
+  setTimeout(function () { document.getElementById("fallback").hidden = false; }, 250);
+});
+</script></body></html>`;
 }
 
 function clientIp(c: Context<AppBindings>): string {
