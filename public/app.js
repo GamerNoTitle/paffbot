@@ -441,8 +441,8 @@ function startCountdown(expiresAt) {
         : "已过期";
     const chip = $("hero-countdown");
     if (chip) chip.textContent = text;
-    const bar = $("ttl-progress");
-    if (bar) bar.value = String(left / totalMs);
+    const rect = $("wavy-rect");
+    if (rect) rect.setAttribute("width", String(Math.max(0, Math.min(1, left / totalMs)) * 100));
     if (left === 0) {
       clearInterval(state.timer);
       if (state.standalone) {
@@ -702,6 +702,23 @@ function switchTab(name) {
 
 $("empty-icon").innerHTML = svgIcon("inbox", 28);
 
+/** 正弦波路径：wavy progress 用。 */
+function wavePath(width = 100, height = 10, amplitude = 2.6, wavelength = 10) {
+  const mid = height / 2;
+  let d = `M0 ${mid}`;
+  for (let x = 0; x < width; x += wavelength / 2) {
+    const up = Math.round(x / (wavelength / 2)) % 2 === 0;
+    d += ` Q${x + wavelength / 4} ${mid + (up ? -amplitude : amplitude)} ${x + wavelength / 2} ${mid}`;
+  }
+  return d;
+}
+
+function initWave() {
+  const d = wavePath();
+  $("wavy-track").setAttribute("d", d);
+  $("wavy-bar").setAttribute("d", d);
+}
+
 /** Hero 右侧的抽象形状组合（不用位图）。 */
 function renderHeroArt() {
   const art = $("hero-art");
@@ -714,6 +731,7 @@ function renderHeroArt() {
   ].join("");
 }
 renderHeroArt();
+initWave();
 
 // 形状装饰：空态图标用 cookie9，成功弹窗用 flower
 const root = document.documentElement;

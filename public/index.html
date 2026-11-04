@@ -27,8 +27,16 @@
             <h1 class="hero__title" id="hero-title">正在检查…</h1>
             <p class="hero__sub" id="hero-sub">稍等，正在读取你的验证状态</p>
             <div class="hero__chips" id="hero-chips"></div>
-            <div class="hero__progress hidden" id="hero-progress">
-              <md-linear-progress id="ttl-progress" value="1" aria-label="剩余时间"></md-linear-progress>
+            <div class="hero__progress hidden" id="hero-progress" role="progressbar" aria-label="剩余时间">
+              <svg class="wavy" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <clipPath id="wavy-clip">
+                    <rect id="wavy-rect" x="0" y="-2" width="100" height="14" rx="2" />
+                  </clipPath>
+                </defs>
+                <path class="wavy__track" id="wavy-track" d="" />
+                <path class="wavy__bar" id="wavy-bar" d="" clip-path="url(#wavy-clip)" />
+              </svg>
             </div>
             <md-filled-button id="hero-cta" class="hidden">开始验证</md-filled-button>
           </div>
