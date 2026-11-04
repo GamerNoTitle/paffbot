@@ -13,11 +13,10 @@
   },
   "d1_databases": [
     {
+      // 代码里统一用 env.DB，binding 必须叫 DB
       "binding": "DB",
       "database_name": "paffbot",
-      // 真部署时替换成 `wrangler d1 create paffbot` 输出的 database_id。
-      // 本地 `wrangler dev --local` 不校验这个值。
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "6ed0080d-7496-432f-95e2-a500ddd2be1e",
       "migrations_dir": "migrations"
     }
   ],

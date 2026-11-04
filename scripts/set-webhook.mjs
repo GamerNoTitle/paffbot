@@ -9,6 +9,7 @@
  * 读取顺序：命令行 > 环境变量 > .dev.vars
  */
 
+import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -45,14 +46,44 @@ if (!token) {
 }
 
 const apiBase = (process.env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, "");
+// 大陆网络直连 api.telegram.org 通常不通；设了代理变量就走 curl -x。
+const proxy =
+  process.env.HTTPS_PROXY || process.env.https_proxy || process.env.ALL_PROXY || process.env.all_proxy || "";
 
 async function call(method, payload = {}) {
-  const res = await fetch(`${apiBase}/bot${token}/${method}`, {
+  const url = `${apiBase}/bot${token}/${method}`;
+  let body;
+
+  if (proxy) {
+    const out = execFileSync(
+      "curl",
+      [
+        "-sS",
+        "-m",
+        "30",
+        "-x",
+        proxy,
+        "-X",
+        "POST",
+        "-H",
+        "content-type: application/json",
+        "--data-binary",
+        JSON.stringify(payload),
+        url,
+      ],
+      { encoding: "utf8" },
+    );
+    body = JSON.parse(out);
+    if (!body?.ok) throw new Error(`${method} 失败：${body?.description ?? "未知错误"}`);
+    return body.result;
+  }
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const body = await res.json().catch(() => null);
+  body = await res.json().catch(() => null);
   if (!res.ok || !body?.ok) {
     throw new Error(`${method} 失败：${body?.description ?? res.status}`);
   }

@@ -8,9 +8,20 @@ import { buildContext, createApi, type AppBindings } from "./web/api";
 
 const app = new Hono<AppBindings>();
 
-app.get("/health", (c) => c.json({ ok: true, service: "paffbot", time: Date.now() }));
+async function health(db: D1Database) {
+  let database = false;
+  try {
+    const row = await db.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+    database = row?.ok === 1;
+  } catch (err) {
+    console.error("[health] D1 探活失败:", err instanceof Error ? err.message : err);
+  }
+  return { ok: true, service: "paffbot", database, time: Date.now() };
+}
 
-app.get("/api/health", (c) => c.json({ ok: true, service: "paffbot", time: Date.now() }));
+app.get("/health", async (c) => c.json(await health(c.env.DB)));
+
+app.get("/api/health", async (c) => c.json(await health(c.env.DB)));
 
 /**
  * Telegram webhook。secret 同时出现在路径段和 X-Telegram-Bot-Api-Secret-Token 头里，
@@ -52,6 +63,11 @@ app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 export default {
   fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-    await runScheduled(env);
+    // 密钥还没配好时不要让 cron 每分钟抛一次未捕获异常
+    try {
+      await runScheduled(env);
+    } catch (err) {
+      console.error("[cron] 执行失败:", err instanceof Error ? err.message : err);
+    }
   },
 } satisfies ExportedHandler<Env>;
