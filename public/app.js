@@ -465,7 +465,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
     } catch (err) {
       $("gh-error").textContent = err.message;
       $("gh-error").classList.remove("hidden");
-      toast(err.message);
+      showResultDialog({ title: "验证没有通过", text: err.message, tone: "error" });
       submit.disabled = false;
       submit.textContent = standalone ? "校验签名" : "验证并放行";
       if (standalone && (err.status === 409 || err.status === 400)) {
@@ -533,15 +533,25 @@ function onStandaloneResult(result) {
 
 /* ---------------------------------------------------------------- 状态 */
 
-function onApproved(result) {
-  clearInterval(state.timer);
-  $("dialog-title").textContent = "验证通过";
-  $("dialog-icon").innerHTML = svgIcon("check", 30);
-  $("dialog-text").textContent = `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`;
+/** 同一个对话框承担成功/失败两种收尾语气。 */
+function showResultDialog({ title, text, tone = "success" }) {
+  $("dialog-title").textContent = title;
+  $("dialog-icon").innerHTML = svgIcon(tone === "error" ? "error" : "check", 30);
+  $("dialog-icon-wrap").className = tone === "error" ? "dialog-icon is-error" : "dialog-icon";
+  $("dialog-text").textContent = text;
+  $("dialog-close").textContent = tone === "error" ? "知道了" : "完成";
   $("success-dialog").show();
   try {
-    tg?.HapticFeedback?.notificationOccurred("success");
+    tg?.HapticFeedback?.notificationOccurred(tone === "error" ? "error" : "success");
   } catch {}
+}
+
+function onApproved(result) {
+  clearInterval(state.timer);
+  showResultDialog({
+    title: "验证通过",
+    text: `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`,
+  });
 }
 
 function startCountdown(expiresAt) {
@@ -589,6 +599,14 @@ function renderPreview() {
     group: { title: "示例群 · Paff 测试群", photo: "./icon-192.png" },
     chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
   });
+
+  if (params.get("dialog") === "error") {
+    showResultDialog({
+      title: "验证没有通过",
+      text: "签名对不上这次的原文（原文 5 分钟有效、用一次就作废）。回群里重新申请一份再签。",
+      tone: "error",
+    });
+  }
 
   const banner = document.createElement("div");
   banner.className = "preview-banner";

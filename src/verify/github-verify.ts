@@ -67,12 +67,12 @@ export async function verifyGithubOwnership(
     }
   }
 
-  let lastReason: string | undefined;
+  const reasons: string[] = [];
   for (const namespace of NAMESPACES) {
     for (const message of messageVariants(challenge)) {
       const result = await verifySshSignature({ armor: signature, message, namespace });
       if (!result.ok) {
-        lastReason = result.reason;
+        if (result.reason) reasons.push(result.reason);
         continue;
       }
       if (!result.fingerprint || !supported.some((key) => key.fingerprint === result.fingerprint)) {
@@ -87,8 +87,18 @@ export async function verifyGithubOwnership(
     }
   }
 
+  // 签名能解析、命名空间也对，只是消息对不上 —— 原文过期或被重放
+  if (reasons.some((reason) => reason.includes("签名校验失败"))) {
+    return {
+      ok: false,
+      error: "签名对不上这次的原文（原文 5 分钟有效、用一次就作废）。回群里重新申请一份再签。",
+    };
+  }
+  if (reasons.length > 0 && reasons.every((reason) => reason.includes("命名空间"))) {
+    return { ok: false, error: "签名命名空间不对：请用 -n file 重新签名。" };
+  }
   return {
     ok: false,
-    error: `签名校验未通过${lastReason ? `：${lastReason}` : "，请确认命令输出被完整粘贴"}`,
+    error: `签名校验未通过${reasons[0] ? `：${reasons[0]}` : "，请确认命令输出被完整粘贴"}`,
   };
 }

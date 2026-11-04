@@ -1048,6 +1048,11 @@ md-dialog {
   text-align: center;
 }
 
+.dialog-icon.is-error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
 .dialog-icon {
   width: 88px;
   height: 88px;
