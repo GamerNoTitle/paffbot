@@ -13,19 +13,27 @@ const ICONS = {
   light:
     '<path d="M12 17q-2.075 0-3.537-1.463T7 12q0-2.075 1.463-3.537T12 7q2.075 0 3.537 1.463T17 12q0 2.075-1.463 3.537T12 17Zm0-2q1.25 0 2.125-.875T15 12q0-1.25-.875-2.125T12 9q-1.25 0-2.125.875T9 12q0 1.25.875 2.125T12 15Zm0-10v-2m0 18v-2M5 12H3m18 0h-2M6.4 6.4 5 5m14 14-1.4-1.4M6.4 17.6 5 19M19 5l-1.4 1.4"/>',
   check: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 14.6-4.6-4.6L7.6 10.6l3.2 3.2 6-6L18.2 9.2l-7.4 7.4Z"/>',
+  shield:
+    '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.2V11c0 3.9-2.5 7.6-6 8.8-3.5-1.2-6-4.9-6-8.8V6.4l6-2.2Z"/>',
+  list: '<path d="M4 6h2v2H4V6Zm4 0h12v2H8V6ZM4 11h2v2H4v-2Zm4 0h12v2H8v-2ZM4 16h2v2H4v-2Zm4 0h12v2H8v-2Z"/>',
   inbox:
     '<path d="M19 3H5a2 2 0 0 0-2 2v14l4-4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12H6.17L5 16.17V5h14v10Z"/>',
   copy: '<path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/>',
   error: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/>',
+  key: '<path d="M14 2a8 8 0 0 0-7.6 10.6L2 17v5h5v-3h3v-3h2l1.6-1.6A8 8 0 1 0 14 2Zm3 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>',
+  quiz: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 16h-2v-2h2v2Zm1.8-6.4-.9.9c-.6.6-.9 1.1-.9 2.1h-2c0-1.5.5-2.3 1.3-3.1l1.2-1.2c.4-.3.6-.8.6-1.3a2 2 0 1 0-4 0H8a4 4 0 1 1 6.8 2.6Z"/>',
+  hand: '<path d="M18 8h-2V5a3 3 0 0 0-6 0v3H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-6-3a1 1 0 0 1 2 0v3h-2V5Z"/>',
 };
 
-function svgIcon(name, size = 22) {
+function svgIcon(name, size = 20) {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
 }
 
 const $ = (id) => document.getElementById(id);
 const esc = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+
+const METHOD_SHORT = { github: "GitHub", ssh: "SSH", quiz: "答题", button: "确认", };
 
 /* ---------------------------------------------------------------- 主题 */
 
@@ -41,9 +49,20 @@ let dark = themeParam
       ? tg.colorScheme === "dark"
       : window.matchMedia("(prefers-color-scheme: dark)").matches;
 
+const state = {
+  session: null,
+  verification: null,
+  activeMethod: null,
+  methods: [],
+  challenge: "",
+  shell: "bash",
+  timer: 0,
+  token: localStorage.getItem("paffbot.token") || "",
+};
+
 function paintTheme() {
   applyTheme({ seed, dark });
-  $("theme-icon").innerHTML = svgIcon(dark ? "light" : "dark");
+  $("theme-icon").innerHTML = svgIcon(dark ? "light" : "dark", 22);
   $("theme-toggle").setAttribute("aria-label", dark ? "切换到浅色" : "切换到深色");
 }
 paintTheme();
@@ -69,16 +88,6 @@ if (tg) {
 }
 
 /* ---------------------------------------------------------------- 通用 */
-
-const state = {
-  session: null,
-  verification: null,
-  activeMethod: null,
-  challenge: "",
-  shell: "bash",
-  timer: 0,
-  token: localStorage.getItem("paffbot.token") || "",
-};
 
 async function api(path, options = {}) {
   const headers = { "content-type": "application/json", ...(options.headers || {}) };
@@ -109,6 +118,29 @@ function toast(message) {
   toastTimer = window.setTimeout(() => el.classList.add("hidden"), 4200);
 }
 
+function setHero({ eyebrow, title, sub, chips = null }) {
+  if (eyebrow !== undefined) $("hero-eyebrow").textContent = eyebrow;
+  if (title !== undefined) $("hero-title").textContent = title;
+  if (sub !== undefined) $("hero-sub").textContent = sub;
+  if (chips !== null) {
+    const box = $("hero-chips");
+    box.innerHTML = "";
+    for (const chip of chips) {
+      const el = document.createElement("span");
+      el.className = chip.strong ? "chip chip--strong" : "chip";
+      el.id = chip.id ?? "";
+      el.textContent = chip.text;
+      box.appendChild(el);
+    }
+  }
+}
+
+function showState(name) {
+  $("state-loading").classList.toggle("hidden", name !== "loading");
+  $("state-empty").classList.toggle("hidden", name !== "empty");
+  $("pending").classList.toggle("hidden", name !== "pending");
+}
+
 /* ---------------------------------------------------------------- 会话 */
 
 async function loadSession() {
@@ -120,70 +152,83 @@ async function loadSession() {
     const data = await api("/api/session");
     state.session = data;
     state.verification = data.verification;
-    $("whoami").textContent = data.user?.name ? `已识别：${data.user.name}` : "入群验证";
-    $("loading").classList.add("hidden");
+    state.methods = data.methods ?? [];
 
     if (!data.verification) {
-      $("empty").classList.remove("hidden");
-      $("pending").classList.add("hidden");
+      setHero({
+        eyebrow: "PAFFBOT · 入群验证",
+        title: data.user?.name ? `你好，${data.user.name.split(" ")[0]}` : "暂无待验证",
+        sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
+        chips: [],
+      });
+      showState("empty");
       return;
     }
 
-    $("empty").classList.add("hidden");
-    $("success").classList.add("hidden");
-    $("pending").classList.remove("hidden");
-    $("chat-title").textContent = data.verification.chatTitle || String(data.verification.chatId);
-
-    renderMethodChips(data.methods);
-    startCountdown(data.verification.expiresAt);
-    await selectMethod(state.activeMethod || data.methods[0]?.id);
+    const v = data.verification;
+    setHero({
+      eyebrow: "PAFFBOT · 入群验证",
+      title: "完成验证即可入群",
+      sub: v.chatTitle ?? String(v.chatId),
+      chips: [
+        { text: `方式：${methodLabel(state.methods, v.method)}` },
+        { text: "剩余 05:00", id: "hero-countdown", strong: true },
+      ],
+    });
+    showState("pending");
+    renderMethodSwitch(state.methods);
+    startCountdown(v.expiresAt);
+    await selectMethod(state.activeMethod || state.methods[0]?.id);
   } catch (err) {
     if (err.status === 401 && !tg?.initData) {
-      $("loading").classList.add("hidden");
-      const empty = $("empty");
-      empty.classList.remove("hidden");
-      empty.querySelector("h2").textContent = "请在 Telegram 内打开";
-      empty.querySelector("p").textContent =
+      showState("empty");
+      $("empty-title").textContent = "请在 Telegram 内打开";
+      $("empty-text").textContent =
         "验证页需要 Telegram 的 initData 来识别账号。从 @P4ffBot 的验证按钮进入即可，也可以先看界面预览或审计。";
       $("refresh").textContent = "界面预览";
       $("refresh").addEventListener("click", () => (location.search = "?preview=1"), { once: true });
       $("token-card").classList.remove("hidden");
+      setHero({ eyebrow: "PAFFBOT", title: "需要 Telegram 环境", sub: "浏览器里只能查看审计或预览界面" });
     } else {
-      $("loading").innerHTML = `<p class="md-typescale-body-medium">加载失败：${esc(err.message)}</p>`;
+      showState("empty");
+      $("empty-title").textContent = "加载失败";
+      $("empty-text").textContent = err.message;
+      setHero({ eyebrow: "PAFFBOT", title: "出错了", sub: err.message });
     }
   }
 }
 
-function renderMethodChips(methods) {
-  const box = $("method-chips");
-  box.innerHTML = "";
-  if (methods.length <= 1) return;
+function methodLabel(methods, id) {
+  return methods.find((m) => m.id === id)?.label ?? "多选一";
+}
+
+function renderMethodSwitch(methods) {
+  const set = $("method-switch");
+  set.innerHTML = "";
+  set.classList.toggle("hidden", methods.length <= 1);
   for (const method of methods) {
-    const chip = document.createElement("md-filter-chip");
-    chip.setAttribute("label", method.label);
-    chip.dataset.method = method.id;
-    chip.selected = method.id === state.activeMethod;
-    chip.addEventListener("click", () => selectMethod(method.id));
-    box.appendChild(chip);
+    const button = document.createElement("md-outlined-segmented-button");
+    button.setAttribute("label", METHOD_SHORT[method.id] ?? method.label);
+    button.dataset.method = method.id;
+    button.selected = method.id === state.activeMethod || (!state.activeMethod && method === methods[0]);
+    button.addEventListener("click", () => selectMethod(method.id));
+    set.appendChild(button);
   }
 }
 
 async function selectMethod(methodId) {
   if (!methodId) return;
   state.activeMethod = methodId;
-  if (PREVIEW) {
-    for (const chip of $("method-chips").querySelectorAll("md-filter-chip")) {
-      chip.selected = chip.dataset.method === methodId;
-    }
-    renderPreviewPanel(methodId);
-    return;
-  }
-  for (const chip of $("method-chips").querySelectorAll("md-filter-chip")) {
-    chip.selected = chip.dataset.method === methodId;
+  for (const button of $("method-switch").querySelectorAll("md-outlined-segmented-button")) {
+    button.selected = button.dataset.method === methodId;
   }
 
   const panel = $("method-panel");
-  panel.innerHTML = '<p class="md-typescale-body-medium muted">加载验证方式…</p>';
+  panel.innerHTML = '<p class="md-typescale-body-medium muted">加载中…</p>';
+  if (PREVIEW) {
+    renderPreviewPanel(methodId);
+    return;
+  }
   try {
     const data = await api(
       `/api/verify/start?method=${encodeURIComponent(methodId)}&verificationId=${encodeURIComponent(state.verification.id)}`,
@@ -194,7 +239,7 @@ async function selectMethod(methodId) {
     else if (methodId === "quiz") renderQuizPanel(panel, data);
     else renderButtonPanel(panel, data);
   } catch (err) {
-    panel.innerHTML = `<p class="error-text">${esc(err.message)}</p>`;
+    panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
   }
 }
 
@@ -213,53 +258,54 @@ function renderGithubPanel(panel, data) {
   if (requirements.requiredOrg) notes.push(`需属于组织 ${requirements.requiredOrg}`);
 
   panel.innerHTML = `
-    <div class="panel-head">
-      <h2 class="md-typescale-headline-small">GitHub SSH 验证</h2>
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">GitHub SSH</h2>
       <p class="md-typescale-body-medium muted">
-        用已添加到 GitHub 账号的 SSH 私钥签名，不需要 OAuth，也不会读取你的私有数据。
-        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">SSH 配置指南</a>
+        用已添加到 GitHub 的 SSH 私钥签名，无需 OAuth，也不读取你的私有数据。
+        <a href="${GITHUB_SSH_DOC}" target="_blank" rel="noreferrer">配置指南</a>
       </p>
       ${notes.length ? `<p class="md-typescale-body-small muted">额外要求：${esc(notes.join("；"))}</p>` : ""}
     </div>
 
     <ol class="steps">
       <li class="step">
-        <div class="step__head"><span class="step__num">1</span><h3 class="md-typescale-title-small">输入 GitHub 用户名</h3></div>
-        <md-outlined-text-field
-          id="gh-username"
-          label="GitHub 用户名"
-          supporting-text="不带 @，例如 octocat"
-        ></md-outlined-text-field>
-      </li>
-
-      <li class="step">
-        <div class="step__head"><span class="step__num">2</span><h3 class="md-typescale-title-small">执行签名命令</h3></div>
-        <p class="md-typescale-body-small muted">在本机终端运行，私钥路径换成你自己的。</p>
-        <div class="code">
-          <div class="code__head">
-            <div class="code__tabs" id="gh-shells"></div>
-            <md-text-button id="gh-copy"><md-icon slot="icon">${svgIcon("copy", 18)}</md-icon>复制</md-text-button>
-          </div>
-          <pre id="gh-cmd"></pre>
+        <div class="step__avatar tone-primary">1</div>
+        <div class="step__body">
+          <h3 class="md-typescale-title-medium">输入 GitHub 用户名</h3>
+          <p class="md-typescale-body-medium muted">不带 @，例如 octocat</p>
+          <md-outlined-text-field id="gh-username" label="GitHub 用户名" supporting-text="会读取该账号公开的 SSH 公钥"></md-outlined-text-field>
         </div>
       </li>
 
       <li class="step">
-        <div class="step__head"><span class="step__num">3</span><h3 class="md-typescale-title-small">粘贴签名结果</h3></div>
-        <md-outlined-text-field
-          id="gh-signature"
-          type="textarea"
-          rows="5"
-          label="SSH 签名"
-          supporting-text="以 -----BEGIN SSH SIGNATURE----- 开头"
-        ></md-outlined-text-field>
+        <div class="step__avatar tone-secondary">2</div>
+        <div class="step__body">
+          <h3 class="md-typescale-title-medium">在终端签名</h3>
+          <p class="md-typescale-body-medium muted">私钥路径换成你自己的，输出即签名。</p>
+          <div class="code">
+            <div class="code__head">
+              <div class="code__tabs" id="gh-shells"></div>
+              <md-icon-button id="gh-copy" aria-label="复制命令"><md-icon>${svgIcon("copy", 20)}</md-icon></md-icon-button>
+            </div>
+            <pre id="gh-cmd"></pre>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step__avatar tone-tertiary">3</div>
+        <div class="step__body">
+          <h3 class="md-typescale-title-medium">粘贴签名</h3>
+          <p class="md-typescale-body-medium muted">以 -----BEGIN SSH SIGNATURE----- 开头</p>
+          <md-outlined-text-field id="gh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
+        </div>
       </li>
     </ol>
 
-    <div class="panel-actions">
-      <md-filled-button id="gh-submit" disabled>验证签名</md-filled-button>
+    <div class="panel__actions">
+      <md-filled-button id="gh-submit" disabled>验证并放行</md-filled-button>
     </div>
-    <p class="error-text hidden" id="gh-error"></p>
+    <p class="md-typescale-body-small hidden" id="gh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
 
   const shells = $("gh-shells");
@@ -324,7 +370,7 @@ function renderGithubPanel(panel, data) {
       $("gh-error").classList.remove("hidden");
       toast(err.message);
       submit.disabled = false;
-      submit.textContent = "验证签名";
+      submit.textContent = "验证并放行";
     }
   });
 }
@@ -333,27 +379,36 @@ function renderGithubPanel(panel, data) {
 
 function renderSshPanel(panel, data) {
   panel.innerHTML = `
-    <div class="panel-head">
-      <h2 class="md-typescale-headline-small">SSH 公钥签名</h2>
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">SSH 公钥</h2>
       <p class="md-typescale-body-medium muted">用你登记过的公钥对挑战串签名，签名只对本次验证有效。</p>
     </div>
     <ol class="steps">
       <li class="step">
-        <div class="step__head"><span class="step__num">1</span><h3 class="md-typescale-title-small">挑战串</h3></div>
-        <md-outlined-text-field id="ssh-challenge" readonly label="挑战串"></md-outlined-text-field>
+        <div class="step__avatar tone-secondary">1</div>
+        <div class="step__body">
+          <h3 class="md-typescale-title-medium">挑战串</h3>
+          <md-outlined-text-field id="ssh-challenge" readonly label="挑战串"></md-outlined-text-field>
+        </div>
       </li>
       <li class="step">
-        <div class="step__head"><span class="step__num">2</span><h3 class="md-typescale-title-small">粘贴签名</h3></div>
-        <md-outlined-text-field id="ssh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
+        <div class="step__avatar tone-tertiary">2</div>
+        <div class="step__body">
+          <h3 class="md-typescale-title-medium">粘贴签名</h3>
+          <md-outlined-text-field id="ssh-signature" type="textarea" rows="5" label="SSH 签名"></md-outlined-text-field>
+        </div>
       </li>
     </ol>
-    <div class="panel-actions"><md-filled-button id="ssh-submit">提交签名</md-filled-button></div>
-    <p class="error-text hidden" id="ssh-error"></p>
-    <div class="step">
-      <div class="step__head"><span class="step__num">+</span><h3 class="md-typescale-title-small">已登记的公钥</h3></div>
-      <div id="ssh-keys"></div>
-      <md-outlined-text-field id="ssh-pubkey" type="textarea" rows="2" label="粘贴新公钥" supporting-text="cat ~/.ssh/id_ed25519.pub"></md-outlined-text-field>
-      <div class="panel-actions"><md-outlined-button id="ssh-save">保存公钥</md-outlined-button></div>
+    <div class="panel__actions"><md-filled-button id="ssh-submit">提交签名</md-filled-button></div>
+    <p class="md-typescale-body-small hidden" id="ssh-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
+    <div class="step" style="margin-top:22px">
+      <div class="step__avatar tone-primary">+</div>
+      <div class="step__body">
+        <h3 class="md-typescale-title-medium">已登记的公钥</h3>
+        <div id="ssh-keys"></div>
+        <md-outlined-text-field id="ssh-pubkey" type="textarea" rows="2" label="粘贴新公钥" supporting-text="cat ~/.ssh/id_ed25519.pub"></md-outlined-text-field>
+        <div class="actions"><md-outlined-button id="ssh-save">保存公钥</md-outlined-button></div>
+      </div>
     </div>
   `;
 
@@ -402,7 +457,7 @@ function renderKeys(container, keys) {
   for (const key of keys) {
     const row = document.createElement("div");
     row.style.cssText =
-      "display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--md-sys-color-outline-variant)";
+      "display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--md-sys-color-outline-variant)";
     row.innerHTML = `<div><div class="mono">${esc(key.fingerprint)}</div>
       <div class="md-typescale-body-small muted">${esc(key.label || key.keyType)}</div></div>`;
     const remove = document.createElement("md-text-button");
@@ -427,29 +482,33 @@ function renderKeys(container, keys) {
 
 function renderQuizPanel(panel, data) {
   panel.innerHTML = `
-    <div class="panel-head">
-      <h2 class="md-typescale-headline-small">答题验证</h2>
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">答题</h2>
       <p class="md-typescale-body-medium muted">${esc(data.note || "")}</p>
     </div>
-    <div id="quiz-form"></div>
-    <div class="panel-actions"><md-filled-button id="quiz-submit">提交答案</md-filled-button></div>
-    <p class="error-text hidden" id="quiz-error"></p>
+    <div id="quiz-form" class="steps"></div>
+    <div class="panel__actions"><md-filled-button id="quiz-submit">提交答案</md-filled-button></div>
+    <p class="md-typescale-body-small hidden" id="quiz-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
 
   const form = $("quiz-form");
   (data.questions || []).forEach((question, index) => {
     const block = document.createElement("div");
-    block.className = "question";
-    block.innerHTML = `<p class="md-typescale-title-small">${index + 1}. ${esc(question.question)}</p>`;
+    block.className = "step";
+    block.innerHTML = `
+      <div class="step__avatar tone-${index % 2 === 0 ? "secondary" : "tertiary"}">${index + 1}</div>
+      <div class="step__body">
+        <h3 class="md-typescale-title-small">${esc(question.question)}</h3>
+      </div>`;
+    const body = block.querySelector(".step__body");
     question.options.forEach((option, optionIndex) => {
       const label = document.createElement("label");
       label.className = "option";
       label.innerHTML = `<md-radio name="q${index}" value="${optionIndex}"></md-radio><span class="md-typescale-body-medium">${esc(option)}</span>`;
       label.addEventListener("click", () => {
-        const radio = label.querySelector("md-radio");
-        radio.checked = true;
+        label.querySelector("md-radio").checked = true;
       });
-      block.appendChild(label);
+      body.appendChild(label);
     });
     form.appendChild(block);
   });
@@ -484,12 +543,12 @@ function renderQuizPanel(panel, data) {
 
 function renderButtonPanel(panel, data) {
   panel.innerHTML = `
-    <div class="panel-head">
-      <h2 class="md-typescale-headline-small">一键确认</h2>
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">一键确认</h2>
       <p class="md-typescale-body-medium muted">${esc(data.note || "点一下确认你是真人")}</p>
     </div>
-    <div class="panel-actions"><md-filled-button id="button-submit">我是真人，放行</md-filled-button></div>
-    <p class="error-text hidden" id="button-error"></p>
+    <div class="panel__actions"><md-filled-button id="button-submit">我是真人，放行</md-filled-button></div>
+    <p class="md-typescale-body-small hidden" id="button-error" style="color:var(--md-sys-color-error);margin-top:12px"></p>
   `;
   $("button-submit").addEventListener("click", async () => {
     const button = $("button-submit");
@@ -514,10 +573,9 @@ function renderButtonPanel(panel, data) {
 
 function onApproved(result) {
   clearInterval(state.timer);
-  $("pending").classList.add("hidden");
-  $("success").classList.remove("hidden");
-  $("success-icon").innerHTML = svgIcon("check", 26);
-  $("success-text").textContent = `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`;
+  $("dialog-icon").innerHTML = svgIcon("check", 30);
+  $("dialog-text").textContent = `已放行你加入「${result.chatTitle || "群组"}」，可以回到群聊了。`;
+  $("success-dialog").show();
   try {
     tg?.HapticFeedback?.notificationOccurred("success");
   } catch {}
@@ -525,14 +583,12 @@ function onApproved(result) {
 
 function startCountdown(expiresAt) {
   clearInterval(state.timer);
-  const el = $("countdown");
   const tick = () => {
     const left = Math.max(0, expiresAt - Date.now());
     const total = Math.floor(left / 1000);
-    el.textContent =
-      left > 0
-        ? `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
-        : "已过期";
+    const text = left > 0 ? `剩余 ${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}` : "已过期";
+    const chip = $("hero-countdown");
+    if (chip) chip.textContent = text;
     if (left === 0) {
       clearInterval(state.timer);
       $("method-panel").innerHTML =
@@ -556,40 +612,39 @@ function renderPreviewPanel(methodId) {
     button.textContent = "预览模式（不可提交）";
     return;
   }
-  const label = methodId === "quiz" ? "答题验证" : "一键确认";
   $("method-panel").innerHTML = `
-    <div class="panel-head">
-      <h2 class="md-typescale-headline-small">${label}</h2>
-      <p class="md-typescale-body-medium muted">预览模式只渲染 GitHub 面板作为样例；真实环境会加载这项验证的交互。</p>
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">${methodId === "quiz" ? "答题" : "一键确认"}</h2>
+      <p class="md-typescale-body-medium muted">预览模式只渲染 GitHub 面板作为样例。</p>
     </div>`;
 }
 
 function renderPreview() {
-  $("loading").classList.add("hidden");
-  $("empty").classList.add("hidden");
-  $("pending").classList.remove("hidden");
+  showState("pending");
+  setHero({
+    eyebrow: "PAFFBOT · 入群验证",
+    title: "完成验证即可入群",
+    sub: "示例群 · Paff 测试群",
+    chips: [
+      { text: "方式：GitHub SSH" },
+      { text: "剩余 05:00", id: "hero-countdown", strong: true },
+    ],
+  });
 
   const banner = document.createElement("div");
   banner.className = "preview-banner";
   banner.innerHTML = `<md-icon>${svgIcon("error", 20)}</md-icon><span>界面预览：示例数据，不会真正提交。真实验证请在 Telegram 里从 @P4ffBot 打开。</span>`;
-  $("pending").prepend(banner);
+  $("view-verify").insertBefore(banner, $("pending"));
 
-  state.verification = {
-    id: "preview",
-    chatId: -1001234567890,
-    chatTitle: "示例群 · Paff 测试群",
-    status: "pending",
-    expiresAt: Date.now() + 300_000,
-  };
-  $("chat-title").textContent = state.verification.chatTitle;
-  startCountdown(state.verification.expiresAt);
-
-  state.challenge = "paffbot-verify:v1:preview-demo:8f3a1c2b";
-  renderMethodChips([
+  state.verification = { id: "preview", chatId: -1001234567890, chatTitle: "示例群 · Paff 测试群", expiresAt: Date.now() + 300_000 };
+  state.methods = [
     { id: "github", label: "GitHub SSH" },
     { id: "quiz", label: "答题" },
     { id: "button", label: "一键确认" },
-  ]);
+  ];
+  state.challenge = "paffbot-verify:v1:preview-demo:8f3a1c2b";
+  renderMethodSwitch(state.methods);
+  startCountdown(state.verification.expiresAt);
   selectMethod("github");
 }
 
@@ -601,7 +656,6 @@ async function loadAudit() {
     $("audit-hint").textContent = "请先填写群组 ID（群里发 /id 可以看到）。";
     return;
   }
-  state.auditChat = chatId;
   localStorage.setItem("paffbot.chat", chatId);
   $("audit-hint").textContent = "查询中…";
   try {
@@ -616,22 +670,13 @@ async function loadAudit() {
 }
 
 function renderAudit(data) {
-  const labels = {
-    pending: "待验证",
-    approved: "已放行",
-    declined: "已拒绝",
-    timeout: "超时",
-    banned: "已封禁",
-    blocked: "自动拦截",
-  };
+  const labels = { pending: "待验证", approved: "已放行", declined: "已拒绝", timeout: "超时", banned: "已封禁", blocked: "自动拦截" };
   const stats = data.stats || {};
-  const statCards = Object.entries(labels)
-    .map(([key, label]) => `<div class="stat"><b>${Number(stats[key] || 0)}</b><span>${label}</span></div>`)
-    .join("");
+  const total = Object.values(stats).reduce((sum, n) => sum + Number(n || 0), 0);
 
   const chain = data.chain || { ok: true, checked: 0 };
   const chainBadge = chain.ok
-    ? `<span class="badge ok">哈希链完整 · ${chain.checked} 条</span>`
+    ? `<span class="badge ok">哈希链完整 · ${chain.checked}</span>`
     : `<span class="badge bad">哈希链在 #${chain.brokenAtId} 断开</span>`;
 
   const verificationRows = (data.verifications || [])
@@ -662,8 +707,12 @@ function renderAudit(data) {
 
   $("audit-body").innerHTML = `
     <div class="card">
-      <div class="stats">${statCards}</div>
-      <p style="margin:12px 0 0">${chainBadge}</p>
+      <div class="stats">
+        <div class="stat tone-primary"><b>${Number(stats.approved || 0)}</b><span>已放行</span></div>
+        <div class="stat tone-secondary"><b>${Number(stats.pending || 0)}</b><span>待验证</span></div>
+        <div class="stat tone-tertiary"><b>${total}</b><span>全部记录</span></div>
+      </div>
+      <p style="margin:14px 0 0">${chainBadge}</p>
     </div>
     <div class="card">
       <h2 class="md-typescale-title-medium">验证记录</h2>
@@ -715,11 +764,14 @@ function switchTab(name) {
   }
 }
 
+$("tab-verify-icon").innerHTML = svgIcon("shield", 20);
+$("tab-audit-icon").innerHTML = svgIcon("list", 20);
+$("empty-icon").innerHTML = svgIcon("inbox", 28);
+
 $("tab-verify").addEventListener("click", () => switchTab("verify"));
 $("tab-audit").addEventListener("click", () => switchTab("audit"));
-
 $("refresh").addEventListener("click", loadSession);
-$("close").addEventListener("click", () => tg?.close?.());
+$("dialog-close").addEventListener("click", () => $("success-dialog").close());
 $("btn-audit-load").addEventListener("click", loadAudit);
 $("btn-audit-csv").addEventListener("click", downloadCsv);
 $("btn-token").addEventListener("click", () => {
@@ -728,7 +780,5 @@ $("btn-token").addEventListener("click", () => {
   $("token-card").classList.add("hidden");
   loadSession();
 });
-
-$("empty-icon").innerHTML = svgIcon("inbox", 26);
 
 loadSession();

@@ -231,14 +231,16 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 
 ## 界面（Material 3）
 
-- 组件来自官方 `@material/web`，由 `ui/vendor.ts` 统一注册，`scripts/build-ui.mjs` 打成
-  `public/vendor/material.js`（约 62 KiB gzip），本地自托管。
+- 组件来自官方 `@material/web`（含 labs：elevated/filled card、segmented button、badge），
+  由 `ui/vendor.ts` 统一注册，`scripts/build-ui.mjs` 打成 `public/vendor/material.js`，本地自托管。
 - 配色是运行时算的：种子色 → `themeFromSourceColor` → 完整 light/dark scheme，
   写进 `--md-sys-color-*`。surface container 阶梯（`surface-container-low` 等）
   按 MD3 规范从 neutral 调色板取 tone 值。
 - 种子色优先级：`?seed=` > Telegram 主题的 `button_color` > 默认品牌色。
 - 主题：跟随 `?theme=` / localStorage / Telegram `colorScheme`，右上角可切换。
-- 排版用 `md-typescale-*` 字阶；按钮全圆角；卡片 tonal surface + `outline-variant` 描边。
+- 视觉语言：primary-container 做 hero、secondary/tertiary-container 做步骤与统计、无边框
+  tonal elevation 做卡片、28px 大圆角、display/headline 级字阶对比、segmented button 切换方式、
+  成功用 `md-dialog` 呈现。
 - 浏览器预览：`/?preview=1`（示例数据，不会提交），支持 `&theme=dark`、`&seed=%233390EC`。
 
 ## 从 YumeBot 带过来的映射

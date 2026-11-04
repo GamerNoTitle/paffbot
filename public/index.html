@@ -10,10 +10,9 @@
   </head>
   <body>
     <header class="app-bar">
-      <div class="app-bar__leading"><span class="brand-mark">P</span></div>
-      <div class="app-bar__title">
-        <h1 class="md-typescale-title-large">paffbot</h1>
-        <p class="md-typescale-body-small app-bar__sub" id="whoami">入群验证</p>
+      <div class="app-bar__brand">
+        <span class="brand-mark">P</span>
+        <span class="md-typescale-title-medium">paffbot</span>
       </div>
       <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
         <md-icon id="theme-icon"></md-icon>
@@ -21,46 +20,41 @@
     </header>
 
     <main class="page">
-      <md-tabs id="tabs" aria-label="页面">
-        <md-primary-tab id="tab-verify" active>验证</md-primary-tab>
-        <md-primary-tab id="tab-audit">审计</md-primary-tab>
+      <md-tabs aria-label="页面" class="tabs">
+        <md-primary-tab id="tab-verify" active>
+          <md-icon slot="icon" id="tab-verify-icon"></md-icon>
+          验证
+        </md-primary-tab>
+        <md-primary-tab id="tab-audit">
+          <md-icon slot="icon" id="tab-audit-icon"></md-icon>
+          审计
+        </md-primary-tab>
       </md-tabs>
 
       <section id="view-verify" class="view">
-        <div class="card state" id="loading">
-          <md-circular-progress indeterminate></md-circular-progress>
-          <p class="md-typescale-body-medium muted">加载中…</p>
+        <div class="hero" id="hero">
+          <p class="md-typescale-label-large hero__eyebrow" id="hero-eyebrow">PAFFBOT · 入群验证</p>
+          <h1 class="md-typescale-display-small hero__title" id="hero-title">正在检查…</h1>
+          <p class="md-typescale-body-large hero__sub" id="hero-sub">稍等，正在读取你的验证状态</p>
+          <div class="hero__chips" id="hero-chips"></div>
         </div>
 
-        <div class="card state hidden" id="empty">
+        <div class="state" id="state-loading">
+          <md-circular-progress indeterminate></md-circular-progress>
+        </div>
+
+        <div class="state hidden" id="state-empty">
           <div class="state__icon"><md-icon id="empty-icon"></md-icon></div>
-          <h2 class="md-typescale-title-medium">暂无待验证的申请</h2>
-          <p class="md-typescale-body-medium muted">在群里点击「申请加入」后，我会私聊你一个验证入口。</p>
-          <md-outlined-button id="refresh">刷新</md-outlined-button>
+          <h2 class="md-typescale-headline-small" id="empty-title">暂无待验证的申请</h2>
+          <p class="md-typescale-body-medium muted" id="empty-text">
+            在群里点击「申请加入」后，我会私聊你一个验证入口。
+          </p>
+          <md-filled-tonal-button id="refresh">刷新状态</md-filled-tonal-button>
         </div>
 
         <div id="pending" class="hidden">
-          <div class="card meta">
-            <div class="meta__row">
-              <span class="md-typescale-label-medium muted">目标群</span>
-              <strong id="chat-title" class="md-typescale-title-medium"></strong>
-            </div>
-            <md-divider></md-divider>
-            <div class="meta__row">
-              <span class="md-typescale-label-medium muted">剩余时间</span>
-              <strong id="countdown" class="md-typescale-title-medium mono"></strong>
-            </div>
-          </div>
-
-          <div id="method-chips" class="chips"></div>
-          <div class="card panel" id="method-panel"></div>
-        </div>
-
-        <div class="card state hidden" id="success">
-          <div class="state__icon ok"><md-icon id="success-icon"></md-icon></div>
-          <h2 class="md-typescale-headline-small">验证通过</h2>
-          <p class="md-typescale-body-medium muted" id="success-text"></p>
-          <md-filled-button id="close">关闭</md-filled-button>
+          <md-outlined-segmented-button-set id="method-switch" class="method-switch"></md-outlined-segmented-button-set>
+          <div class="panel" id="method-panel"></div>
         </div>
       </section>
 
@@ -72,7 +66,7 @@
             type="password"
             supporting-text="浏览器模式需要部署时设置的 ADMIN_TOKEN"
           ></md-outlined-text-field>
-          <div class="btn-row">
+          <div class="actions">
             <md-filled-button id="btn-token">保存并使用</md-filled-button>
           </div>
         </div>
@@ -84,7 +78,7 @@
             inputmode="numeric"
             supporting-text="在群里发 /id 可以看到"
           ></md-outlined-text-field>
-          <div class="btn-row">
+          <div class="actions">
             <md-filled-button id="btn-audit-load">查询</md-filled-button>
             <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
           </div>
@@ -94,8 +88,19 @@
         <div id="audit-body"></div>
       </section>
 
-      <footer class="foot md-typescale-body-small">paffbot · Cloudflare Workers + D1</footer>
+      <footer class="foot md-typescale-label-medium">paffbot · Cloudflare Workers + D1</footer>
     </main>
+
+    <md-dialog id="success-dialog" type="alert">
+      <div slot="headline" class="md-typescale-headline-small">验证通过</div>
+      <div slot="content" class="dialog-body">
+        <div class="dialog-icon"><md-icon id="dialog-icon"></md-icon></div>
+        <p class="md-typescale-body-medium" id="dialog-text"></p>
+      </div>
+      <div slot="actions">
+        <md-filled-button id="dialog-close">完成</md-filled-button>
+      </div>
+    </md-dialog>
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
