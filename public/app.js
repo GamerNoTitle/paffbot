@@ -1,4 +1,5 @@
 import { applyTheme, telegramSeed, DEFAULT_SEED } from "./vendor/material.js";
+import { shapeMask } from "./shapes.js";
 
 /* ---------------------------------------------------------------- 基础环境 */
 
@@ -135,6 +136,8 @@ function showState(name) {
   $("state-loading").classList.toggle("hidden", name !== "loading");
   $("state-empty").classList.toggle("hidden", name !== "empty");
   $("pending").classList.toggle("hidden", name !== "pending");
+  $("hero-progress").classList.toggle("hidden", name !== "pending");
+  $("hero-cta").classList.toggle("hidden", name !== "pending");
 }
 
 /* ---------------------------------------------------------------- 会话 */
@@ -248,7 +251,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
           <p class="md-typescale-body-medium muted">私钥路径换成你自己的，输出即签名。</p>
           <div class="code">
             <div class="code__head">
-              <div class="code__tabs" id="gh-shells"></div>
+              <div class="segmented segmented--sm" role="tablist" aria-label="终端" id="gh-shells"></div>
               <md-text-button id="gh-copy">${svgIcon("copy", 18)}<span>复制</span></md-text-button>
             </div>
             <pre id="gh-cmd"></pre>
@@ -272,21 +275,28 @@ function renderGithubPanel(panel, data, mode = "verify") {
   `;
 
   const shells = $("gh-shells");
+  const syncShells = () => {
+    for (const button of shells.querySelectorAll("button")) {
+      button.setAttribute("aria-selected", String(button.dataset.shell === state.shell));
+    }
+  };
   for (const [id, label] of [
     ["bash", "Bash"],
     ["pwsh", "PowerShell"],
   ]) {
-    const chip = document.createElement("md-filter-chip");
-    chip.setAttribute("label", label);
-    chip.dataset.shell = id;
-    chip.selected = state.shell === id;
-    chip.addEventListener("click", () => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.shell = id;
+    button.textContent = label;
+    button.setAttribute("role", "tab");
+    button.addEventListener("click", () => {
       state.shell = id;
-      for (const other of shells.querySelectorAll("md-filter-chip")) other.selected = other.dataset.shell === id;
+      syncShells();
       $("gh-cmd").textContent = githubCommand(id);
     });
-    shells.appendChild(chip);
+    shells.appendChild(button);
   }
+  syncShells();
   $("gh-cmd").textContent = githubCommand(state.shell);
 
   $("gh-copy").addEventListener("click", async () => {
@@ -421,6 +431,7 @@ function onApproved(result) {
 
 function startCountdown(expiresAt) {
   clearInterval(state.timer);
+  const totalMs = Math.max(1, expiresAt - Date.now());
   const tick = () => {
     const left = Math.max(0, expiresAt - Date.now());
     const total = Math.floor(left / 1000);
@@ -430,6 +441,8 @@ function startCountdown(expiresAt) {
         : "已过期";
     const chip = $("hero-countdown");
     if (chip) chip.textContent = text;
+    const bar = $("ttl-progress");
+    if (bar) bar.value = String(left / totalMs);
     if (left === 0) {
       clearInterval(state.timer);
       if (state.standalone) {
@@ -675,6 +688,9 @@ async function downloadCsv() {
 function switchTab(name) {
   $("view-verify").classList.toggle("hidden", name !== "verify");
   $("view-audit").classList.toggle("hidden", name !== "audit");
+  for (const button of $("nav").querySelectorAll("button")) {
+    button.setAttribute("aria-selected", String(button.dataset.view === name));
+  }
   if (name === "audit") {
     if (!tg?.initData && !state.token) $("token-card").classList.remove("hidden");
     if (!$("audit-chat").value) {
@@ -684,12 +700,20 @@ function switchTab(name) {
   }
 }
 
-$("tab-verify-icon").innerHTML = svgIcon("shield", 20);
-$("tab-audit-icon").innerHTML = svgIcon("list", 20);
 $("empty-icon").innerHTML = svgIcon("inbox", 28);
 
-$("tab-verify").addEventListener("click", () => switchTab("verify"));
-$("tab-audit").addEventListener("click", () => switchTab("audit"));
+// 形状装饰：空态图标用 cookie9，成功弹窗用 flower
+const root = document.documentElement;
+root.style.setProperty("--shape-empty", shapeMask("cookie9"));
+root.style.setProperty("--shape-success", shapeMask("flower"));
+
+for (const button of $("nav").querySelectorAll("button")) {
+  button.addEventListener("click", () => switchTab(button.dataset.view));
+}
+$("hero-cta").addEventListener("click", () => {
+  $("method-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(() => $("gh-username")?.focus(), 400);
+});
 $("refresh").addEventListener("click", loadSession);
 $("btn-standalone").addEventListener("click", () => enterStandalone());
 $("dialog-close").addEventListener("click", () => $("success-dialog").close());

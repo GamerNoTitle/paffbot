@@ -3,46 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#4F5BD5" />
+    <meta name="theme-color" content="#5060B0" />
     <title>paffbot · 入群验证</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
-    <header class="app-bar">
-      <div class="app-bar__inner">
-        <div class="app-bar__brand">
-          <span class="brand-mark">P</span>
-          <span class="md-typescale-title-medium">paffbot</span>
+    <div class="page">
+      <div class="page-top">
+        <div class="segmented" role="tablist" aria-label="页面" id="nav">
+          <button type="button" role="tab" data-view="verify" aria-selected="true">验证</button>
+          <button type="button" role="tab" data-view="audit" aria-selected="false">审计</button>
         </div>
         <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
           <md-icon id="theme-icon"></md-icon>
         </md-icon-button>
       </div>
-    </header>
-
-    <div class="tabs-bar">
-      <md-tabs aria-label="页面" class="tabs">
-        <md-primary-tab id="tab-verify" active>
-          <md-icon slot="icon" id="tab-verify-icon"></md-icon>
-          验证
-        </md-primary-tab>
-        <md-primary-tab id="tab-audit">
-          <md-icon slot="icon" id="tab-audit-icon"></md-icon>
-          审计
-        </md-primary-tab>
-      </md-tabs>
-    </div>
-
-    <main class="page">
-
 
       <section id="view-verify" class="view">
         <div class="hero" id="hero">
-          <p class="md-typescale-label-large hero__eyebrow" id="hero-eyebrow">PAFFBOT · 入群验证</p>
-          <h1 class="md-typescale-display-small hero__title" id="hero-title">正在检查…</h1>
-          <p class="md-typescale-body-large hero__sub" id="hero-sub">稍等，正在读取你的验证状态</p>
-          <div class="hero__chips" id="hero-chips"></div>
+          <div class="hero__copy">
+            <p class="hero__eyebrow" id="hero-eyebrow">PAFFBOT</p>
+            <h1 class="hero__title" id="hero-title">正在检查…</h1>
+            <p class="hero__sub" id="hero-sub">稍等，正在读取你的验证状态</p>
+            <div class="hero__chips" id="hero-chips"></div>
+            <div class="hero__progress hidden" id="hero-progress">
+              <md-linear-progress id="ttl-progress" value="1" aria-label="剩余时间"></md-linear-progress>
+            </div>
+            <md-filled-button id="hero-cta" class="hidden">开始验证</md-filled-button>
+          </div>
+          <div class="hero__art" aria-hidden="true">
+            <img src="./assets/hero.jpg" alt="" decoding="async" />
+          </div>
         </div>
 
         <div class="state" id="state-loading">
@@ -99,12 +91,13 @@
         <div id="audit-body"></div>
       </section>
 
-    </main>
+      <footer class="foot md-typescale-label-medium">paffbot · Cloudflare Workers + D1</footer>
+    </div>
 
     <md-dialog id="success-dialog" type="alert">
       <div slot="headline" class="md-typescale-headline-small" id="dialog-title">验证通过</div>
       <div slot="content" class="dialog-body">
-        <div class="dialog-icon"><md-icon id="dialog-icon"></md-icon></div>
+        <div class="dialog-icon" id="dialog-icon-wrap"><md-icon id="dialog-icon"></md-icon></div>
         <p class="md-typescale-body-medium" id="dialog-text"></p>
       </div>
       <div slot="actions">

@@ -8,7 +8,7 @@ import { argbFromHex, hexFromArgb, themeFromSourceColor } from "@material/materi
  *   2. Telegram 主题的 button_color（跟随用户客户端主题）
  *   3. 默认品牌色
  */
-const DEFAULT_SEED = "#4F5BD5";
+const DEFAULT_SEED = "#5060B0";
 
 const SCHEME_KEYS = [
   "primary",

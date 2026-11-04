@@ -9,9 +9,7 @@ import "@material/web/button/text-button.js";
 import "@material/web/iconbutton/icon-button.js";
 import "@material/web/icon/icon.js";
 import "@material/web/textfield/outlined-text-field.js";
-import "@material/web/tabs/tabs.js";
-import "@material/web/tabs/primary-tab.js";
-import "@material/web/chips/filter-chip.js";
+import "@material/web/progress/linear-progress.js";
 import "@material/web/progress/circular-progress.js";
 import "@material/web/dialog/dialog.js";
 
