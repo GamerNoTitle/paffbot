@@ -223,35 +223,50 @@ body {
 
 .hero-shape {
   position: absolute;
+  line-height: 0;
+  will-change: rotate;
+}
+
+.hero-shape svg {
   display: block;
+  shape-rendering: geometricPrecision;
 }
 
 .hero-shape--a {
   right: 2%;
   top: -2%;
-  transform: rotate(-8deg);
+  rotate: -8deg;
 }
 
 .hero-shape--b {
   right: 24%;
   top: 46%;
-  transform: rotate(12deg);
+  rotate: 12deg;
 }
 
 .hero-shape--c {
   right: 4%;
   bottom: 8%;
-  transform: rotate(-14deg);
+  rotate: -14deg;
 }
 
 .hero-shape--d {
   right: 42%;
   top: 10%;
-  transform: rotate(18deg);
+  rotate: 18deg;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes drift {
+  @keyframes spin-cw {
+    from {
+      rotate: var(--from);
+    }
+    to {
+      rotate: calc(var(--from) + 360deg);
+    }
+  }
+
+  @keyframes float-y {
     0%,
     100% {
       translate: 0 0;
@@ -261,16 +276,24 @@ body {
     }
   }
 
-  .hero-shape--a {
-    animation: drift 9s ease-in-out infinite;
+  .hero__art.is-visible .hero-shape--a {
+    --from: -8deg;
+    animation: spin-cw 48s linear infinite;
   }
 
-  .hero-shape--b {
-    animation: drift 7s ease-in-out infinite 0.6s;
+  .hero__art.is-visible .hero-shape--b {
+    --from: 12deg;
+    animation: spin-cw 64s linear infinite reverse;
   }
 
-  .hero-shape--d {
-    animation: drift 8s ease-in-out infinite 1.2s;
+  .hero__art.is-visible .hero-shape--d {
+    --from: 18deg;
+    animation: spin-cw 38s linear infinite;
+  }
+
+  .hero__art.is-visible .hero-shape--c {
+    --from: -14deg;
+    animation: float-y 6s ease-in-out infinite;
   }
 }
 

@@ -723,13 +723,31 @@ function initWave() {
 function renderHeroArt() {
   const art = $("hero-art");
   if (!art) return;
+
+  const shape = (name, size, color, cls) =>
+    `<div class="hero-shape ${cls}">${shapeSvg(name, { size, color })}</div>`;
+
   art.innerHTML = [
-    shapeSvg("cookie9", { size: 186, color: "color-mix(in srgb, var(--md-sys-color-primary) 88%, transparent)", className: "hero-shape hero-shape--a" }),
-    shapeSvg("flower", { size: 128, color: "var(--md-sys-color-tertiary-container)", className: "hero-shape hero-shape--b" }),
-    shapeSvg("heart", { size: 72, color: "color-mix(in srgb, var(--md-sys-color-primary) 55%, transparent)", className: "hero-shape hero-shape--c" }),
-    shapeSvg("sunny", { size: 62, color: "color-mix(in srgb, var(--md-sys-color-on-primary-container) 32%, transparent)", className: "hero-shape hero-shape--d" }),
+    shape("cookie9", 186, "color-mix(in srgb, var(--md-sys-color-primary) 88%, transparent)", "hero-shape--a"),
+    shape("flower", 128, "var(--md-sys-color-tertiary-container)", "hero-shape--b"),
+    shape("heart", 72, "color-mix(in srgb, var(--md-sys-color-primary) 55%, transparent)", "hero-shape--c"),
+    shape("sunny", 62, "color-mix(in srgb, var(--md-sys-color-on-primary-container) 32%, transparent)", "hero-shape--d"),
   ].join("");
+
+  // 进入视口才转，离开就停
+  if (!("IntersectionObserver" in window)) {
+    art.classList.add("is-visible");
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) art.classList.toggle("is-visible", entry.isIntersecting);
+    },
+    { threshold: 0.15 },
+  );
+  observer.observe(art);
 }
+
 renderHeroArt();
 initWave();
 

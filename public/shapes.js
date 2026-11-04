@@ -43,7 +43,8 @@ function repeat(points, reps, mirroring) {
   const out = [];
   for (let it = 0; it < n * reps; it += 1) {
     const point = points[it % n];
-    const angle = (((it / n) * 360) / reps) * (Math.PI / 180);
+    // Kotlin 里 `it / n` 是整除，这里必须 floor，否则每个点都会被额外旋转
+    const angle = ((Math.floor(it / n) * 360) / reps) * (Math.PI / 180);
     const dx = point.x - CENTER.x;
     const dy = point.y - CENTER.y;
     out.push({
@@ -78,7 +79,12 @@ function normalize(points) {
 
 const round = (n) => Math.round(n * 1000) / 1000;
 
-/** 生成 path：每条边 → 直线到切点，顶点处用贝塞尔圆弧过渡。 */
+/**
+ * 生成 path：每条边 → 直线到切点，顶点处用三次贝塞尔拟合圆弧。
+ *
+ * 关键是把切线长度夹在相邻边长的一半以内，否则相邻顶点的切点会互相越过、
+ * 在轮廓上扎出尖刺（之前 cookie9 的毛刺就是这么来的）。
+ */
 function toPath(points, size) {
   const pts = points.map((p) => ({ x: p.x * size, y: p.y * size, r: p.r }));
   const n = pts.length;
@@ -89,23 +95,32 @@ function toPath(points, size) {
     const prev = pts[(i - 1 + n) % n];
     const next = pts[(i + 1) % n];
 
-    const lenIn = Math.hypot(cur.x - prev.x, cur.y - prev.y);
-    const lenOut = Math.hypot(next.x - cur.x, next.y - cur.y);
-    const radius = cur.r * Math.min(lenIn, lenOut) * 0.5;
+    const l1 = Math.hypot(prev.x - cur.x, prev.y - cur.y);
+    const l2 = Math.hypot(next.x - cur.x, next.y - cur.y);
+    if (l1 < 1e-6 || l2 < 1e-6) continue;
 
-    if (radius < 0.01) {
+    const u1 = { x: (prev.x - cur.x) / l1, y: (prev.y - cur.y) / l1 };
+    const u2 = { x: (next.x - cur.x) / l2, y: (next.y - cur.y) / l2 };
+
+    // 内角
+    const cos = Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y));
+    const angle = Math.acos(cos);
+
+    // 切线长度：不超过两侧边长的一半（留 5% 余量），转角趋近平角时收缩为 0
+    const maxT = 0.45 * Math.min(l1, l2);
+    const t = cur.r <= 0 ? 0 : Math.min(cur.r * Math.min(l1, l2) * 0.5, maxT, maxT / Math.max(0.2, Math.tan(angle / 2)));
+
+    if (t < 0.05) {
       segments.push({ type: "line", to: { x: cur.x, y: cur.y } });
       continue;
     }
 
-    // 切点：沿两条边各退 radius
-    const tIn = radius / lenIn;
-    const tOut = radius / lenOut;
-    const start = { x: cur.x + (prev.x - cur.x) * tIn, y: cur.y + (prev.y - cur.y) * tIn };
-    const end = { x: cur.x + (next.x - cur.x) * tOut, y: cur.y + (next.y - cur.y) * tOut };
+    const start = { x: cur.x + u1.x * t, y: cur.y + u1.y * t };
+    const end = { x: cur.x + u2.x * t, y: cur.y + u2.y * t };
 
-    // 圆弧近似：控制点沿切线方向偏移
-    const k = 0.5523;
+    // 圆弧 → 三次贝塞尔：控制点沿切线方向偏移 k
+    const sweep = Math.PI - angle;
+    const k = (4 / 3) * Math.tan(Math.max(0.001, sweep) / 4);
     const c1 = { x: start.x + (cur.x - start.x) * k, y: start.y + (cur.y - start.y) * k };
     const c2 = { x: end.x + (cur.x - end.x) * k, y: end.y + (cur.y - end.y) * k };
 
@@ -115,14 +130,11 @@ function toPath(points, size) {
   let d = "";
   for (let i = 0; i < segments.length; i += 1) {
     const seg = segments[i];
-    const nextSeg = segments[(i + 1) % segments.length];
     if (seg.type === "corner") {
-      if (i === 0) d += `M${round(seg.start.x)} ${round(seg.start.y)}`;
-      else d += `L${round(seg.start.x)} ${round(seg.start.y)}`;
+      d += `${i === 0 ? "M" : "L"}${round(seg.start.x)} ${round(seg.start.y)}`;
       d += `C${round(seg.c1.x)} ${round(seg.c1.y)} ${round(seg.c2.x)} ${round(seg.c2.y)} ${round(seg.end.x)} ${round(seg.end.y)}`;
-    } else if (nextSeg.type === "corner") {
-      if (i === 0) d += `M${round(seg.to.x)} ${round(seg.to.y)}`;
-      else d += `L${round(seg.to.x)} ${round(seg.to.y)}`;
+    } else {
+      d += `${i === 0 ? "M" : "L"}${round(seg.to.x)} ${round(seg.to.y)}`;
     }
   }
   return `${d}Z`;
@@ -131,6 +143,11 @@ function toPath(points, size) {
 function build(points, reps = 1, mirroring = false, size = 100) {
   return toPath(normalize(repeat(points, reps, mirroring)), size);
 }
+
+/**
+ * 星形/花瓣这类尖角密度高的形状，用闭合 Catmull-Rom 过点平滑，
+ * 视觉上就是 M3 的「饼干/花朵」；用圆角切线法反而会在内凹处打结出毛刺。
+ */
 
 const R = {
   r15: 0.15,
@@ -151,26 +168,16 @@ const DEFS = {
       2,
       false,
     ),
-  sunny: () =>
-    build(
-      [
-        vertex(0.5, 0.0, R.r15),
-        vertex(0.5 + 0.8 * 0.5, 0.5 - 0.8 * 0.29, R.r15),
-        vertex(0.5 + 0.8 * 0.87, 0.5 - 0.8 * 0.5, R.r15),
-        vertex(0.5 + 0.8, 0.5, R.r15),
-        vertex(0.5 + 0.8 * 0.87, 0.5 + 0.8 * 0.5, R.r15),
-        vertex(0.5 + 0.8 * 0.5, 0.5 + 0.8 * 0.87, R.r15),
-        vertex(0.5, 0.5 + 0.8, R.r15),
-        vertex(0.5 - 0.8 * 0.5, 0.5 + 0.8 * 0.87, R.r15),
-        vertex(0.5 - 0.8 * 0.87, 0.5 + 0.8 * 0.5, R.r15),
-        vertex(0.5 - 0.8, 0.5, R.r15),
-        vertex(0.5 - 0.8 * 0.87, 0.5 - 0.8 * 0.5, R.r15),
-        vertex(0.5 - 0.8 * 0.5, 0.5 - 0.8 * 0.87, R.r15),
-        vertex(0.5, 0.5 - 0.8, R.r15),
-      ],
-      1,
-      false,
-    ),
+  sunny: () => {
+    const pts = [];
+    for (let i = 0; i < 8; i += 1) {
+      const outer = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      const inner = outer + Math.PI / 8;
+      pts.push(vertex(0.5 + Math.cos(outer) * 0.5, 0.5 + Math.sin(outer) * 0.5, 0.15));
+      pts.push(vertex(0.5 + Math.cos(inner) * 0.4, 0.5 + Math.sin(inner) * 0.4, 0.15));
+    }
+    return build(pts);
+  },
   cookie4: () => build([vertex(1.237, 1.236, 0.258), vertex(0.5, 0.918, 0.233)], 4, false),
   cookie6: () => build([vertex(0.723, 0.884, 0.394), vertex(0.5, 1.099, 0.398)], 6, false),
   cookie9: () =>
