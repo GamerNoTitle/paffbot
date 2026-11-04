@@ -59,7 +59,7 @@ export function dmTimeout(chatTitle: string): string {
 }
 
 export function dmRateLimited(limit: number): string {
-  return `今天的验证次数用完了（每天 ${limit} 次），明天再来。`;
+  return `今天在这个群的验证次数用完了（每天 ${limit} 次），明天再来。`;
 }
 
 export function dmBlocked(chatTitle: string, reason: string): string {

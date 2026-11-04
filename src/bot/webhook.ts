@@ -79,7 +79,11 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   // 超管不占用每日次数（自测用）
   let remaining: number | undefined;
   if (!isSuperAdmin(ctx.config, user.id)) {
-    const quota = await consumeDailyQuota(ctx.db, `tg:${user.id}`, ctx.config.dailyAttempts);
+    const quota = await consumeDailyQuota(
+      ctx.db,
+      `tg:${request.chat.id}:${user.id}`,
+      ctx.config.dailyAttempts,
+    );
     if (!quota.allowed) {
       await ctx.tg.safe("declineChatJoinRequest", { chat_id: request.chat.id, user_id: user.id });
       await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(quota.limit), parse_mode: "HTML" });
@@ -180,7 +184,7 @@ async function startDirectJoinVerification(
 ): Promise<void> {
   let remaining: number | undefined;
   if (!isSuperAdmin(ctx.config, user.id)) {
-    const quota = await consumeDailyQuota(ctx.db, `tg:${user.id}`, ctx.config.dailyAttempts);
+    const quota = await consumeDailyQuota(ctx.db, `tg:${chatId}:${user.id}`, ctx.config.dailyAttempts);
     if (!quota.allowed) {
       await ctx.tg.banChatMember(chatId, user.id).catch(() => undefined);
       await ctx.tg.unbanChatMember(chatId, user.id).catch(() => undefined);

@@ -8,7 +8,7 @@ Telegram 群组「入群验证 / 自动放行」机器人。纯 TypeScript 跑�
 
 - **两种入群模式**：Telegram「入群申请」审核，或直接入群后先禁言再验证。
 - **验证方式**：GitHub SSH —— 用 GitHub 账号上已公开的公钥验签，不需要 OAuth；Provider 接口保留，后续可扩展别的验证方式。
-- **一次性挑战 + 每日限流**：浏览器校验的挑战 nonce 落库、校验即消费，重放直接失效；同一 Telegram 账号每天 3 次验证机会，用完后提示明天再来。
+- **一次性挑战 + 每日限流**：浏览器校验的挑战 nonce 落库、校验即消费，重放直接失效；同一账号在同一群每天 3 次验证机会（换群重新计），用完后提示明天再来。
 - **服务端判定，不信客户端**：Mini App 用 Telegram `initData` 验签识别用户；GitHub 验证由 Worker 拉 `github.com/<user>.keys` 并验 SSHSIG；放行动作由服务端直接调用 Telegram，不依赖前端 `sendData` 自证。
 - **Material 3 界面**：官方 [Material Web](https://github.com/material-components/material-web) 组件（tabs / filter chip / outlined text field / filled button / radio…），
   MD3 动态配色（种子色 → 完整 tonal palette，支持明暗主题、跟随 Telegram 主题色），自托管打包，不依赖 CDN。
@@ -88,7 +88,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `ADMIN_IDS` | ⭕ | 超管 Telegram user id，逗号分隔；可跨群操作、看全量审计 |
 | `ADMIN_TOKEN` | ⭕ | 浏览器直接访问审计 API 的 Bearer token（secret） |
 | `VERIFY_TTL_SECONDS` | ⭕ | 验证有效期，默认 300（与 Telegram 入群申请私聊窗口一致） |
-| `VERIFY_DAILY_LIMIT` | ⭕ | 每个 Telegram 账号 / 每个 IP 每天可发起的验证次数，默认 3 |
+| `VERIFY_DAILY_LIMIT` | ⭕ | 每个群内每个账号 / 每个 IP 每天可发起的验证次数，默认 3 |
 | `MINI_APP_URL` | ⭕ | Mini App 绝对地址；不填则用 webhook 请求的 origin |
 | `TELEGRAM_API_BASE` | ⭕ | 自定义 Bot API 地址（本地 mock / 自建网关用） |
 | `GITHUB_TOKEN` | ⭕ | 只在启用下面两个门槛时才需要（`api.github.com` 未鉴权 60 次/小时） |
