@@ -5,6 +5,7 @@ import {
   setChatVerify,
   type ChatVerifyRow,
 } from "../db";
+import { appendAudit } from "../db/audit";
 import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 import { escapeHtml } from "../lib/html";
 import type { TgMessage } from "../lib/telegram";
@@ -101,6 +102,22 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   const result = await verifyGithubOwnership(ctx.config, row.username, text, challengeFor(pending));
   if (!result.ok) {
+    // 记一下原文特征，方便排查客户端粘贴时被“美化”的情况
+    await appendAudit(ctx.db, {
+      actorId: from.id,
+      actorType: "user",
+      action: "verification.failed",
+      chatId: pending.chat_id,
+      targetUserId: from.id,
+      verificationId: pending.id,
+      detail: {
+        via: "chat",
+        error: result.error,
+        textLength: text.length,
+        head: text.slice(0, 24),
+        tail: text.slice(-24),
+      },
+    });
     await say(
       ctx,
       from.id,

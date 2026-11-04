@@ -41,16 +41,49 @@ interface ParsedSshSig {
   signatureBlob: Uint8Array;
 }
 
+/**
+ * 从聊天里粘贴过来的签名经常被“美化”过：全角破折号、零宽字符、CRLF，
+ * 或者复制时漏掉首尾的短横线。这里先把这些噪声抹平，再做严格解析。
+ */
+function normalizeArmor(armor: string): string {
+  return armor
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u2010-\u2015\u2212\uFF0D]/g, "-")
+    .replace(/\r\n?/g, "\n")
+    .trim();
+}
+
 function decodeArmor(armor: string): Uint8Array {
-  const match = /-----BEGIN SSH SIGNATURE-----([\s\S]*?)-----END SSH SIGNATURE-----/.exec(armor);
-  if (!match) throw new SshFormatError("这不是 SSHSIG 签名（缺少 BEGIN/END SSH SIGNATURE 标记）");
-  const base64 = (match[1] ?? "").replace(/\s+/g, "");
-  if (!base64) throw new SshFormatError("SSHSIG 内容为空");
-  try {
-    return fromBase64(base64);
-  } catch {
-    throw new SshFormatError("SSHSIG base64 段无法解码");
+  const text = normalizeArmor(armor);
+  const match = /-----BEGIN SSH SIGNATURE-----([\s\S]*?)-----END SSH SIGNATURE-----/.exec(text);
+
+  if (match) {
+    const base64 = (match[1] ?? "").replace(/\s+/g, "");
+    if (!base64) throw new SshFormatError("SSHSIG 内容为空");
+    try {
+      return fromBase64(base64);
+    } catch {
+      throw new SshFormatError("SSHSIG base64 段无法解码");
+    }
   }
+
+  // 兜底：没有完整标记时，取最长的 base64 片段，只有解出来确实以 SSHSIG 开头才接受
+  const body = text
+    .replace(/-*\s*BEGIN SSH SIGNATURE\s*-*/gi, "")
+    .replace(/-*\s*END SSH SIGNATURE\s*-*/gi, "")
+    .replace(/[^A-Za-z0-9+/=]/g, "");
+  if (body.length >= 32) {
+    try {
+      const bytes = fromBase64(body);
+      if (new TextDecoder().decode(bytes.slice(0, 6)) === "SSHSIG") return bytes;
+    } catch {
+      /* 落到下面的统一报错 */
+    }
+  }
+
+  throw new SshFormatError(
+    "这不是 SSHSIG 签名（需要以 -----BEGIN SSH SIGNATURE----- 开头，整段粘贴）",
+  );
 }
 
 export function parseSshSignature(armor: string): ParsedSshSig {
