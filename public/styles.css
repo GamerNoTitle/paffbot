@@ -362,6 +362,23 @@ body {
   clip-path: inset(0 calc(100% - var(--pct, 100%)) 0 0);
 }
 
+/* 波形流动：轨道与进度条用同一组关键帧，保持同相位，避免叠影 */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wavy-flow {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-10px);
+    }
+  }
+
+  .wavy__track,
+  .wavy__bar {
+    animation: wavy-flow 1.6s linear infinite;
+  }
+}
+
 .wavy__track,
 .wavy__bar {
   fill: none;
