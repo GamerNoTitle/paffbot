@@ -23,6 +23,9 @@ export interface Env {
 
   GITHUB_TOKEN?: string;
   GITHUB_KEYS_BASE?: string;
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  GITHUB_OAUTH_SECRET?: string;
+  GITHUB_OAUTH_REDIRECT?: string;
   GITHUB_MIN_ACCOUNT_AGE_DAYS?: string;
   GITHUB_REQUIRED_ORG?: string;
 
@@ -42,6 +45,9 @@ export interface Config {
   apiBase: string;
   githubToken: string | null;
   githubKeysBase: string;
+  oauthClientId: string | null;
+  oauthSecret: string | null;
+  oauthRedirect: string | null;
   githubMinAccountAgeDays: number;
   githubRequiredOrg: string | null;
   retentionDays: number;
@@ -109,6 +115,9 @@ export function loadConfig(env: Env): Config {
     apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
     githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,
     githubKeysBase: (env.GITHUB_KEYS_BASE ?? "https://github.com").replace(/\/+$/, ""),
+    oauthClientId: (env.GITHUB_OAUTH_CLIENT_ID ?? "").trim() || null,
+    oauthSecret: (env.GITHUB_OAUTH_SECRET ?? "").trim() || null,
+    oauthRedirect: (env.GITHUB_OAUTH_REDIRECT ?? "").trim() || null,
     githubMinAccountAgeDays: parseIntOr(env.GITHUB_MIN_ACCOUNT_AGE_DAYS, 0, 0, 3650),
     githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
     retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),

@@ -56,6 +56,9 @@ const state = {
   timer: 0,
   token: localStorage.getItem("paffbot.token") || "",
   botUsername: "",
+  oauthEnabled: false,
+  githubLogin: "",
+  oauthTimer: 0,
 };
 
 function paintTheme() {
@@ -190,10 +193,12 @@ async function loadPanel() {
   const panel = $("method-panel");
   panel.innerHTML = '<p class="md-typescale-body-medium muted">加载中…</p>';
   if (PREVIEW) {
-    renderGithubPanel(panel, {
-      challenge: state.challenge,
-      requirements: { minAccountAgeDays: 0, requiredOrg: null },
-    });
+    const fake = { challenge: state.challenge, requirements: { minAccountAgeDays: 0, requiredOrg: null } };
+    if (state.oauthEnabled) {
+      renderMethodPanel(panel, fake);
+      return;
+    }
+    renderGithubPanel(panel, fake);
     const button = $("gh-submit");
     button.disabled = true;
     button.textContent = "预览模式（不可提交）";
@@ -204,10 +209,97 @@ async function loadPanel() {
       `/api/verify/start?method=github&verificationId=${encodeURIComponent(state.verification.id)}`,
     );
     state.challenge = data.challenge || "";
-    renderGithubPanel(panel, data);
+    renderMethodPanel(panel, data);
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
   }
+}
+
+/** 面板顶部的方式切换：签名（纯前端算） / OAuth（要跳 GitHub）。 */
+function renderMethodPanel(panel, data) {
+  if (state.standalone || !state.oauthEnabled) {
+    renderGithubPanel(panel, data);
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="segmented segmented--sm panel__switch" role="tablist" aria-label="验证方式" id="pm-switch">
+      <button type="button" role="tab" data-method="ssh" aria-selected="true">SSH 签名</button>
+      <button type="button" role="tab" data-method="oauth" aria-selected="false">GitHub OAuth</button>
+    </div>
+    <div id="pm-body"></div>`;
+
+  const body = $("pm-body");
+  const switchTo = (method) => {
+    for (const b of $("pm-switch").querySelectorAll("button")) {
+      b.setAttribute("aria-selected", String(b.dataset.method === method));
+    }
+    stopOAuthPolling();
+    if (method === "oauth") renderOAuthPanel(body);
+    else renderGithubPanel(body, data);
+  };
+
+  for (const b of $("pm-switch").querySelectorAll("button")) {
+    b.addEventListener("click", () => switchTo(b.dataset.method));
+  }
+  switchTo("ssh");
+}
+
+function stopOAuthPolling() {
+  if (state.oauthTimer) {
+    clearInterval(state.oauthTimer);
+    state.oauthTimer = 0;
+  }
+}
+
+/** OAuth：在系统浏览器里授权，Mini App 轮询绑定结果。 */
+function renderOAuthPanel(panel) {
+  panel.innerHTML = `
+    <div class="panel__head">
+      <h2 class="md-typescale-headline-medium">GitHub OAuth</h2>
+      <p class="md-typescale-body-medium muted">
+        在 GitHub 上授权后自动建立账号绑定，不需要在终端操作，也不读取你的私有仓库。
+        ${state.githubLogin ? `当前已绑定 <b>${esc(state.githubLogin)}</b>。` : ""}
+      </p>
+    </div>
+    <div class="actions">
+      <md-filled-button id="oauth-start">使用 GitHub 授权</md-filled-button>
+    </div>
+    <p class="md-typescale-body-small muted" id="oauth-status" style="margin-top:16px"></p>`;
+
+  $("oauth-start").addEventListener("click", async () => {
+    const button = $("oauth-start");
+    button.disabled = true;
+    $("oauth-status").textContent = "正在跳转 GitHub…";
+
+    try {
+      const data = await api(
+        `/api/oauth/github/start?verificationId=${encodeURIComponent(state.verification.id)}`,
+      );
+      const url = data.url;
+      if (tg?.openLink) tg.openLink(url);
+      else window.open(url, "_blank", "noopener");
+
+      $("oauth-status").textContent = "已在新窗口打开 GitHub，完成授权后这里会自动更新。";
+      stopOAuthPolling();
+      state.oauthTimer = window.setInterval(async () => {
+        try {
+          const status = await api("/api/oauth/github/status");
+          if (status.bound) {
+            stopOAuthPolling();
+            state.githubLogin = status.bound.login;
+            $("oauth-status").textContent = `已绑定 ${status.bound.login}`;
+            onApproved({ chatTitle: state.verification?.chatTitle });
+          }
+        } catch {
+          /* 网络抖动时继续轮询 */
+        }
+      }, 2000);
+    } catch (err) {
+      $("oauth-status").textContent = err.message;
+      button.disabled = false;
+    }
+  });
 }
 
 /* ---------------------------------------------------------------- GitHub SSH */
@@ -493,6 +585,7 @@ function renderPreview() {
     expiresAt: Date.now() + 300_000,
   };
   state.challenge = "paffbot-verify:v1:preview-demo:8f3a1c2b";
+  if (params.get("oauth") === "1") state.oauthEnabled = true;
   startCountdown(state.verification.expiresAt);
   loadPanel();
 }

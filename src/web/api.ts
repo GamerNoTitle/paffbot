@@ -1,6 +1,10 @@
 import { Hono, type Context } from "hono";
 import {
   consumeDailyQuota,
+  consumeOAuthState,
+  createOAuthState,
+  getGithubAccount,
+  upsertGithubAccount,
   findOpenVerification,
   getVerification,
   listVerifications,
@@ -21,6 +25,12 @@ import { isGroupAdmin, isSuperAdmin } from "../bot/auth";
 import type { BotContext } from "../bot/context";
 import { approveVerification } from "../verify/finalize";
 import { createProviderRegistry } from "../verify/registry";
+import {
+  authorizeUrl,
+  exchangeCode,
+  fetchGithubAccount,
+  oauthEnabled,
+} from "../lib/github-oauth";
 import { botUsername } from "../bot/identity";
 import { validateInitData, type InitDataUser } from "./initdata";
 
@@ -73,12 +83,15 @@ export function createApi(): Hono<AppBindings> {
     const ctx = c.get("ctx");
 
     const open = await findOpenVerification(ctx.db, user.id);
+    const bound = await getGithubAccount(ctx.db, user.id);
 
     return c.json({
       ok: true,
       user: { id: user.id, name: displayName({ ...user, id: user.id }) },
       superAdmin: isSuperAdmin(ctx.config, user.id),
       botUsername: await botUsername(ctx.tg),
+      oauth: { enabled: oauthEnabled(ctx.config) },
+      github: bound ? { login: bound.github_login } : null,
       methods: ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description })),
       ttlSeconds: ctx.config.ttlSeconds,
       verification: open ? publicVerification(open) : null,
@@ -158,7 +171,86 @@ export function createApi(): Hono<AppBindings> {
 
     if (!approved) return c.json({ ok: false, error: "这条验证刚刚已被处理，请刷新" }, 409);
 
+    // 签名同样能证明账号归属，顺手建立绑定（OAuth 会补上 github_id）
+    const login = (result.proof as { githubUsername?: string } | undefined)?.githubUsername;
+    if (typeof login === "string" && login) {
+      await upsertGithubAccount(ctx.db, user.id, login, null, "signature");
+    }
+
     return c.json({ ok: true, approved: true, chatTitle: verification.chat_title });
+  });
+
+  // ------------------------------------------------ GitHub OAuth（仅 Mini App）
+
+  /** 发起授权：返回 GitHub 授权地址 + 一次性 state。 */
+  api.get("/api/oauth/github/start", async (c) => {
+    const ctx = c.get("ctx");
+    if (!oauthEnabled(ctx.config)) return c.json({ ok: false, error: "OAuth 未配置" }, 503);
+
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+
+    const verificationId = c.req.query("verificationId") || null;
+    const state = randomToken(24);
+    await createOAuthState(ctx.db, state, auth.user.id, verificationId, 10 * 60 * 1000);
+
+    const redirectUri = ctx.config.oauthRedirect ?? `${new URL(c.req.url).origin}/api/oauth/github/callback`;
+    return c.json({ ok: true, state, url: authorizeUrl(ctx.config, state, redirectUri) });
+  });
+
+  /** GitHub 回调：换 token、取账号、建立绑定，顺带完成待验证申请。 */
+  api.get("/api/oauth/github/callback", async (c) => {
+    const ctx = c.get("ctx");
+    const code = c.req.query("code");
+    const state = c.req.query("state");
+    if (!code || !state) return c.html(callbackPage("参数缺失", "GitHub 没有带回 code/state。"), 400);
+
+    const row = await consumeOAuthState(ctx.db, state);
+    if (!row) return c.html(callbackPage("链接已失效", "这次授权已过期或已被使用，请回到 Mini App 重新发起。"), 400);
+
+    const redirectUri = ctx.config.oauthRedirect ?? `${new URL(c.req.url).origin}/api/oauth/github/callback`;
+    const token = await exchangeCode(ctx.config, code, redirectUri);
+    if (!token) return c.html(callbackPage("授权失败", "GitHub 没有返回 access token，请重试。"), 400);
+
+    const account = await fetchGithubAccount(token);
+    if (!account) return c.html(callbackPage("读取账号失败", "GitHub 账号信息读取失败，请重试。"), 400);
+
+    await upsertGithubAccount(ctx.db, row.telegram_user_id, account.login, account.id, "oauth");
+
+    let approved = false;
+    if (row.verification_id) {
+      const pending = await getVerification(ctx.db, row.verification_id);
+      if (pending && pending.status === "pending" && pending.user_id === row.telegram_user_id) {
+        approved = await approveVerification({ db: ctx.db, tg: ctx.tg }, pending, {
+          method: "github_oauth",
+          actorId: row.telegram_user_id,
+          actorType: "user",
+          proof: { githubLogin: account.login, githubId: account.id, via: "oauth" },
+        });
+      }
+    }
+
+    return c.html(
+      callbackPage(
+        approved ? "验证通过" : "绑定完成",
+        approved
+          ? `已绑定 GitHub 账号 ${account.login}，并放行你入群。可以关闭这个页面回到 Telegram。`
+          : `已绑定 GitHub 账号 ${account.login}。可以关闭这个页面回到 Telegram。`,
+      ),
+    );
+  });
+
+  /** Mini App 轮询：授权是否完成。 */
+  api.get("/api/oauth/github/status", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: `initData 校验失败（${auth.reason}）` }, 401);
+
+    const account = await getGithubAccount(ctx.db, auth.user.id);
+    return c.json({
+      ok: true,
+      bound: account ? { login: account.github_login, githubId: account.github_id, at: account.bound_at } : null,
+    });
   });
 
   // ------------------------------------------------ 浏览器独立校验（无 Telegram）
@@ -422,6 +514,25 @@ function serializeAudit(row: {
     verificationId: row.verification_id,
     detail,
   };
+}
+
+/** OAuth 回调落在浏览器里，给一个能收尾的静态页。 */
+function callbackPage(title: string, message: string): string {
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 芙 Bot</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#EEECF7;color:#1B1B21;
+font:16px/1.6 "PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+@media (prefers-color-scheme: dark){body{background:#141218;color:#E7E0EC}}
+.card{background:#fff;border-radius:28px;padding:40px 36px;max-width:420px;margin:24px;text-align:center;
+box-shadow:0 18px 40px rgba(0,0,0,.08)}
+@media (prefers-color-scheme: dark){.card{background:#1D1B20}}
+h1{font-size:26px;font-weight:500;margin:0 0 12px}
+p{margin:0;color:#5A5A66}
+@media (prefers-color-scheme: dark){p{color:#A9A3B3}}
+a{display:inline-block;margin-top:22px;padding:12px 24px;border-radius:999px;background:#5060B0;color:#fff;text-decoration:none}
+</style></head><body><div class="card"><h1>${title}</h1><p>${message}</p>
+<a href="https://verify.bili33.top/">回到验证页</a></div></body></html>`;
 }
 
 function clientIp(c: Context<AppBindings>): string {

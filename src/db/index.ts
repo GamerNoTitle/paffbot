@@ -274,6 +274,83 @@ export async function pruneRateLimits(db: D1Database, keepDays = 7): Promise<num
   return result.meta.changes ?? 0;
 }
 
+// ---------------------------------------------------------------- github binding
+
+export interface GithubAccountRow {
+  telegram_user_id: number;
+  github_id: number | null;
+  github_login: string;
+  bound_at: number;
+  method: string;
+}
+
+export async function upsertGithubAccount(
+  db: D1Database,
+  telegramUserId: number,
+  login: string,
+  githubId: number | null,
+  method: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO github_accounts (telegram_user_id, github_id, github_login, bound_at, method)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(telegram_user_id) DO UPDATE SET github_id = excluded.github_id,
+         github_login = excluded.github_login, bound_at = excluded.bound_at, method = excluded.method`,
+    )
+    .bind(telegramUserId, githubId, login, nowMs(), method)
+    .run();
+}
+
+export async function getGithubAccount(
+  db: D1Database,
+  telegramUserId: number,
+): Promise<GithubAccountRow | null> {
+  return db
+    .prepare("SELECT * FROM github_accounts WHERE telegram_user_id = ?")
+    .bind(telegramUserId)
+    .first<GithubAccountRow>();
+}
+
+export interface OAuthStateRow {
+  state: string;
+  telegram_user_id: number;
+  verification_id: string | null;
+  created_at: number;
+  expires_at: number;
+  used_at: number | null;
+}
+
+export async function createOAuthState(
+  db: D1Database,
+  state: string,
+  telegramUserId: number,
+  verificationId: string | null,
+  ttlMs: number,
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT INTO oauth_states (state, telegram_user_id, verification_id, created_at, expires_at, used_at) VALUES (?, ?, ?, ?, ?, NULL)",
+    )
+    .bind(state, telegramUserId, verificationId, nowMs(), nowMs() + ttlMs)
+    .run();
+}
+
+/** 原子消费：只有未使用且未过期的 state 才返回。 */
+export async function consumeOAuthState(db: D1Database, state: string): Promise<OAuthStateRow | null> {
+  const now = nowMs();
+  const row = await db
+    .prepare("SELECT * FROM oauth_states WHERE state = ? AND used_at IS NULL AND expires_at > ?")
+    .bind(state, now)
+    .first<OAuthStateRow>();
+  if (!row) return null;
+  const result = await db
+    .prepare("UPDATE oauth_states SET used_at = ? WHERE state = ? AND used_at IS NULL")
+    .bind(now, state)
+    .run();
+  return (result.meta.changes ?? 0) > 0 ? row : null;
+}
+
 // ---------------------------------------------------------------- chat verify
 
 export interface ChatVerifyRow {

@@ -89,6 +89,9 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `ADMIN_TOKEN` | ⭕ | 浏览器直接访问审计 API 的 Bearer token（secret） |
 | `VERIFY_TTL_SECONDS` | ⭕ | 验证有效期，默认 300（与 Telegram 入群申请私聊窗口一致） |
 | `VERIFY_DAILY_LIMIT` | ⭕ | 每个群内每个账号 / 每个 IP 每天可发起的验证次数，默认 3 |
+| `GITHUB_OAUTH_CLIENT_ID` | ⭕ | GitHub OAuth App 的 Client ID（配置后 Mini App 出现 OAuth 方式） |
+| `GITHUB_OAUTH_SECRET` | 🔒 | OAuth App 的 Client Secret |
+| `GITHUB_OAUTH_REDIRECT` | ⭕ | 回调地址，默认 `<origin>/api/oauth/github/callback` |
 | `MINI_APP_URL` | ⭕ | Mini App 绝对地址；不填则用 webhook 请求的 origin |
 | `TELEGRAM_API_BASE` | ⭕ | 自定义 Bot API 地址（本地 mock / 自建网关用） |
 | `GITHUB_TOKEN` | ⭕ | 只在启用下面两个门槛时才需要（`api.github.com` 未鉴权 60 次/小时） |
@@ -207,6 +210,21 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 > 改了 `ui/` 或 `public/` 的组件后跑 `npm run build:ui` 重新打包（`npm run deploy` 会自动执行）。
 
 `npm run smoke` 不碰真实 Telegram：它起一个 mock Bot API，跑通「入群申请 → 私聊按钮 → 登记公钥 → SSHSIG 验签 → 批准」「直接入群 → 禁言 → 答题失败 → 管理员 /pass → 解除禁言」「超时 → cron → decline」「审计查询 + 哈希链自检 + 越权 403」。
+
+## GitHub OAuth 绑定（仅 Mini App）
+
+OAuth 用来建立 **Telegram 用户 ↔ GitHub 账号** 的绑定，绑定不是入群的必要条件（后续还会加别的身份方式）。
+
+- 只能在 Mini App 里发起；聊天里只支持 SSH 签名验证，不做 OAuth
+- 流程：Mini App → `GET /api/oauth/github/start`（带 initData）→ 系统浏览器打开 GitHub 授权页 → 回调 `GET /api/oauth/github/callback` 换 token、写 `github_accounts`、顺带放行待验证申请 → Mini App 轮询 `/api/oauth/github/status` 拿到结果
+- `state` 一次性、10 分钟有效，存在 `oauth_states` 表
+- 签名验证通过时也会记录绑定（`method='signature'`，没有 `github_id`），OAuth 会补全
+
+GitHub OAuth App 的 **Authorization callback URL** 需要填：
+
+```
+https://verify.bili33.top/api/oauth/github/callback
+```
 
 ## 聊天内验证（Mini App 打不开时的兜底）
 
