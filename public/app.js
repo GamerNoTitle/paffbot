@@ -155,6 +155,10 @@ async function loadSession() {
   try {
     const data = await api("/api/session");
     state.verification = data.verification;
+    state.botUsername = data.botUsername || "";
+    state.superAdmin = Boolean(data.superAdmin);
+    state.oauthEnabled = Boolean(data.oauth?.enabled);
+    state.githubLogin = data.github?.login || "";
 
     if (!data.verification) {
       const name = data.user?.name?.split(" ")[0];
