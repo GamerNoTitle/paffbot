@@ -581,10 +581,24 @@ const STATUS_META = {
   blocked: { label: "自动拦截", tone: "tone-error" },
 };
 
+/** 按浏览器本地时区显示（之前写死 UTC+8，非东八区用户会看到错的时间）。 */
 function fmtTime(ts) {
-  const d = new Date(ts + 8 * 3600 * 1000);
+  const d = new Date(ts);
   const p = (n) => String(n).padStart(2, "0");
-  return `${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** 悬浮显示完整本地时间（含时区/秒），方便对表。 */
+function fmtTimeFull(ts) {
+  return new Date(ts).toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
 }
 
 /** 状态已经说明了方式时不再重复一行 */
@@ -616,7 +630,7 @@ function renderAudit(data) {
     .map((row) => {
       const meta = STATUS_META[row.status] ?? { label: row.status, tone: "" };
       return `<tr>
-        <td data-label="时间"><div class="cell mono">${fmtTime(row.createdAt)}</div></td>
+        <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.createdAt))}">${fmtTime(row.createdAt)}</div></td>
         <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
         <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
         <td data-label="说明" class="muted"><div class="cell">${esc(
@@ -629,7 +643,7 @@ function renderAudit(data) {
   const auditRows = (data.audit || [])
     .map(
       (row) => `<tr>
-        <td data-label="时间"><div class="cell mono">${fmtTime(row.ts)}</div></td>
+        <td data-label="时间"><div class="cell mono" title="${esc(fmtTimeFull(row.ts))}">${fmtTime(row.ts)}</div></td>
         <td data-label="操作者"><div class="cell">${esc(ACTOR_LABEL[row.actorType] ?? row.actorType)}${
           row.actorId ? `<span class="cell-sub mono">${esc(row.actorId)}</span>` : ""
         }</div></td>
