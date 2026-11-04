@@ -338,8 +338,7 @@ body {
 
 .hero__eyebrow {
   margin: 0 0 14px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   opacity: 0.72;
   font-size: 11.5px;
 }

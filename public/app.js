@@ -154,7 +154,7 @@ async function loadSession() {
     if (!data.verification) {
       const name = data.user?.name?.split(" ")[0];
       setHero({
-        eyebrow: "PAFFBOT · 入群验证",
+        eyebrow: "芙 Bot · 入群验证",
         title: name ? `你好，${name}` : "暂无待验证",
         sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
         chips: [],
@@ -165,7 +165,7 @@ async function loadSession() {
 
     const v = data.verification;
     setHero({
-      eyebrow: "PAFFBOT · 入群验证",
+      eyebrow: "芙 Bot · 入群验证",
       title: "完成 GitHub 签名即可入群",
       sub: v.chatTitle ?? String(v.chatId),
       chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
@@ -180,7 +180,7 @@ async function loadSession() {
       showState("empty");
       $("empty-title").textContent = "加载失败";
       $("empty-text").textContent = err.message;
-      setHero({ eyebrow: "PAFFBOT", title: "出错了", sub: err.message, chips: [] });
+      setHero({ eyebrow: "芙 Bot", title: "出错了", sub: err.message, chips: [] });
     }
   }
 }
@@ -371,7 +371,7 @@ async function enterStandalone() {
   state.standalone = true;
   showState("pending");
   setHero({
-    eyebrow: "PAFFBOT",
+    eyebrow: "芙 Bot",
     title: "确认 GitHub 账号",
     sub: "用该账号已公开的公钥签名，确认归属。",
     chips: [],
@@ -387,7 +387,7 @@ async function loadStandalonePanel() {
     state.checkToken = data.token;
     state.challenge = data.challenge;
     setHero({
-      eyebrow: "PAFFBOT",
+      eyebrow: "芙 Bot",
       title: "确认 GitHub 账号",
       sub: "用该账号已公开的公钥签名，确认归属。",
       chips: [
@@ -474,7 +474,7 @@ function startCountdown(expiresAt) {
 function renderPreview() {
   showState("pending");
   setHero({
-    eyebrow: "PAFFBOT · 入群验证",
+    eyebrow: "芙 Bot · 入群验证",
     title: "完成 GitHub 签名即可入群",
     sub: "示例群 · Paff 测试群",
     chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
