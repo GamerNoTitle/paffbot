@@ -23,6 +23,10 @@ export interface Env {
   MINI_APP_URL?: string;
   TELEGRAM_API_BASE?: string;
 
+  GITHUB_TOKEN?: string;
+  GITHUB_MIN_ACCOUNT_AGE_DAYS?: string;
+  GITHUB_REQUIRED_ORG?: string;
+
   AUDIT_RETENTION_DAYS?: string;
   SCREEN_KEYWORDS?: string;
   ENVIRONMENT?: string;
@@ -39,12 +43,15 @@ export interface Config {
   quizBankRaw: string | undefined;
   miniAppUrl: string | null;
   apiBase: string;
+  githubToken: string | null;
+  githubMinAccountAgeDays: number;
+  githubRequiredOrg: string | null;
   retentionDays: number;
   screenKeywords: string[];
   environment: string;
 }
 
-export const DEFAULT_METHODS = ["ssh", "quiz", "button"] as const;
+export const DEFAULT_METHODS = ["github", "ssh", "quiz", "button"] as const;
 
 const DEFAULT_SCREEN_KEYWORDS = [
   "博彩",
@@ -111,6 +118,9 @@ export function loadConfig(env: Env): Config {
     quizBankRaw: env.QUIZ_BANK,
     miniAppUrl: (env.MINI_APP_URL ?? "").trim() || null,
     apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
+    githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,
+    githubMinAccountAgeDays: parseIntOr(env.GITHUB_MIN_ACCOUNT_AGE_DAYS, 0, 0, 3650),
+    githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
     retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
     environment: (env.ENVIRONMENT ?? "production").trim(),

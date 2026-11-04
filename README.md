@@ -7,8 +7,8 @@ Telegram 群组「入群验证 / 自动放行」机器人。纯 TypeScript 跑�
 ## 特性
 
 - **两种入群模式**：Telegram「入群申请」审核，或直接入群后先禁言再验证。
-- **多选一验证**：SSH 公钥签名（默认，强度最高）/ 答题 / 一键确认，用户自选；新增方式只需实现一个 Provider。
-- **服务端判定，不信客户端**：Mini App 用 Telegram `initData` 验签识别用户；SSH 用一次性挑战串 + SSHSIG 验签；放行动作由服务端直接调用 Telegram，不依赖前端 `sendData` 自证。
+- **多选一验证**：GitHub SSH（默认，用 GitHub 账号上已公开的公钥验签）/ 自有公钥签名 / 答题 / 一键确认；新增方式只需实现一个 Provider。
+- **服务端判定，不信客户端**：Mini App 用 Telegram `initData` 验签识别用户；GitHub 验证由 Worker 拉 `github.com/<user>.keys` 并验 SSHSIG；放行动作由服务端直接调用 Telegram，不依赖前端 `sendData` 自证。
 - **审计闭环**：每次申请、放行、拒绝、超时、手动操作都落库，附 `operator_id`，并维护 SHA-256 哈希链，改库可被发现；Mini App 内可查、可导出 CSV。
 - **env 部署**：`wrangler.jsonc` 的 vars + secrets，三条命令上线；`scripts/set-webhook.mjs` 自动注册 webhook 与命令菜单。
 - **管理员模型**：`ADMIN_IDS` 超管 + Telegram 实时群管理员（`can_restrict_members`，缓存 60s），权限跟着群设置走。
@@ -90,14 +90,34 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `QUIZ_BANK` | ⭕ | JSON 题库覆盖内置题库 |
 | `MINI_APP_URL` | ⭕ | Mini App 绝对地址；不填则用 webhook 请求的 origin |
 | `TELEGRAM_API_BASE` | ⭕ | 自定义 Bot API 地址（本地 mock / 自建网关用） |
+| `GITHUB_TOKEN` | ⭕ | 只在启用下面两个门槛时才需要（`api.github.com` 未鉴权 60 次/小时） |
+| `GITHUB_MIN_ACCOUNT_AGE_DAYS` | ⭕ | GitHub 账号最小年龄，默认 0（关闭） |
+| `GITHUB_REQUIRED_ORG` | ⭕ | 要求属于某个 GitHub 组织（按公开组织成员判断） |
 | `SCREEN_KEYWORDS` | ⭕ | 覆盖默认拦截关键词，逗号分隔 |
 | `AUDIT_RETENTION_DAYS` | ⭕ | 已结案验证记录保留天数，默认 365（审计日志不清理） |
 
-## 三种验证方式
+## 验证方式
 
-### SSH 公钥签名（推荐）
+### GitHub SSH（默认，推荐）
 
-用户首次在 Mini App 里粘贴公钥（`cat ~/.ssh/id_ed25519.pub`），之后每次验证：
+和 `verify.yumeyuka.moe` 同一套思路，但校验放在服务端，**不需要 OAuth、不需要任何 GitHub 授权**：
+
+```
+1. 用户填 GitHub 用户名
+2. 本机执行：echo "<挑战串>" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -
+3. Worker 拉 github.com/<用户名>.keys，用其中任意一把公钥验签
+4. 指纹对得上 → 放行
+```
+
+证明的两件事：**签名的私钥在你手上**，且**对应公钥确实挂在这个 GitHub 账号下**（能往账号里加公钥的人 = 账号持有者）。
+
+- 只读 `github.com/<user>.keys`（纯文本，不需要鉴权，不受 API 限流）
+- 支持 ed25519 / RSA（rsa-sha2-256/512）/ ECDSA p256·384·521；`sk-*` 硬件密钥浏览器内无法校验，会提示换普通密钥
+- 签名既接受 `echo` 产生的尾随换行，也接受无换行；命名空间 `file` 与 `paffbot` 都认
+
+### 自有公钥签名（可选）
+
+不经过 GitHub，公钥直接登记在 bot 里。用户首次粘贴公钥（`cat ~/.ssh/id_ed25519.pub`），之后每次验证：
 
 ```bash
 # 挑战串由页面给出，原样写入，不要加换行
@@ -158,10 +178,11 @@ cat msg.txt.sig        # 粘回页面
 
 1. **直接入群模式需要用户先私聊 bot**。Telegram 不允许 bot 主动私聊没和它说过话的人；只有「入群申请」场景有 5 分钟主动私聊窗口。群里那条提示会引导用户发 `/start`。
 2. **`VERIFY_TTL_SECONDS` 不要明显超过 300**（申请模式的私聊窗口是 5 分钟），除非你只用直接入群模式。
-3. **`button` 方式无法区分人和脚本**，生产建议至少启用 `ssh`。
-4. 审计哈希链是「单写者」假设：D1 本身单库串行写，够用；若改多写者架构需要换成链式锁或外部账本。
-5. Mini App 必须在 HTTPS 下打开（Telegram 要求），本地联调需要隧道（如 `cloudflared tunnel`）。
-6. 数据库是 D1（SQLite 方言）。SQL 刻意写得比较保守，迁 TiDB 需要改驱动与少量方言（见下）。
+3. **`button` 方式无法区分人和脚本**，生产建议至少启用 `github`。
+4. GitHub 验证依赖账号里已添加的 SSH 公钥；只挂 `sk-*` 硬件密钥的账号在浏览器内校验不了。
+5. 审计哈希链是「单写者」假设：D1 本身单库串行写，够用；若改多写者架构需要换成链式锁或外部账本。
+6. Mini App 必须在 HTTPS 下打开（Telegram 要求），本地联调需要隧道（如 `cloudflared tunnel`）。
+7. 数据库是 D1（SQLite 方言）。SQL 刻意写得比较保守，迁 TiDB 需要改驱动与少量方言（见下）。
 
 ## 迁到 TiDB 的路径
 
@@ -214,4 +235,5 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 | 内存 `unordered_map` 待验证表 | D1 + CAS |
 | 5 分钟超时（内存定时器） | Cron 每分钟扫 + 惰性判定 |
 | 客户端 `sendData` 自证 | 服务端验签后直接放行 |
+| GitHub SSH 验证（客户端算） | Worker 拉 `github.com/<user>.keys` 服务端验签 |
 | stdout 日志 | `verifications` + `audit_log` 哈希链 |

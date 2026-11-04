@@ -8,3 +8,8 @@ ADMIN_IDS=123456789
 ADMIN_TOKEN=
 # 可选：Mini App 绝对地址；留空则用 webhook 请求的 origin 自动推导
 MINI_APP_URL=
+
+# 可选：GitHub 验证门槛（不配也能用；配了才会调 api.github.com）
+GITHUB_TOKEN=
+GITHUB_MIN_ACCOUNT_AGE_DAYS=0
+GITHUB_REQUIRED_ORG=

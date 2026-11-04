@@ -1,10 +1,11 @@
 import type { Config } from "../env";
 import { buttonProvider } from "./providers/button";
+import { githubProvider } from "./providers/github";
 import { quizProvider } from "./providers/quiz";
 import { sshProvider } from "./providers/ssh";
 import type { VerifyProvider } from "./types";
 
-const ALL: VerifyProvider[] = [sshProvider, quizProvider, buttonProvider];
+const ALL: VerifyProvider[] = [githubProvider, sshProvider, quizProvider, buttonProvider];
 
 export interface ProviderRegistry {
   get(id: string): VerifyProvider | undefined;

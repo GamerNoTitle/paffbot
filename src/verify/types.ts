@@ -27,6 +27,8 @@ export interface ProviderStart {
   questions?: PublicQuestion[];
   keys?: PublicSshKey[];
   note?: string;
+  /** 给前端的额外门槛提示（如 GitHub 账号年龄、组织要求） */
+  requirements?: Record<string, unknown>;
 }
 
 export type ProviderSubmitResult = { ok: true; proof?: Record<string, unknown> } | { ok: false; error: string };
