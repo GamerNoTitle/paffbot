@@ -5,21 +5,24 @@
   "type": "module",
   "description": "Telegram 群组入群验证 / 放行机器人，跑在 Cloudflare Workers + D1 上",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "npm run build:ui && wrangler dev",
+    "deploy": "npm run build:ui && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:local": "wrangler d1 migrations apply DB --local",
     "db:remote": "wrangler d1 migrations apply DB --remote",
     "webhook": "node scripts/set-webhook.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "check": "tsc --noEmit && vitest run"
+    "check": "tsc --noEmit && tsc -p ui --noEmit && vitest run",
+    "build:ui": "node scripts/build-ui.mjs"
   },
   "dependencies": {
     "hono": "^4.6.14"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
+    "@material/material-color-utilities": "^0.4.0",
+    "@material/web": "^2.5.0",
     "@types/node": "^26.6.6",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",

@@ -3,87 +3,102 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#4F5BD5" />
     <title>paffbot · 入群验证</title>
-    <link rel="stylesheet" href="./style.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
+    <header class="app-bar">
+      <div class="app-bar__leading"><span class="brand-mark">P</span></div>
+      <div class="app-bar__title">
+        <h1 class="md-typescale-title-large">paffbot</h1>
+        <p class="md-typescale-body-small app-bar__sub" id="whoami">入群验证</p>
+      </div>
+      <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
+        <md-icon id="theme-icon"></md-icon>
+      </md-icon-button>
+    </header>
+
     <main class="page">
-      <header class="topbar">
-        <div class="brand">
-          <div class="mark">P</div>
-          <div>
-            <div class="name">paffbot</div>
-            <div class="sub" id="whoami">入群验证</div>
-          </div>
-        </div>
-        <nav class="tabs" role="tablist">
-          <button class="tab active" data-tab="verify" role="tab">验证</button>
-          <button class="tab" data-tab="audit" role="tab">审计</button>
-        </nav>
-      </header>
+      <md-tabs id="tabs" aria-label="页面">
+        <md-primary-tab id="tab-verify" active>验证</md-primary-tab>
+        <md-primary-tab id="tab-audit">审计</md-primary-tab>
+      </md-tabs>
 
       <section id="view-verify" class="view">
-        <div class="card center muted" id="loading">加载中…</div>
+        <div class="card state" id="loading">
+          <md-circular-progress indeterminate></md-circular-progress>
+          <p class="md-typescale-body-medium muted">加载中…</p>
+        </div>
 
-        <div class="card center hidden" id="empty">
-          <h2>暂无待验证的申请</h2>
-          <p class="help">在群里点击「申请加入」后，我会私聊你一个验证入口。</p>
-          <button class="ghost" id="refresh">刷新</button>
+        <div class="card state hidden" id="empty">
+          <div class="state__icon"><md-icon id="empty-icon"></md-icon></div>
+          <h2 class="md-typescale-title-medium">暂无待验证的申请</h2>
+          <p class="md-typescale-body-medium muted">在群里点击「申请加入」后，我会私聊你一个验证入口。</p>
+          <md-outlined-button id="refresh">刷新</md-outlined-button>
         </div>
 
         <div id="pending" class="hidden">
-          <div class="card meta-card">
-            <div class="meta-row">
-              <span class="label">目标群</span>
-              <strong id="chat-title">—</strong>
+          <div class="card meta">
+            <div class="meta__row">
+              <span class="md-typescale-label-medium muted">目标群</span>
+              <strong id="chat-title" class="md-typescale-title-medium"></strong>
             </div>
-            <div class="meta-row">
-              <span class="label">剩余时间</span>
-              <strong id="countdown" class="mono">—</strong>
+            <md-divider></md-divider>
+            <div class="meta__row">
+              <span class="md-typescale-label-medium muted">剩余时间</span>
+              <strong id="countdown" class="md-typescale-title-medium mono"></strong>
             </div>
           </div>
 
-          <div class="chips" id="method-chips"></div>
-          <div class="card" id="method-panel"></div>
+          <div id="method-chips" class="chips"></div>
+          <div class="card panel" id="method-panel"></div>
         </div>
 
-        <div class="card center hidden" id="success">
-          <div class="success-icon">✓</div>
-          <h2>验证通过</h2>
-          <p class="help" id="success-text"></p>
-          <button class="primary" id="close">关闭</button>
+        <div class="card state hidden" id="success">
+          <div class="state__icon ok"><md-icon id="success-icon"></md-icon></div>
+          <h2 class="md-typescale-headline-small">验证通过</h2>
+          <p class="md-typescale-body-medium muted" id="success-text"></p>
+          <md-filled-button id="close">关闭</md-filled-button>
         </div>
       </section>
 
       <section id="view-audit" class="view hidden">
         <div class="card hidden" id="token-card">
-          <label class="field">
-            <span>浏览器模式：填入 ADMIN_TOKEN</span>
-            <input id="admin-token" type="password" placeholder="仅部署者知道" autocomplete="off" />
-          </label>
-          <button class="primary" id="btn-token">保存并使用</button>
+          <md-outlined-text-field
+            id="admin-token"
+            label="ADMIN_TOKEN"
+            type="password"
+            supporting-text="浏览器模式需要部署时设置的 ADMIN_TOKEN"
+          ></md-outlined-text-field>
+          <div class="btn-row">
+            <md-filled-button id="btn-token">保存并使用</md-filled-button>
+          </div>
         </div>
 
         <div class="card">
-          <label class="field">
-            <span>群组 ID</span>
-            <input id="audit-chat" inputmode="numeric" placeholder="例如 -1001234567890" />
-          </label>
-          <div class="row gap">
-            <button class="primary" id="btn-audit-load">查询</button>
-            <button class="ghost" id="btn-audit-csv">导出 CSV</button>
+          <md-outlined-text-field
+            id="audit-chat"
+            label="群组 ID"
+            inputmode="numeric"
+            supporting-text="在群里发 /id 可以看到"
+          ></md-outlined-text-field>
+          <div class="btn-row">
+            <md-filled-button id="btn-audit-load">查询</md-filled-button>
+            <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
           </div>
-          <p class="help" id="audit-hint"></p>
+          <p class="md-typescale-body-small muted" id="audit-hint"></p>
         </div>
 
         <div id="audit-body"></div>
       </section>
 
-      <footer class="foot">paffbot · Cloudflare Workers + D1</footer>
+      <footer class="foot md-typescale-body-small">paffbot · Cloudflare Workers + D1</footer>
     </main>
 
-    <script src="./app.js"></script>
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

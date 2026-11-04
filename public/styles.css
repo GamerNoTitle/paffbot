@@ -1,0 +1,454 @@
+/* MD3 主题以 ui/theme.ts 运行时生成的 token 为准；这里只留首屏兜底色与布局。 */
+
+@font-face {
+  font-family: "Roboto";
+  src: url("./fonts/roboto-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* 兜底（JS 未执行前） */
+  --md-sys-color-primary: #4f5bd5;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dfe0ff;
+  --md-sys-color-on-primary-container: #000e5d;
+  --md-sys-color-surface: #fbf8ff;
+  --md-sys-color-on-surface: #1b1b21;
+  --md-sys-color-surface-container-low: #f5f2fa;
+  --md-sys-color-surface-container: #efedf4;
+  --md-sys-color-surface-container-high: #e9e7ef;
+  --md-sys-color-surface-container-highest: #e4e1e9;
+  --md-sys-color-outline-variant: #c6c5d0;
+  --md-sys-color-error: #ba1a1a;
+
+  --md-ref-typeface-brand: "Roboto", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --md-ref-typeface-plain: "Roboto", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-plain);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------------------------------------------------------------- App bar */
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.app-bar__leading {
+  display: flex;
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.app-bar__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-bar__title h1 {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.app-bar__sub {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+md-icon-button#theme-toggle {
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---------------------------------------------------------------- 布局 */
+
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 8px 16px calc(40px + env(safe-area-inset-bottom));
+}
+
+.view {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 55%, transparent);
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.card.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.state__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 4px;
+}
+
+.state__icon.ok {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.meta {
+  padding: 8px 20px;
+}
+
+.meta__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.meta md-divider {
+  --md-divider-color: var(--md-sys-color-outline-variant);
+}
+
+.muted {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.foot {
+  margin-top: 28px;
+  text-align: center;
+  color: var(--md-sys-color-outline);
+}
+
+/* ---------------------------------------------------------------- 方式 chips */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chips md-filter-chip {
+  --md-filter-chip-label-text-font: var(--md-ref-typeface-plain);
+}
+
+/* ---------------------------------------------------------------- 面板 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel-head h2 {
+  margin: 0 0 6px;
+}
+
+.panel-head p {
+  margin: 0;
+}
+
+.steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.step {
+  padding: 16px 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.step:first-child {
+  border-top: 0;
+  padding-top: 8px;
+}
+
+.step__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.step__head h3 {
+  margin: 0;
+  font-weight: 500;
+}
+
+.step__num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step p {
+  margin: 0 0 8px;
+}
+
+.step md-outlined-text-field {
+  width: 100%;
+  --md-outlined-text-field-container-shape: 12px;
+  --md-outlined-text-field-top-space: 12px;
+  --md-outlined-text-field-bottom-space: 12px;
+}
+
+/* 代码块 */
+
+.code {
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-highest);
+  margin-top: 4px;
+}
+
+.code__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+}
+
+.code__tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.code pre {
+  margin: 0;
+  padding: 4px 16px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--md-sys-color-on-surface);
+}
+
+md-text-button#gh-copy {
+  --md-text-button-label-text-size: 13px;
+}
+
+/* 操作区 */
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 表单里的唯一主操作按 MD3 习惯通栏 */
+.panel-actions > md-filled-button:only-child {
+  width: 100%;
+}
+
+md-filled-button,
+md-outlined-button {
+  --md-filled-button-container-shape: 999px;
+  --md-outlined-button-container-shape: 999px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.error-text {
+  margin: 12px 0 0;
+  color: var(--md-sys-color-error);
+}
+
+/* ---------------------------------------------------------------- 答题 */
+
+.question {
+  padding: 14px 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.question:first-child {
+  border-top: 0;
+}
+
+.question p {
+  margin: 0 0 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.option md-radio {
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- 审计 */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 20px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat b {
+  display: block;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.stat span {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.badge.ok {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.badge.bad {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  vertical-align: top;
+}
+
+th {
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+td.wrap {
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------- Toast */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  font-size: 13.5px;
+  z-index: 20;
+}
+
+/* ---------------------------------------------------------------- 预览提示 */
+
+.preview-banner {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: 13px;
+}
