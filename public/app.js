@@ -249,7 +249,7 @@ function renderGithubPanel(panel, data, mode = "verify") {
           <div class="code">
             <div class="code__head">
               <div class="code__tabs" id="gh-shells"></div>
-              <md-icon-button id="gh-copy" aria-label="复制命令"><md-icon>${svgIcon("copy", 20)}</md-icon></md-icon-button>
+              <md-text-button id="gh-copy">${svgIcon("copy", 18)}<span>复制</span></md-text-button>
             </div>
             <pre id="gh-cmd"></pre>
           </div>
@@ -495,6 +495,61 @@ async function loadAudit() {
   }
 }
 
+const ACTION_LABEL = {
+  "verification.created": "发起验证",
+  "verification.approved": "验证通过",
+  "verification.declined": "验证未通过",
+  "verification.timeout": "验证超时",
+  "verification.banned": "封禁用户",
+  "verification.blocked": "自动拦截",
+  "verification.rate_limited": "触发每日限额",
+  "verification.dm_failed": "私聊发送失败",
+  "telegram.action_failed": "Telegram 操作失败",
+  "group.settings": "群设置更新",
+};
+
+const ACTOR_LABEL = { user: "用户", system: "系统", super_admin: "超级管理员", admin: "管理员" };
+
+const METHOD_LABEL = {
+  github: "GitHub 签名",
+  button: "一键确认",
+  admin_pass: "管理员放行",
+  profile: "资料筛查",
+  timeout: "超时",
+};
+
+const REASON_LABEL = {
+  expired: "超过有效期",
+  banned: "被管理员封禁",
+  blocked: "命中拦截规则",
+  admin_pass: "管理员手动放行",
+  timeout: "等待超时",
+  ok: "验证通过",
+};
+
+/** 把 Telegram 的英文报错翻成一句人话。 */
+function humanError(raw) {
+  if (/user is an admin/i.test(raw)) return "对方是群管理员，无法执行";
+  if (/not enough rights|CHAT_ADMIN_REQUIRED/i.test(raw)) return "机器人在该群权限不足";
+  if (/user not found|PARTICIPANT_ID_INVALID/i.test(raw)) return "用户不在该群";
+  if (/message to delete not found/i.test(raw)) return "提示消息已被删除";
+  if (/USER_IS_BLOCKED/i.test(raw)) return "对方拉黑了机器人";
+  return "Telegram 接口调用失败";
+}
+
+/** 把审计 detail 对象翻成人话，不再直接吐 JSON。 */
+function describeDetail(detail) {
+  if (!detail || typeof detail !== "object") return "";
+  const parts = [];
+  if (detail.method) parts.push(METHOD_LABEL[detail.method] ?? detail.method);
+  if (detail.reason) parts.push(REASON_LABEL[detail.reason] ?? detail.reason);
+  if (detail.scope === "telegram") parts.push("入群申请");
+  if (detail.mode === "group_join") parts.push("直接入群");
+  if (detail.source === "admin" || detail.selftest) parts.push("自测");
+  if (typeof detail.error === "string") parts.push(humanError(detail.error));
+  return parts.join(" · ");
+}
+
 const STATUS_META = {
   approved: { label: "已放行", tone: "tone-primary" },
   pending: { label: "待验证", tone: "tone-secondary" },
@@ -513,8 +568,9 @@ function fmtTime(ts) {
 /** 状态已经说明了方式时不再重复一行 */
 function methodNote(row) {
   const method = row.method;
-  if (!method || method === row.status || method === "profile") return "";
-  return `<span class="cell-sub">${esc(method)}</span>`;
+  if (!method || method === row.status) return "";
+  const label = METHOD_LABEL[method];
+  return label ? `<span class="cell-sub">${esc(label)}</span>` : "";
 }
 
 function renderAudit(data) {
@@ -541,9 +597,9 @@ function renderAudit(data) {
         <td data-label="时间"><div class="cell mono">${fmtTime(row.createdAt)}</div></td>
         <td data-label="用户"><div class="cell">${esc(row.userName || row.userId)}<span class="cell-sub mono">${esc(row.userId)}</span></div></td>
         <td data-label="状态"><div class="cell"><span class="status-chip ${meta.tone}">${esc(meta.label)}</span>${methodNote(row)}</div></td>
-        <td data-label="原因" class="muted"><div class="cell">${esc(row.reason || "")}${
-          row.operatorId ? `<span class="cell-sub">by ${esc(row.operatorId)}</span>` : ""
-        }</div></td>
+        <td data-label="说明" class="muted"><div class="cell">${esc(
+          REASON_LABEL[row.reason] ?? row.reason ?? "",
+        )}${row.operatorId ? `<span class="cell-sub">操作者 ${esc(row.operatorId)}</span>` : ""}</div></td>
       </tr>`;
     })
     .join("");
@@ -552,11 +608,13 @@ function renderAudit(data) {
     .map(
       (row) => `<tr>
         <td data-label="时间"><div class="cell mono">${fmtTime(row.ts)}</div></td>
-        <td data-label="操作者"><div class="cell">${esc(row.actorType)}<span class="cell-sub mono">${esc(row.actorId)}</span></div></td>
-        <td data-label="动作"><div class="cell">${esc(row.action)}</div></td>
-        <td data-label="目标" class="muted"><div class="cell">${esc(row.targetUserId || "")}${
-          row.detail ? `<span class="cell-sub">${esc(JSON.stringify(row.detail).slice(0, 70))}</span>` : ""
+        <td data-label="操作者"><div class="cell">${esc(ACTOR_LABEL[row.actorType] ?? row.actorType)}${
+          row.actorId ? `<span class="cell-sub mono">${esc(row.actorId)}</span>` : ""
         }</div></td>
+        <td data-label="动作"><div class="cell">${esc(ACTION_LABEL[row.action] ?? row.action)}</div></td>
+        <td data-label="详情" class="muted"><div class="cell">${
+          esc(describeDetail(row.detail)) || "—"
+        }${row.targetUserId ? `<span class="cell-sub mono">用户 ${esc(row.targetUserId)}</span>` : ""}</div></td>
       </tr>`,
     )
     .join("");
@@ -569,7 +627,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>用户</th><th>状态</th><th>原因 / 操作者</th></tr></thead>
+          <thead><tr><th>时间</th><th>用户</th><th>状态</th><th>说明</th></tr></thead>
           <tbody>${verificationRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
         </table>
       </div>
@@ -581,7 +639,7 @@ function renderAudit(data) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>目标 / 详情</th></tr></thead>
+          <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>详情</th></tr></thead>
           <tbody>${auditRows || '<tr><td colspan="4" class="muted">暂无记录</td></tr>'}</tbody>
         </table>
       </div>
