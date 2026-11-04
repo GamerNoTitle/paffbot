@@ -167,7 +167,7 @@ export function createApi(): Hono<AppBindings> {
     const quota = await consumeDailyQuota(ctx.db, `ip:${clientIp(c)}`, ctx.config.dailyAttempts);
     if (!quota.allowed) {
       return c.json(
-        { ok: false, error: `今天的校验次数用完了（每天 ${quota.limit} 次），明天再来`, remaining: 0 },
+        { ok: false, error: "今天尝试的太多了，明天再来吧！", remaining: 0 },
         429,
       );
     }
