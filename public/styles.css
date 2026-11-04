@@ -51,7 +51,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 12px 16px 14px;
   background: color-mix(in srgb, var(--md-sys-color-surface-container) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
@@ -85,8 +85,12 @@ body {
 }
 
 .app-bar__sub {
-  margin: 0;
+  margin: 2px 0 0;
   color: var(--md-sys-color-on-surface-variant);
+}
+
+md-tabs {
+  margin-bottom: 2px;
 }
 
 md-icon-button#theme-toggle {
@@ -102,17 +106,23 @@ md-icon-button#theme-toggle {
 }
 
 .view {
-  margin-top: 12px;
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+}
+
+#pending {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card {
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 55%, transparent);
   border-radius: 24px;
-  padding: 20px;
+  padding: 22px;
 }
 
 .card.state {
@@ -180,7 +190,7 @@ md-icon-button#theme-toggle {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .chips md-filter-chip {
@@ -196,21 +206,22 @@ md-icon-button#theme-toggle {
 }
 
 .panel-head h2 {
-  margin: 0 0 6px;
+  margin: 0 0 10px;
 }
 
 .panel-head p {
   margin: 0;
+  line-height: 1.65;
 }
 
 .steps {
   list-style: none;
-  margin: 8px 0 0;
+  margin: 18px 0 0;
   padding: 0;
 }
 
 .step {
-  padding: 16px 0;
+  padding: 20px 0;
   border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
@@ -223,7 +234,7 @@ md-icon-button#theme-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .step__head h3 {
@@ -245,7 +256,7 @@ md-icon-button#theme-toggle {
 }
 
 .step p {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 
 .step md-outlined-text-field {
@@ -261,7 +272,7 @@ md-icon-button#theme-toggle {
   border-radius: 16px;
   overflow: hidden;
   background: var(--md-sys-color-surface-container-highest);
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .code__head {
@@ -298,7 +309,7 @@ md-text-button#gh-copy {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 20px;
 }
 
 /* 表单里的唯一主操作按 MD3 习惯通栏 */
