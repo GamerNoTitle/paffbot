@@ -135,7 +135,10 @@ async function handleStart(env: CommandEnv): Promise<void> {
     return;
   }
 
-  await reply(env, commandsHelp(env.superAdmin, "你好，我是群验证机器人。\n\n"));
+  await reply(
+    env,
+    commandsHelp(env.superAdmin, `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`),
+  );
 }
 
 async function handleKeys(env: CommandEnv): Promise<void> {
