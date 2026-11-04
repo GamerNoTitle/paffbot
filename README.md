@@ -208,6 +208,17 @@ npm run smoke                    # 端到端：mock Telegram + 本地 D1 + 完�
 
 `npm run smoke` 不碰真实 Telegram：它起一个 mock Bot API，跑通「入群申请 → 私聊按钮 → 登记公钥 → SSHSIG 验签 → 批准」「直接入群 → 禁言 → 答题失败 → 管理员 /pass → 解除禁言」「超时 → cron → decline」「审计查询 + 哈希链自检 + 越权 403」。
 
+## 聊天内验证（Mini App 打不开时的兜底）
+
+入口在验证页 hero 的「通过聊天验证」按钮，或私聊直接发命令：
+
+1. 群里点「申请加入」→ 私聊发 `/verify <GitHub用户名>`
+2. 机器人回一条签名命令（挑战串与这次申请绑定）
+3. 把 `-----BEGIN SSH SIGNATURE-----` 开头的整段签名发回来
+4. 服务端验签通过 → 直接放行入群，记录写入同一条 `verifications`
+
+状态存在 `chat_verifications` 表，15 分钟有效（跟随 `VERIFY_TTL_SECONDS`）。
+
 ## 浏览器独立校验
 
 直接访问站点（不通过 Telegram）时，页面会进入**独立校验模式**：

@@ -21,6 +21,7 @@ import { isGroupAdmin, isSuperAdmin } from "../bot/auth";
 import type { BotContext } from "../bot/context";
 import { approveVerification } from "../verify/finalize";
 import { createProviderRegistry } from "../verify/registry";
+import { botUsername } from "../bot/identity";
 import { validateInitData, type InitDataUser } from "./initdata";
 
 export type AppBindings = { Bindings: Env; Variables: { ctx: BotContext } };
@@ -77,6 +78,7 @@ export function createApi(): Hono<AppBindings> {
       ok: true,
       user: { id: user.id, name: displayName({ ...user, id: user.id }) },
       superAdmin: isSuperAdmin(ctx.config, user.id),
+      botUsername: await botUsername(ctx.tg),
       methods: ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description })),
       ttlSeconds: ctx.config.ttlSeconds,
       verification: open ? publicVerification(open) : null,

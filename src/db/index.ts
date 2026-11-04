@@ -274,6 +274,57 @@ export async function pruneRateLimits(db: D1Database, keepDays = 7): Promise<num
   return result.meta.changes ?? 0;
 }
 
+// ---------------------------------------------------------------- chat verify
+
+export interface ChatVerifyRow {
+  user_id: number;
+  username: string;
+  created_at: number;
+  expires_at: number;
+}
+
+export async function setChatVerify(
+  db: D1Database,
+  userId: number,
+  username: string,
+  ttlMs: number,
+): Promise<void> {
+  const now = nowMs();
+  await db
+    .prepare(
+      `INSERT INTO chat_verifications (user_id, username, created_at, expires_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET username = excluded.username,
+         created_at = excluded.created_at, expires_at = excluded.expires_at`,
+    )
+    .bind(userId, username, now, now + ttlMs)
+    .run();
+}
+
+export async function getChatVerify(db: D1Database, userId: number): Promise<ChatVerifyRow | null> {
+  return db
+    .prepare("SELECT * FROM chat_verifications WHERE user_id = ?")
+    .bind(userId)
+    .first<ChatVerifyRow>();
+}
+
+export async function clearChatVerify(db: D1Database, userId: number): Promise<void> {
+  await db.prepare("DELETE FROM chat_verifications WHERE user_id = ?").bind(userId).run();
+}
+
+/** 该用户最近一条仍有效的待验证记录（不论在哪个群）。 */
+export async function findLatestPendingForUser(
+  db: D1Database,
+  userId: number,
+): Promise<VerificationRow | null> {
+  return db
+    .prepare(
+      `SELECT * FROM verifications WHERE user_id = ? AND status = 'pending' AND expires_at > ?
+       ORDER BY created_at DESC LIMIT 1`,
+    )
+    .bind(userId, nowMs())
+    .first<VerificationRow>();
+}
+
 // ---------------------------------------------------------------- groups
 
 export async function upsertGroup(db: D1Database, chatId: number, title: string | null): Promise<void> {

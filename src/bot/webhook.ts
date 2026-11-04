@@ -29,6 +29,7 @@ import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
 import type { BotContext } from "./context";
 import { dmRateLimited, groupJoinNotice } from "./messages";
+import { handleChatSignature } from "./chat-verify";
 import { sendVerificationPrompt } from "./prompt";
 
 export async function handleUpdate(ctx: BotContext, update: TgUpdate): Promise<void> {
@@ -319,6 +320,12 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
 
   if (message.text?.startsWith("/")) {
     await handleCommand(ctx, message, updateId);
+    return;
+  }
+
+  // 私聊里收到 SSHSIG：走聊天内验证
+  if (message.chat.type === "private" && message.text?.includes("BEGIN SSH SIGNATURE")) {
+    await handleChatSignature(ctx, message);
   }
 }
 

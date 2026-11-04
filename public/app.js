@@ -55,6 +55,7 @@ const state = {
   shell: "bash",
   timer: 0,
   token: localStorage.getItem("paffbot.token") || "",
+  botUsername: "",
 };
 
 function paintTheme() {
@@ -137,7 +138,7 @@ function showState(name) {
   $("state-empty").classList.toggle("hidden", name !== "empty");
   $("pending").classList.toggle("hidden", name !== "pending");
   $("hero-progress").classList.toggle("hidden", name !== "pending");
-  $("hero-cta").classList.toggle("hidden", name !== "pending");
+  $("hero-actions").classList.toggle("hidden", name !== "pending");
 }
 
 /* ---------------------------------------------------------------- 会话 */
@@ -801,6 +802,18 @@ for (const button of $("nav").querySelectorAll("button")) {
 $("hero-cta").addEventListener("click", () => {
   $("method-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   setTimeout(() => $("gh-username")?.focus(), 400);
+});
+
+/** 聊天验证：切回 Telegram 私聊，用 /verify 走纯文本流程（Mini App 打不开时的兜底） */
+$("hero-chat").addEventListener("click", () => {
+  const bot = state.botUsername;
+  if (!bot) {
+    toast("暂时拿不到机器人用户名，请在 Telegram 里搜索 @P4ffBot");
+    return;
+  }
+  const url = `https://t.me/${bot}?start=chat`;
+  if (tg?.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank", "noopener");
 });
 $("refresh").addEventListener("click", loadSession);
 $("btn-standalone").addEventListener("click", () => enterStandalone());

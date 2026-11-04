@@ -1,6 +1,7 @@
 import {
   countPending,
   createVerification,
+  findLatestPendingForUser,
   findOpenVerificationForChat,
   getVerification,
   listVerifications,
@@ -17,6 +18,8 @@ import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
 import { commandsHelp, miniAppKeyboard } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
+import { redirectChatVerifyToDm, startChatVerify } from "./chat-verify";
+import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 
 const COMMAND_RE = /^\/([a-zA-Z0-9_]+)(?:@[A-Za-z0-9_]+)?(?:\s+([\s\S]*))?$/;
 
@@ -83,6 +86,9 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
     case "start":
       await handleStart(env);
       return;
+    case "verify":
+      await handleVerifyChat(env);
+      return;
     case "help":
       await reply(env, commandsHelp(env.superAdmin));
       return;
@@ -124,19 +130,25 @@ async function handleStart(env: CommandEnv): Promise<void> {
     return;
   }
 
-  const pending = await env.ctx.db
-    .prepare(
-      `SELECT * FROM verifications WHERE user_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC LIMIT 1`,
-    )
-    .bind(env.userId, Date.now())
-    .first<VerificationRow>();
+  const wantsChat = env.args[0]?.toLowerCase() === "chat";
+  const pending = await findLatestPendingForUser(env.ctx.db, env.userId);
 
   if (pending) {
+    if (wantsChat) {
+      await reply(
+        env,
+        `你还有一条待完成的验证：<b>${escapeHtml(pending.chat_title ?? String(pending.chat_id))}</b>\n` +
+          "发 <code>/verify 你的GitHub用户名</code>，我用聊天把签名流程走完。",
+      );
+      return;
+    }
+
     const url = `${miniAppUrl(env.ctx)}/?chat=${pending.chat_id}`;
     await reply(
       env,
-      `你还有一条待完成的验证：<b>${escapeHtml(pending.chat_title ?? String(pending.chat_id))}</b>\n点下面的按钮继续。`,
-      miniAppKeyboard(url, "🛡 继续验证"),
+      `你还有一条待完成的验证：<b>${escapeHtml(pending.chat_title ?? String(pending.chat_id))}</b>\n` +
+        "点按钮用 Mini App 完成，或发 /verify 用户名 走聊天验证。",
+      miniAppKeyboard(url, "继续验证"),
     );
     return;
   }
@@ -145,6 +157,30 @@ async function handleStart(env: CommandEnv): Promise<void> {
     env,
     commandsHelp(env.superAdmin, `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`),
   );
+}
+
+async function handleVerifyChat(env: CommandEnv): Promise<void> {
+  if (!env.isPrivate) {
+    await redirectChatVerifyToDm(env.ctx, env.chatId);
+    return;
+  }
+
+  const name = normalizeGithubUsername(env.args[0] ?? "");
+  if (!isValidGithubUsername(name)) {
+    await reply(
+      env,
+      "用法：<code>/verify 你的GitHub用户名</code>\n不带 @，例如 <code>/verify octocat</code>",
+    );
+    return;
+  }
+
+  const pending = await findLatestPendingForUser(env.ctx.db, env.userId);
+  if (!pending) {
+    await reply(env, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来发这条命令。");
+    return;
+  }
+
+  await startChatVerify(env.ctx, env.userId, name);
 }
 
 async function handlePass(env: CommandEnv): Promise<void> {

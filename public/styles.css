@@ -429,13 +429,33 @@ body {
   margin-top: 22px;
 }
 
-#hero-cta {
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-top: 26px;
+}
+
+/* 两个按钮刻意用不同底色：深靛蓝 vs 藕粉，都来自主题，不用 Material 默认色 */
+#hero-cta {
   --md-filled-button-container-shape: var(--shape-accent);
+  --md-filled-button-container-color: var(--md-sys-color-on-primary-container);
+  --md-filled-button-label-text-color: var(--md-sys-color-primary-container);
+  --md-filled-button-hover-container-color: color-mix(
+    in srgb,
+    var(--md-sys-color-on-primary-container) 88%,
+    var(--md-sys-color-primary-container)
+  );
   min-height: 56px;
-  padding-inline: 32px;
-  background: var(--md-sys-color-on-primary-container);
-  color: var(--md-sys-color-primary-container);
+  padding-inline: 28px;
+}
+
+#hero-chat {
+  --md-filled-tonal-button-container-shape: var(--shape-accent);
+  --md-filled-tonal-button-container-color: var(--md-sys-color-tertiary-container);
+  --md-filled-tonal-button-label-text-color: var(--md-sys-color-on-tertiary-container);
+  min-height: 56px;
+  padding-inline: 28px;
 }
 
 .chip {
