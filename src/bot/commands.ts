@@ -1,12 +1,15 @@
 import {
   countPending,
+  createVerification,
   deleteSshKey,
   findOpenVerificationForChat,
+  getVerification,
   listSshKeys,
   listVerifications,
   type VerificationRow,
 } from "../db";
 import { appendAudit, listAudit } from "../db/audit";
+import { randomToken } from "../lib/crypto";
 import { displayName, escapeHtml, truncate } from "../lib/html";
 import type { InlineKeyboardMarkup, TgMessage } from "../lib/telegram";
 import { formatDateTime } from "../lib/time";
@@ -15,6 +18,7 @@ import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
 import { commandsHelp, miniAppKeyboard } from "./messages";
+import { sendVerificationPrompt } from "./prompt";
 
 const COMMAND_RE = /^\/([a-zA-Z0-9_]+)(?:@[A-Za-z0-9_]+)?(?:\s+([\s\S]*))?$/;
 
@@ -107,6 +111,9 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       return;
     case "unlink":
       await handleUnlink(env);
+      return;
+    case "selftest":
+      await handleSelfTest(env);
       return;
     default:
       if (isPrivate) await reply(env, "未知命令，发送 /help 查看可用命令。");
@@ -284,6 +291,79 @@ async function handleAudit(env: CommandEnv): Promise<void> {
       `${row.target_user_id ? ` → ${row.target_user_id}` : ""}`,
   );
   await reply(env, `<b>最近 ${rows.length} 条审计</b>\n${lines.join("\n")}\n\n完整查询见 Mini App 的审计页。`);
+}
+
+/**
+ * 超管自测：生成一条真实的 pending 记录并把 Mini App 按钮私聊发给自己。
+ * 这样不用小号也能把「填用户名 → 签名 → 验签 → 放行」整条链路走一遍。
+ * 来源记为 admin，放行时不会改动群成员。
+ */
+async function handleSelfTest(env: CommandEnv): Promise<void> {
+  if (!env.superAdmin) {
+    await reply(env, "只有超管可以自测。");
+    return;
+  }
+
+  let chatId = env.chatId;
+  let chatTitle = env.message.chat.title ?? String(chatId);
+
+  if (env.isPrivate) {
+    const parsed = Number.parseInt(env.args[0] ?? "", 10);
+    if (!Number.isSafeInteger(parsed)) {
+      await reply(env, "私聊里用需要指定群 id：<code>/selftest -1001234567890</code>\n更推荐直接在目标群里发 /selftest。");
+      return;
+    }
+    chatId = parsed;
+    chatTitle = String(parsed);
+    try {
+      const chat = await env.ctx.tg.call<{ title?: string }>("getChat", { chat_id: chatId });
+      chatTitle = chat.title ?? chatTitle;
+    } catch {
+      // 标题拿不到不影响自测
+    }
+  }
+
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await createVerification(env.ctx.db, {
+    id,
+    chatId,
+    chatTitle,
+    userId: env.userId,
+    username: env.message.from?.username ?? null,
+    displayName: displayName(env.message.from ?? { id: env.userId, first_name: "admin" }),
+    status: "pending",
+    source: "admin",
+    updateId: null,
+    nonce: randomToken(16),
+    createdAt,
+    expiresAt: createdAt + env.ctx.config.ttlSeconds * 1000,
+    detail: { selftest: true },
+  });
+
+  const row = await getVerification(env.ctx.db, id);
+  if (!row) {
+    await reply(env, "创建自测记录失败，请稍后再试。");
+    return;
+  }
+
+  await appendAudit(env.ctx.db, {
+    actorId: env.userId,
+    actorType: "super_admin",
+    action: "verification.created",
+    chatId,
+    targetUserId: env.userId,
+    verificationId: id,
+    detail: { source: "admin", selftest: true },
+  });
+
+  const sent = env.message.from ? await sendVerificationPrompt(env.ctx, row, env.message.from) : false;
+  await reply(
+    env,
+    sent
+      ? "已私聊发送验证入口（自测记录，放行不会真的改动群成员）。"
+      : "私聊发送失败：请先给 bot 发过一条消息，或检查是否屏蔽了 bot。",
+  );
 }
 
 async function handleUnlink(env: CommandEnv): Promise<void> {
