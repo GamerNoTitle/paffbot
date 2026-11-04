@@ -25,6 +25,7 @@ import { nowMs, toUnixSeconds } from "../lib/time";
 import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin } from "./auth";
 import { handleCommand } from "./commands";
+import { botUsername } from "./identity";
 import type { BotContext } from "./context";
 import { groupJoinNotice } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
@@ -46,23 +47,15 @@ export async function handleUpdate(ctx: BotContext, update: TgUpdate): Promise<v
   }
   if (update.callback_query) {
     await handleCallback(ctx, update.callback_query);
+    return;
+  }
+  if (update.my_chat_member) {
+    await handleMyChatMember(ctx, update.my_chat_member);
   }
 }
 
 function chatTitleOf(chat: { id: number; title?: string }): string {
   return chat.title ?? String(chat.id);
-}
-
-let cachedBotUsername: string | null | undefined;
-async function botUsername(ctx: BotContext): Promise<string | null> {
-  if (cachedBotUsername !== undefined) return cachedBotUsername;
-  try {
-    const me = await ctx.tg.getMe();
-    cachedBotUsername = me.username ?? null;
-  } catch {
-    cachedBotUsername = null;
-  }
-  return cachedBotUsername;
 }
 
 async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, updateId: number): Promise<void> {
@@ -217,13 +210,48 @@ async function startDirectJoinVerification(
       userId: user.id,
       userName: displayName(user),
       ttlSeconds: ctx.config.ttlSeconds,
-      botUsername: await botUsername(ctx),
+      botUsername: await botUsername(ctx.tg),
     }),
     parse_mode: "HTML",
   });
   if (notice) {
     await updateVerificationDetail(ctx.db, verificationId, { notice_message_id: notice.message_id });
   }
+}
+
+/** bot 被拉进群 / 被提升时的自检提示，顺便把群 id 打出来。 */
+async function handleMyChatMember(ctx: BotContext, update: TgChatMemberUpdated): Promise<void> {
+  const chat = update.chat;
+  if (chat.type === "private") return;
+  if (update.old_chat_member.status !== "left" && update.old_chat_member.status !== "kicked") return;
+  if (update.new_chat_member.status !== "member" && update.new_chat_member.status !== "administrator") return;
+
+  await upsertGroup(ctx.db, chat.id, chat.title ?? null);
+
+  const title = chatTitleOf(chat);
+  const isAdmin = update.new_chat_member.status === "administrator";
+  const lines = [
+    `已加入「<b>${title}</b>」。`,
+    `群 ID：<code>${chat.id}</code>`,
+    isAdmin
+      ? "我已是被管理员，请确认勾选了：Invite Users（批准申请）、Restrict Members（禁言/踢人）、Delete Messages。"
+      : "我现在还不是管理员，请在群设置里给我管理员权限，并勾选 Invite Users / Restrict Members。",
+    "",
+    "验证入口：用户点「申请加入」后我会私聊发按钮；直接入群模式下请让用户先私聊我发 /start。",
+    "管理员命令：/pass /ban /pending /audit（在群里用）。",
+    "查看 id：群里发 /id。",
+  ];
+
+  await ctx.tg.trySendMessage({ chat_id: chat.id, text: lines.join("\n"), parse_mode: "HTML" });
+  await appendAudit(ctx.db, {
+    actorId: update.from.id,
+    actorType: "group_admin",
+    action: "bot.added_to_chat",
+    chatId: chat.id,
+    targetUserId: null,
+    verificationId: null,
+    detail: { title, isAdmin },
+  });
 }
 
 async function handleMessage(ctx: BotContext, message: TgMessage, updateId: number): Promise<void> {

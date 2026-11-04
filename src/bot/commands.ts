@@ -13,6 +13,7 @@ import { formatDateTime } from "../lib/time";
 import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { miniAppUrl, type BotContext } from "./context";
+import { botUsername } from "./identity";
 import { commandsHelp, miniAppKeyboard } from "./messages";
 
 const COMMAND_RE = /^\/([a-zA-Z0-9_]+)(?:@[A-Za-z0-9_]+)?(?:\s+([\s\S]*))?$/;
@@ -114,7 +115,13 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
 
 async function handleStart(env: CommandEnv): Promise<void> {
   if (!env.isPrivate) {
-    await reply(env, "我在私聊里发验证入口，请点我头像私聊。");
+    const username = await botUsername(env.ctx.tg);
+    await reply(
+      env,
+      "验证需要在<strong>私聊</strong>里完成（Telegram 只允许在私聊里放 Mini App 按钮）。\n" +
+        "点下面的按钮直接打开私聊；也可以发 /id 查看群 id 和你自己的 id。",
+      username ? { inline_keyboard: [[{ text: "私聊我完成验证", url: `https://t.me/${username}?start=verify` }]] } : undefined,
+    );
     return;
   }
 
