@@ -27,9 +27,9 @@ import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
-import { normalizeLang } from "../i18n";
+import { normalizeLang, t } from "../i18n";
 import type { BotContext } from "./context";
-import { dmRateLimited, groupJoinNotice, groupNoticeKeyboard } from "./messages";
+import { adminKeyboard, adminNotice, dmRateLimited, groupJoinNotice, groupNoticeKeyboard } from "./messages";
 import { beginChatVerify, handleChatText } from "./chat-verify";
 import { sendVerificationPrompt } from "./prompt";
 
@@ -158,6 +158,19 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   }
 
   await sendVerificationPrompt(ctx, verification, user, remaining);
+
+  const lang = normalizeLang(user.language_code);
+  await ctx.tg.trySendMessage({
+    chat_id: request.chat.id,
+    text: adminNotice({
+      chatTitle: chatTitleOf(request.chat),
+      userId: user.id,
+      userName: displayName(user),
+      lang,
+    }),
+    parse_mode: "HTML",
+    reply_markup: adminKeyboard(verification.id, lang),
+  });
 }
 
 async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, updateId: number): Promise<void> {
@@ -254,7 +267,7 @@ async function startDirectJoinVerification(
   await sendVerificationPrompt(ctx, verification, user, remaining);
 
   const bot = await botUsername(ctx.tg);
-  const keyboard = groupNoticeKeyboard(bot, normalizeLang(user.language_code));
+  const keyboard = groupNoticeKeyboard(bot, verificationId, normalizeLang(user.language_code));
   const notice = await ctx.tg.trySendMessage({
     chat_id: chatId,
     text: groupJoinNotice({
@@ -372,13 +385,27 @@ async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<
     return;
   }
 
+  const lang = normalizeLang(query.from.language_code);
+
   if (action === "ap") {
     await approveVerification({ db: ctx.db, tg: ctx.tg }, verification, {
       method: "admin_pass",
       actorId: query.from.id,
       actorType: "group_admin",
     });
-    await ctx.tg.answerCallbackQuery(query.id, "已放行");
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "admin.done.approve"));
+    return;
+  }
+
+  if (action === "rj") {
+    await rejectVerification({ db: ctx.db, tg: ctx.tg }, verification, {
+      status: "declined",
+      method: "admin_reject",
+      reason: "admin_reject",
+      actorId: query.from.id,
+      actorType: "group_admin",
+    });
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "admin.done.reject"));
     return;
   }
 
@@ -390,7 +417,7 @@ async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<
       actorId: query.from.id,
       actorType: "group_admin",
     });
-    await ctx.tg.answerCallbackQuery(query.id, "已封禁");
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "admin.done.ban"));
     return;
   }
 

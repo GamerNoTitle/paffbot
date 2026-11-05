@@ -15,11 +15,19 @@ export default {
   "group.notice": "欢迎 <a href=\"tg://user?id={uid}\">{name}</a> 入群，请先验证你的身份",
   "group.notice.button": "开始验证",
 
+  "admin.approve": "通过",
+  "admin.reject": "拒绝",
+  "admin.ban": "封禁",
+  "admin.notice": "「{chat}」有人申请加入：{name}，管理员可以直接处理",
+  "admin.done.approve": "已通过",
+  "admin.done.reject": "已拒绝",
+  "admin.done.ban": "已封禁",
+
   "cmd.header": "<b>命令列表</b>",
   "cmd.start": "/start：开始或继续验证",
   "cmd.id": "/id：查看当前 id",
   "cmd.pass": "/pass &lt;uid&gt;：回复消息或提供 id 以通过入群验证",
-  "cmd.ban": "/ban &lt;uid&gt;：回复消息活提供 id 以封禁用户",
+  "cmd.ban": "/ban &lt;uid&gt;：回复消息或提供 id 以封禁用户",
   "cmd.pending": "/pending：查看当前等待验证的会话数",
   "cmd.audit": "/audit [n]：显示最近 n 条操作记录",
 

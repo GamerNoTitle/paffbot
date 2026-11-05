@@ -58,17 +58,45 @@ export function groupJoinNotice(params: {
   return t(lang, "group.notice", { uid: params.userId, name: escapeHtml(params.userName) });
 }
 
-/** 群里那条通知上的按钮：直接跳私聊并发起 /start。 */
-export function groupNoticeKeyboard(
-  botUsername: string | null,
-  lang: Lang = DEFAULT_LANG,
-): InlineKeyboardMarkup | null {
-  if (!botUsername) return null;
+/** 管理员在群里直接处理：通过 / 拒绝 / 封禁。 */
+export function adminKeyboard(verificationId: string, lang: Lang = DEFAULT_LANG): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: t(lang, "group.notice.button"), url: `https://t.me/${botUsername}?start=verify` }],
+      [
+        { text: t(lang, "admin.approve"), callback_data: `ap:${verificationId}` },
+        { text: t(lang, "admin.reject"), callback_data: `rj:${verificationId}` },
+        { text: t(lang, "admin.ban"), callback_data: `bn:${verificationId}` },
+      ],
     ],
   };
+}
+
+/** 入群欢迎消息上的按钮：用户侧「开始验证」+ 管理员侧「通过/拒绝/封禁」。 */
+export function groupNoticeKeyboard(
+  botUsername: string | null,
+  verificationId: string,
+  lang: Lang = DEFAULT_LANG,
+): InlineKeyboardMarkup {
+  const rows: InlineKeyboardButton[][] = [];
+  if (botUsername) {
+    rows.push([{ text: t(lang, "group.notice.button"), url: `https://t.me/${botUsername}?start=verify` }]);
+  }
+  rows.push(...adminKeyboard(verificationId, lang).inline_keyboard);
+  return { inline_keyboard: rows };
+}
+
+/** 入群申请（还没进群）时发给群里的管理员消息。 */
+export function adminNotice(params: {
+  chatTitle: string;
+  userId: number;
+  userName: string;
+  lang?: Lang;
+}): string {
+  const lang = params.lang ?? DEFAULT_LANG;
+  return t(lang, "admin.notice", {
+    chat: escapeHtml(params.chatTitle),
+    name: `<a href=\"tg://user?id=${params.userId}\">${escapeHtml(params.userName)}</a>`,
+  });
 }
 
 export function dmApproved(chatTitle: string, lang: Lang = DEFAULT_LANG): string {

@@ -226,6 +226,16 @@ GitHub OAuth App 的 **Authorization callback URL** 需要填：
 https://verify.bili33.top/api/oauth/github/callback
 ```
 
+## 管理员操作
+
+群里每来一条入群申请，机器人会发一条带三个按钮的消息：**通过 / 拒绝 / 封禁**。
+
+- 通过：放行（申请模式走 approveChatJoinRequest，直接入群模式解除禁言）
+- 拒绝：撤回申请；如果是已进群状态，踢出但允许再次申请
+- 封禁：封禁并移出
+
+命令方式仍然可用：`/pass <uid>`（或回复对方消息）、`/ban <uid>`。
+
 ## 聊天内验证（Mini App 打不开时的兜底）
 
 入口在验证页 hero 的「通过聊天验证」按钮，或私聊直接发命令：

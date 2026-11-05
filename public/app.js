@@ -718,6 +718,7 @@ const METHOD_KEYS = {
   github_oauth: "method.githubOauth",
   button: "method.button",
   admin_pass: "method.adminPass",
+  admin_reject: "method.adminReject",
   profile: "method.profile",
   timeout: "method.timeout",
 };
@@ -727,6 +728,7 @@ const REASON_KEYS = {
   banned: "reason.banned",
   blocked: "reason.blocked",
   admin_pass: "reason.adminPass",
+  admin_reject: "reason.adminReject",
   timeout: "reason.timeout",
   ok: "reason.ok",
 };
