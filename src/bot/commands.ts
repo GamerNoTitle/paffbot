@@ -19,8 +19,6 @@ import { botUsername } from "./identity";
 import { commandsHelp, miniAppKeyboard } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
 import { normalizeLang, type Lang } from "../i18n";
-import { redirectChatVerifyToDm, startChatVerify } from "./chat-verify";
-import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 
 const COMMAND_RE = /^\/([a-zA-Z0-9_]+)(?:@[A-Za-z0-9_]+)?(?:\s+([\s\S]*))?$/;
 
@@ -89,9 +87,6 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
   switch (command) {
     case "start":
       await handleStart(env);
-      return;
-    case "verify":
-      await handleVerifyChat(env);
       return;
     case "help":
       await reply(env, commandsHelp(env.superAdmin, "", env.lang));
@@ -172,30 +167,6 @@ async function handleStart(env: CommandEnv): Promise<void> {
       inline_keyboard: [[{ text: "打开审计面板", web_app: { url: `${miniAppUrl(env.ctx)}/admin` } }]],
     });
   }
-}
-
-async function handleVerifyChat(env: CommandEnv): Promise<void> {
-  if (!env.isPrivate) {
-    await redirectChatVerifyToDm(env.ctx, env.chatId, env.lang);
-    return;
-  }
-
-  const name = normalizeGithubUsername(env.args[0] ?? "");
-  if (!isValidGithubUsername(name)) {
-    await reply(
-      env,
-      "用法：<code>/verify 你的GitHub用户名</code>\n不带 @，例如 <code>/verify octocat</code>",
-    );
-    return;
-  }
-
-  const pending = await findLatestPendingForUser(env.ctx.db, env.userId);
-  if (!pending) {
-    await reply(env, "现在没有待验证的入群申请。先在群里点「申请加入」，再回来发这条命令。");
-    return;
-  }
-
-  await startChatVerify(env.ctx, env.userId, name, env.lang);
 }
 
 async function handlePass(env: CommandEnv): Promise<void> {

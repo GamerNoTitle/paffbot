@@ -457,7 +457,8 @@ function renderGithubPanel(panel, data, mode = "verify") {
 
   const refresh = () => {
     const name = username.value.trim().replace(/^@/, "");
-    const nameOk = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(name);
+    // 用户经常带 @，校验前先去掉
+    const nameOk = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(name.replace(/^@+/, ""));
     const sigOk = signature.value.includes("BEGIN SSH SIGNATURE");
     username.error = name.length > 0 && !nameOk;
     signature.error = signature.value.trim().length > 0 && !sigOk;

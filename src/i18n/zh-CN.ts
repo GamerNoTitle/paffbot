@@ -13,12 +13,10 @@ export default {
   "dm.rateLimited": "今日尝试次数过多，请明天重试",
 
   "group.notice": "欢迎 <a href=\"tg://user?id={uid}\">{name}</a> 入群，请先验证你的身份",
-  "group.notice.how": "请在 {duration} 内私聊 {bot}，通过 /start 开始验证",
-  "group.notice.why": "（Telegram 不让机器人主动找没说过话的人，所以要 ta 先发一句。）",
+  "group.notice.button": "开始验证",
 
   "cmd.header": "<b>命令列表</b>",
   "cmd.start": "/start：开始或继续验证",
-  "cmd.verify": "/verify 用户名：Mini App 打不开时用聊天验证",
   "cmd.id": "/id：查看当前 id",
   "cmd.pass": "/pass &lt;uid&gt;：回复消息或提供 id 以通过入群验证",
   "cmd.ban": "/ban &lt;uid&gt;：回复消息活提供 id 以封禁用户",
@@ -34,6 +32,4 @@ export default {
   "chat.failed": "无法验证：{error}\n请重试",
   "chat.alreadyHandled": "此入群申请已处理完毕，请返回群组查看状态",
   "chat.unknownSignature": "未知签名",
-  "chat.dmOnly": "请在与本 Bot 的私聊中继续",
-  "chat.openDm": "进入私聊",
 };

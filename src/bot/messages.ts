@@ -52,20 +52,23 @@ export function dmVerificationPrompt(params: {
 export function groupJoinNotice(params: {
   userId: number;
   userName: string;
-  ttlSeconds: number;
-  botUsername?: string | null;
   lang?: Lang;
 }): string {
   const lang = params.lang ?? DEFAULT_LANG;
-  const handle = params.botUsername ? `@${params.botUsername}` : "me";
-  return [
-    t(lang, "group.notice", { uid: params.userId, name: escapeHtml(params.userName) }),
-    t(lang, "group.notice.how", {
-      duration: escapeHtml(formatDuration(params.ttlSeconds)),
-      bot: escapeHtml(handle),
-    }),
-    t(lang, "group.notice.why"),
-  ].join("\n");
+  return t(lang, "group.notice", { uid: params.userId, name: escapeHtml(params.userName) });
+}
+
+/** 群里那条通知上的按钮：直接跳私聊并发起 /start。 */
+export function groupNoticeKeyboard(
+  botUsername: string | null,
+  lang: Lang = DEFAULT_LANG,
+): InlineKeyboardMarkup | null {
+  if (!botUsername) return null;
+  return {
+    inline_keyboard: [
+      [{ text: t(lang, "group.notice.button"), url: `https://t.me/${botUsername}?start=verify` }],
+    ],
+  };
 }
 
 export function dmApproved(chatTitle: string, lang: Lang = DEFAULT_LANG): string {

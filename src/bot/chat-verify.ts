@@ -14,7 +14,6 @@ import { verifyGithubOwnership } from "../verify/github-verify";
 import { challengeFor } from "../verify/types";
 import type { BotContext } from "./context";
 import { normalizeLang, t, type Lang, DEFAULT_LANG } from "../i18n";
-import { botUsername } from "./identity";
 
 function signCommand(challenge: string): string {
   return `echo "${challenge}" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -`;
@@ -34,22 +33,6 @@ export async function beginChatVerify(ctx: BotContext, userId: number, lang: Lan
 
   await setChatVerify(ctx.db, userId, "", "username", ctx.config.ttlSeconds * 1000);
   await say(ctx, userId, t(lang, "chat.askName"));
-}
-
-/** /verify <用户名>：跳过问名字这一步，直接给签名命令。 */
-export async function startChatVerify(
-  ctx: BotContext,
-  userId: number,
-  username: string,
-  lang: Lang = DEFAULT_LANG,
-): Promise<void> {
-  const pending = await findLatestPendingForUser(ctx.db, userId);
-  if (!pending) {
-    await say(ctx, userId, t(lang, "chat.noPending"));
-    return;
-  }
-
-  await sendSignCommand(ctx, userId, username, lang);
 }
 
 async function sendSignCommand(
@@ -155,21 +138,4 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
   if (!approved) {
     await say(ctx, from.id, t(lang, "chat.alreadyHandled"));
   }
-}
-
-/** 群里的 /verify：把用户引到私聊。 */
-export async function redirectChatVerifyToDm(
-  ctx: BotContext,
-  chatId: number,
-  lang: Lang = DEFAULT_LANG,
-): Promise<void> {
-  const username = await botUsername(ctx.tg);
-  await ctx.tg.trySendMessage({
-    chat_id: chatId,
-    text: t(lang, "chat.dmOnly"),
-    parse_mode: "HTML",
-    ...(username
-      ? { reply_markup: { inline_keyboard: [[{ text: t(lang, "chat.openDm"), url: `https://t.me/${username}?start=chat` }]] } }
-      : {}),
-  });
 }

@@ -236,7 +236,7 @@ https://verify.bili33.top/api/oauth/github/callback
 4. 把 `-----BEGIN SSH SIGNATURE-----` 开头的整段签名发回来
 5. 服务端验签通过 → 直接放行入群，记录写入同一条 `verifications`
 
-也可以直接发 `/verify <用户名>` 跳过第 2 步。
+（直接入群被禁言的话，群里的通知消息带一个「开始验证」按钮，点它会跳私聊并发起 /start。）
 
 状态存在 `chat_verifications` 表，15 分钟有效（跟随 `VERIFY_TTL_SECONDS`）。
 

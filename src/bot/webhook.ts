@@ -29,7 +29,7 @@ import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
 import { normalizeLang } from "../i18n";
 import type { BotContext } from "./context";
-import { dmRateLimited, groupJoinNotice } from "./messages";
+import { dmRateLimited, groupJoinNotice, groupNoticeKeyboard } from "./messages";
 import { beginChatVerify, handleChatText } from "./chat-verify";
 import { sendVerificationPrompt } from "./prompt";
 
@@ -253,16 +253,17 @@ async function startDirectJoinVerification(
 
   await sendVerificationPrompt(ctx, verification, user, remaining);
 
+  const bot = await botUsername(ctx.tg);
+  const keyboard = groupNoticeKeyboard(bot, normalizeLang(user.language_code));
   const notice = await ctx.tg.trySendMessage({
     chat_id: chatId,
     text: groupJoinNotice({
       lang: normalizeLang(user.language_code),
       userId: user.id,
       userName: displayName(user),
-      ttlSeconds: ctx.config.ttlSeconds,
-      botUsername: await botUsername(ctx.tg),
     }),
     parse_mode: "HTML",
+    ...(keyboard ? { reply_markup: keyboard } : {}),
   });
   if (notice) {
     await updateVerificationDetail(ctx.db, verificationId, { notice_message_id: notice.message_id });

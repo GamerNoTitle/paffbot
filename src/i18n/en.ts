@@ -12,12 +12,10 @@ export default {
   "dm.rateLimited": "Too many tries in this group today. Come back tomorrow.",
 
   "group.notice": "<a href=\"tg://user?id={uid}\">{name}</a> just joined and is muted.",
-  "group.notice.how": "Ask them to DM {bot} with /start within {duration} to finish the check.",
-  "group.notice.why": "(Telegram does not let a bot message someone first, so they have to say something.)",
+  "group.notice.button": "Verify now",
 
   "cmd.header": "<b>Commands</b>",
   "cmd.start": "/start: begin or resume",
-  "cmd.verify": "/verify <username>: chat check when the Mini App will not open",
   "cmd.id": "/id: show your id",
   "cmd.pass": "/pass &lt;uid&gt;: let someone in (or reply to their message)",
   "cmd.ban": "/ban &lt;uid&gt;: ban and remove",
@@ -33,6 +31,4 @@ export default {
   "chat.failed": "Did not pass: {error}\nYou can send the signature again.",
   "chat.alreadyHandled": "That request was already handled. Check the group.",
   "chat.unknownSignature": "I cannot tell which request this signature belongs to. Tap the chat check button, or send <code>/verify username</code>.",
-  "chat.dmOnly": "Chat verification happens in a private chat.",
-  "chat.openDm": "Open the chat",
 };
