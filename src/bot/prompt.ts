@@ -5,6 +5,7 @@ import type { TgUser } from "../lib/telegram";
 import type { BotContext } from "./context";
 import { miniAppUrl } from "./context";
 import { dmVerificationPrompt, miniAppKeyboard } from "./messages";
+import { normalizeLang } from "../i18n";
 
 /** 私聊发验证提示（带 Mini App 按钮）。重复调用是安全的：只是再发一条。 */
 export async function sendVerificationPrompt(
@@ -24,6 +25,7 @@ export async function sendVerificationPrompt(
       methods,
       ttlSeconds: ctx.config.ttlSeconds,
       remaining,
+      lang: normalizeLang(user.language_code),
     }),
     parse_mode: "HTML",
     reply_markup: miniAppKeyboard(url, "打开 Miniapp 验证", verification.id),

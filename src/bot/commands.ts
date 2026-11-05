@@ -18,12 +18,14 @@ import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
 import { commandsHelp, miniAppKeyboard } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
+import { normalizeLang, type Lang } from "../i18n";
 import { redirectChatVerifyToDm, startChatVerify } from "./chat-verify";
 import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 
 const COMMAND_RE = /^\/([a-zA-Z0-9_]+)(?:@[A-Za-z0-9_]+)?(?:\s+([\s\S]*))?$/;
 
 interface CommandEnv {
+  lang: Lang;
   ctx: BotContext;
   chatId: number;
   isPrivate: boolean;
@@ -72,7 +74,9 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
   const isPrivate = chat.type === "private";
   if (!isPrivate && chat.type !== "group" && chat.type !== "supergroup") return;
 
+  const lang = normalizeLang(from.language_code);
   const env: CommandEnv = {
+    lang,
     ctx,
     chatId: chat.id,
     isPrivate,
@@ -90,7 +94,7 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       await handleVerifyChat(env);
       return;
     case "help":
-      await reply(env, commandsHelp(env.superAdmin));
+      await reply(env, commandsHelp(env.superAdmin, "", env.lang));
       return;
     case "id":
       await reply(
@@ -155,7 +159,11 @@ async function handleStart(env: CommandEnv): Promise<void> {
 
   await reply(
     env,
-    commandsHelp(env.superAdmin, `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`),
+    commandsHelp(
+      env.superAdmin,
+      `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`,
+      env.lang,
+    ),
   );
 
   // 管理员额外给一个审计入口（普通用户看不到这个标签页）
@@ -168,7 +176,7 @@ async function handleStart(env: CommandEnv): Promise<void> {
 
 async function handleVerifyChat(env: CommandEnv): Promise<void> {
   if (!env.isPrivate) {
-    await redirectChatVerifyToDm(env.ctx, env.chatId);
+    await redirectChatVerifyToDm(env.ctx, env.chatId, env.lang);
     return;
   }
 
@@ -187,7 +195,7 @@ async function handleVerifyChat(env: CommandEnv): Promise<void> {
     return;
   }
 
-  await startChatVerify(env.ctx, env.userId, name);
+  await startChatVerify(env.ctx, env.userId, name, env.lang);
 }
 
 async function handlePass(env: CommandEnv): Promise<void> {

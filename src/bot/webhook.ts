@@ -27,6 +27,7 @@ import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
+import { normalizeLang } from "../i18n";
 import type { BotContext } from "./context";
 import { dmRateLimited, groupJoinNotice } from "./messages";
 import { beginChatVerify, handleChatText } from "./chat-verify";
@@ -87,7 +88,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     );
     if (!quota.allowed) {
       await ctx.tg.safe("declineChatJoinRequest", { chat_id: request.chat.id, user_id: user.id });
-      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(quota.limit), parse_mode: "HTML" });
+      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(normalizeLang(user.language_code)), parse_mode: "HTML" });
       await appendAudit(ctx.db, {
         actorId: 0,
         actorType: "system",
@@ -189,7 +190,7 @@ async function startDirectJoinVerification(
     if (!quota.allowed) {
       await ctx.tg.banChatMember(chatId, user.id).catch(() => undefined);
       await ctx.tg.unbanChatMember(chatId, user.id).catch(() => undefined);
-      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(quota.limit), parse_mode: "HTML" });
+      await ctx.tg.trySendMessage({ chat_id: user.id, text: dmRateLimited(normalizeLang(user.language_code)), parse_mode: "HTML" });
       await appendAudit(ctx.db, {
         actorId: 0,
         actorType: "system",
@@ -255,6 +256,7 @@ async function startDirectJoinVerification(
   const notice = await ctx.tg.trySendMessage({
     chat_id: chatId,
     text: groupJoinNotice({
+      lang: normalizeLang(user.language_code),
       userId: user.id,
       userName: displayName(user),
       ttlSeconds: ctx.config.ttlSeconds,
@@ -353,7 +355,7 @@ async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<
       await ctx.tg.answerCallbackQuery(query.id, "这条记录已经处理过了");
       return;
     }
-    await beginChatVerify(ctx, query.from.id);
+    await beginChatVerify(ctx, query.from.id, normalizeLang(query.from.language_code));
     await ctx.tg.answerCallbackQuery(query.id, "把 GitHub 用户名发给我");
     return;
   }

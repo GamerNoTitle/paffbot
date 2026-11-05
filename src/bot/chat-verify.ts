@@ -13,6 +13,7 @@ import { approveVerification } from "../verify/finalize";
 import { verifyGithubOwnership } from "../verify/github-verify";
 import { challengeFor } from "../verify/types";
 import type { BotContext } from "./context";
+import { normalizeLang, t, type Lang, DEFAULT_LANG } from "../i18n";
 import { botUsername } from "./identity";
 
 function signCommand(challenge: string): string {
@@ -24,29 +25,39 @@ async function say(ctx: BotContext, chatId: number, text: string): Promise<void>
 }
 
 /** 点「通过聊天验证」按钮后的第一步：先要 GitHub 用户名。 */
-export async function beginChatVerify(ctx: BotContext, userId: number): Promise<void> {
+export async function beginChatVerify(ctx: BotContext, userId: number, lang: Lang = DEFAULT_LANG): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) {
-    await say(ctx, userId, "你现在没有待处理的入群申请。先去群里点「申请加入」，再回来找我。");
+    await say(ctx, userId, t(lang, "chat.noPending"));
     return;
   }
 
   await setChatVerify(ctx.db, userId, "", "username", ctx.config.ttlSeconds * 1000);
-  await say(ctx, userId, "先把你的 <b>GitHub 用户名</b>发给我，不用带 @（比如 <code>octocat</code>）。");
+  await say(ctx, userId, t(lang, "chat.askName"));
 }
 
 /** /verify <用户名>：跳过问名字这一步，直接给签名命令。 */
-export async function startChatVerify(ctx: BotContext, userId: number, username: string): Promise<void> {
+export async function startChatVerify(
+  ctx: BotContext,
+  userId: number,
+  username: string,
+  lang: Lang = DEFAULT_LANG,
+): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) {
-    await say(ctx, userId, "你现在没有待处理的入群申请。先去群里点「申请加入」，再回来发这条命令。");
+    await say(ctx, userId, t(lang, "chat.noPending"));
     return;
   }
 
-  await sendSignCommand(ctx, userId, username);
+  await sendSignCommand(ctx, userId, username, lang);
 }
 
-async function sendSignCommand(ctx: BotContext, userId: number, username: string): Promise<void> {
+async function sendSignCommand(
+  ctx: BotContext,
+  userId: number,
+  username: string,
+  lang: Lang = DEFAULT_LANG,
+): Promise<void> {
   const pending = await findLatestPendingForUser(ctx.db, userId);
   if (!pending) return;
 
@@ -54,9 +65,10 @@ async function sendSignCommand(ctx: BotContext, userId: number, username: string
   await say(
     ctx,
     userId,
-    `好，GitHub 用户名记下了：<code>${escapeHtml(username)}</code>\n` +
-      `在终端跑这条命令：\n<pre>${escapeHtml(signCommand(challengeFor(pending)))}</pre>\n` +
-      `跑完把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那一整段复制发给我。`,
+    t(lang, "chat.signCommand", {
+      username: escapeHtml(username),
+      command: escapeHtml(signCommand(challengeFor(pending))),
+    }),
   );
 }
 
@@ -67,6 +79,8 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   const text = (message.text ?? "").trim();
   if (!text) return;
+
+  const lang = normalizeLang(from.language_code);
 
   const row: ChatVerifyRow | null = await getChatVerify(ctx.db, from.id);
   const hasSignature = text.includes("BEGIN SSH SIGNATURE");
@@ -81,22 +95,22 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
   if (row.stage === "username") {
     const name = normalizeGithubUsername(text.split(/\s+/)[0] ?? "");
     if (!isValidGithubUsername(name)) {
-      await say(ctx, from.id, "这个用户名看着不太对，再发一次（不用带 @，比如 <code>octocat</code>）。");
+      await say(ctx, from.id, t(lang, "chat.badUsername"));
       return;
     }
-    await sendSignCommand(ctx, from.id, name);
+    await sendSignCommand(ctx, from.id, name, lang);
     return;
   }
 
   if (!hasSignature) {
-    await say(ctx, from.id, "现在就等你的签名了，把 <code>-----BEGIN SSH SIGNATURE-----</code> 开头的那一整段发给我。");
+    await say(ctx, from.id, t(lang, "chat.needSignature"));
     return;
   }
 
   const pending = await findLatestPendingForUser(ctx.db, from.id);
   if (!pending) {
     await clearChatVerify(ctx.db, from.id);
-    await say(ctx, from.id, "这条申请已经过期了，回群里重新点一次「申请加入」吧。");
+    await say(ctx, from.id, t(lang, "chat.expired"));
     return;
   }
 
@@ -118,11 +132,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
         tail: text.slice(-24),
       },
     });
-    await say(
-      ctx,
-      from.id,
-      `没通过：${escapeHtml(result.error ?? "签名不对")}\n你可以再发一次签名。`,
-    );
+    await say(ctx, from.id, t(lang, "chat.failed", { error: escapeHtml(result.error ?? "") }));
     return;
   }
 
@@ -143,19 +153,23 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   // 成功时 approveVerification 已经会私聊通知，这里不再重复发
   if (!approved) {
-    await say(ctx, from.id, "这条申请已经处理完了，回群里看看状态吧。");
+    await say(ctx, from.id, t(lang, "chat.alreadyHandled"));
   }
 }
 
 /** 群里的 /verify：把用户引到私聊。 */
-export async function redirectChatVerifyToDm(ctx: BotContext, chatId: number): Promise<void> {
+export async function redirectChatVerifyToDm(
+  ctx: BotContext,
+  chatId: number,
+  lang: Lang = DEFAULT_LANG,
+): Promise<void> {
   const username = await botUsername(ctx.tg);
   await ctx.tg.trySendMessage({
     chat_id: chatId,
-    text: "聊天验证要在私聊里做。",
+    text: t(lang, "chat.dmOnly"),
     parse_mode: "HTML",
     ...(username
-      ? { reply_markup: { inline_keyboard: [[{ text: "打开私聊", url: `https://t.me/${username}?start=chat` }]] } }
+      ? { reply_markup: { inline_keyboard: [[{ text: t(lang, "chat.openDm"), url: `https://t.me/${username}?start=chat` }]] } }
       : {}),
   });
 }

@@ -8,20 +8,20 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>芙 Bot · 入群验证</title>
-    <link rel="stylesheet" href="./styles.css?v=30" />
+    <link rel="stylesheet" href="./styles.css?v=31" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
     <div class="page">
       <div class="page-top">
         <div class="page-top__left">
-          <img class="logo" src="./icon-192.png" alt="芙 Bot" width="40" height="40" />
+          <img class="logo" src="./icon-192.png" alt="芙 Bot" width="40" height="40" data-i18n-alt="app.name" />
           <div class="segmented" role="tablist" aria-label="页面" id="nav">
-          <button type="button" role="tab" data-view="verify" aria-selected="true">验证</button>
-            <button type="button" role="tab" data-view="audit" aria-selected="false">审计</button>
+          <button type="button" role="tab" data-view="verify" aria-selected="true" data-i18n="nav.verify">验证</button>
+            <button type="button" role="tab" data-view="audit" aria-selected="false" data-i18n="nav.audit">审计</button>
           </div>
         </div>
-        <md-icon-button id="theme-toggle" aria-label="切换明暗主题">
+        <md-icon-button id="theme-toggle" data-i18n-aria="nav.theme" aria-label="切换明暗主题">
           <md-icon id="theme-icon"></md-icon>
         </md-icon-button>
       </div>
@@ -29,9 +29,9 @@
       <section id="view-verify" class="view">
         <div class="hero" id="hero">
           <div class="hero__copy">
-            <p class="hero__eyebrow" id="hero-eyebrow">芙 Bot</p>
-            <h1 class="hero__title" id="hero-title">正在检查…</h1>
-            <p class="hero__sub" id="hero-sub">稍等，正在看你的申请</p>
+            <p class="hero__eyebrow" id="hero-eyebrow" data-i18n="app.name">芙 Bot</p>
+            <h1 class="hero__title" id="hero-title" data-i18n="hero.checking">正在检查…</h1>
+            <p class="hero__sub" id="hero-sub" data-i18n="hero.checkingSub">稍等，正在看你的申请</p>
             <div class="hero__chips" id="hero-chips"></div>
             <div class="hero__progress hidden" id="hero-progress" role="progressbar" aria-label="剩余时间">
               <div class="wavy">
@@ -55,13 +55,13 @@
 
         <div class="state hidden" id="state-empty">
           <div class="state__icon"><md-icon id="empty-icon"></md-icon></div>
-          <h2 class="md-typescale-headline-small" id="empty-title">现在没有要验证的申请</h2>
+          <h2 class="md-typescale-headline-small" id="empty-title" data-i18n="empty.title">现在没有要验证的申请</h2>
           <p class="md-typescale-body-medium muted" id="empty-text">
-            先在群里点「申请加入」，然后看私聊。
+            <span data-i18n="empty.text">先在群里点「申请加入」，然后看私聊。</span>
           </p>
           <div class="bound hidden" id="bound"></div>
           <div class="actions">
-            <md-filled-tonal-button id="refresh">刷新看看</md-filled-tonal-button>
+            <md-filled-tonal-button id="refresh" data-i18n="empty.refresh">刷新看看</md-filled-tonal-button>
           </div>
         </div>
 
@@ -72,12 +72,12 @@
 
       <section id="view-audit" class="view hidden">
         <header class="page-head">
-          <h1 class="md-typescale-headline-large">审计</h1>
-          <p class="md-typescale-body-medium muted">每个群的验证结果和操作记录。</p>
+          <h1 class="md-typescale-headline-large" data-i18n="audit.title">审计</h1>
+          <p class="md-typescale-body-medium muted" data-i18n="audit.sub">每个群的验证结果和操作记录。</p>
         </header>
 
         <div class="card hidden" id="token-card">
-          <md-outlined-text-field id="admin-token" label="管理员口令" type="password"></md-outlined-text-field>
+          <md-outlined-text-field id="admin-token" data-i18n-label="audit.tokenLabel" label="管理员口令" type="password"></md-outlined-text-field>
           <div class="filter-actions">
             <md-filled-button id="btn-token">保存并使用</md-filled-button>
           </div>
@@ -85,9 +85,9 @@
 
         <div class="card">
           <div class="filter-row">
-            <select class="select" id="audit-group" aria-label="按群筛选"></select>
+            <select class="select" id="audit-group" data-i18n-aria="audit.groupAll" aria-label="按群筛选"></select>
             <div class="filter-actions">
-              <md-outlined-button id="btn-audit-csv">导出 CSV</md-outlined-button>
+              <md-outlined-button id="btn-audit-csv" data-i18n="audit.export">导出 CSV</md-outlined-button>
             </div>
           </div>
           <p class="md-typescale-body-small muted" id="audit-hint"></p>
@@ -97,7 +97,7 @@
         <div id="audit-body"></div>
       </section>
 
-      <footer class="foot md-typescale-label-medium" id="foot"></footer>
+      <footer class="foot md-typescale-label-medium"><span id="foot"></span><select class="select select--sm" id="lang" aria-label="Language"></select></footer>
     </div>
 
     <md-dialog id="success-dialog" type="alert">
@@ -113,6 +113,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=30"></script>
+    <script type="module" src="./app.js?v=32"></script>
   </body>
 </html>

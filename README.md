@@ -240,6 +240,22 @@ https://verify.bili33.top/api/oauth/github/callback
 
 状态存在 `chat_verifications` 表，15 分钟有效（跟随 `VERIFY_TTL_SECONDS`）。
 
+## 文案与多语言
+
+界面文案集中在两个文件里，改字不用碰逻辑：
+
+| 文件 | 内容 |
+|---|---|
+| `public/i18n/zh-CN.js` | 网页中文文案 |
+| `public/i18n/en.js` | 网页英文文案（key 与中文一致） |
+| `src/i18n/zh-CN.ts` | 机器人消息（中文） |
+| `src/i18n/en.ts` | 机器人消息（英文） |
+
+- 网页：`t("key", { 占位符 })`，静态节点用 `data-i18n` / `data-i18n-label` / `data-i18n-aria`
+- 机器人：`t(lang, "key", vars)`，语言取 Telegram 的 `language_code`
+- 语言选择记在 `localStorage.paffbot.lang`，页脚可以手动切换
+- 新增语言：在两个字典里加同一套 key，再往 `LANGUAGES` 里加一项
+
 ## 浏览器独立校验
 
 直接访问站点（不通过 Telegram）时，页面会进入**独立校验模式**：

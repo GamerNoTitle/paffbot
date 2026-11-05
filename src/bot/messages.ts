@@ -1,6 +1,7 @@
 import type { InlineKeyboardButton, InlineKeyboardMarkup } from "../lib/telegram";
 import { escapeHtml, truncate } from "../lib/html";
 import { formatDuration } from "../lib/time";
+import { t, type Lang, DEFAULT_LANG } from "../i18n";
 
 export interface MethodSummary {
   id: string;
@@ -26,18 +27,26 @@ export function dmVerificationPrompt(params: {
   methods: MethodSummary[];
   ttlSeconds: number;
   remaining?: number;
+  lang?: Lang;
 }): string {
-  const list = params.methods.map((m) => `• <b>${escapeHtml(m.label)}</b>：${escapeHtml(m.description)}`).join("\n");
-  return [
-    `<b>${escapeHtml(params.userName)}</b>，你申请加入「<b>${escapeHtml(params.chatTitle)}</b>」。`,
+  const lang = params.lang ?? DEFAULT_LANG;
+  const list = params.methods
+    .map((m) => `• <b>${escapeHtml(m.label)}</b>：${escapeHtml(m.description)}`)
+    .join("\n");
+
+  const lines = [
+    t(lang, "dm.prompt.head", { name: escapeHtml(params.userName), chat: escapeHtml(params.chatTitle) }),
     "",
-    "进群前先验证一下，防止机器人批量拉人。",
+    t(lang, "dm.prompt.why"),
     list,
     "",
-    `⏳ ${escapeHtml(formatDuration(params.ttlSeconds))} 内有效，过期就得重新申请。` +
-      (params.remaining === undefined ? "" : `\n今天还能试 ${params.remaining} 次。`),
-    "点下面的按钮就能开始。",
-  ].join("\n");
+    t(lang, "dm.prompt.ttl", { duration: escapeHtml(formatDuration(params.ttlSeconds)) }),
+  ];
+  if (params.remaining !== undefined) {
+    lines.push(t(lang, "dm.prompt.remaining", { count: params.remaining }));
+  }
+  lines.push(t(lang, "dm.prompt.cta"));
+  return lines.join("\n");
 }
 
 export function groupJoinNotice(params: {
@@ -45,57 +54,51 @@ export function groupJoinNotice(params: {
   userName: string;
   ttlSeconds: number;
   botUsername?: string | null;
+  lang?: Lang;
 }): string {
-  const handle = params.botUsername ? `@${params.botUsername}` : "我";
+  const lang = params.lang ?? DEFAULT_LANG;
+  const handle = params.botUsername ? `@${params.botUsername}` : "me";
   return [
-    `<a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a> 进群了，现在是禁言状态。`,
-    `让 ta 在 ${escapeHtml(formatDuration(params.ttlSeconds))} 内私聊 ${escapeHtml(handle)} 发一句 /start 完成验证。`,
-    "（Telegram 不让机器人主动找没说过话的人，所以要 ta 先发一句。）",
+    t(lang, "group.notice", { uid: params.userId, name: escapeHtml(params.userName) }),
+    t(lang, "group.notice.how", {
+      duration: escapeHtml(formatDuration(params.ttlSeconds)),
+      bot: escapeHtml(handle),
+    }),
+    t(lang, "group.notice.why"),
   ].join("\n");
 }
 
-export function dmApproved(chatTitle: string): string {
-  return `✅ 搞定，已经放你进「${escapeHtml(chatTitle)}」了。`;
+export function dmApproved(chatTitle: string, lang: Lang = DEFAULT_LANG): string {
+  return t(lang, "dm.approved", { chat: escapeHtml(chatTitle) });
 }
 
-export function dmRejected(chatTitle: string, reason: string): string {
-  return `❌ 没通过：${escapeHtml(reason)}\n群：${escapeHtml(chatTitle)}`;
+export function dmRejected(chatTitle: string, reason: string, lang: Lang = DEFAULT_LANG): string {
+  return t(lang, "dm.rejected", { reason: escapeHtml(reason), chat: escapeHtml(chatTitle) });
 }
 
-export function dmTimeout(chatTitle: string): string {
-  return `⌛️ 超时了，你在「${escapeHtml(chatTitle)}」的申请已经取消。想进的话重新申请一次。`;
+export function dmTimeout(chatTitle: string, lang: Lang = DEFAULT_LANG): string {
+  return t(lang, "dm.timeout", { chat: escapeHtml(chatTitle) });
 }
 
-export function dmRateLimited(limit: number): string {
-  return "今天在这个群尝试的太多了，明天再来吧！";
+export function dmRateLimited(lang: Lang = DEFAULT_LANG): string {
+  return t(lang, "dm.rateLimited");
 }
 
-export function dmBlocked(chatTitle: string, reason: string): string {
-  return `🚫 你的申请被自动拦下了（${escapeHtml(reason)}）。有疑问找群管理员。`;
+export function dmBlocked(chatTitle: string, reason: string, lang: Lang = DEFAULT_LANG): string {
+  return t(lang, "dm.blocked", { reason: escapeHtml(reason) });
 }
 
-export function commandsHelp(isAdmin: boolean, prefix = ""): string {
-  const lines = [
-    "<b>命令</b>",
-    "/start：开始或继续验证",
-    "/id：看自己的 id",
-  ];
+export function commandsHelp(isAdmin: boolean, prefix = "", lang: Lang = DEFAULT_LANG): string {
+  const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.verify"), t(lang, "cmd.id")];
   if (isAdmin) {
-    lines.push(
-      "/pass &lt;uid&gt;：放人进来（也可以回复对方消息）",
-      "/ban &lt;uid&gt;：封了并踢出去",
-      "/pending：还有几个人在等验证",
-      "/audit [n]：最近 n 条操作记录",
-    );
+    lines.push(t(lang, "cmd.pass"), t(lang, "cmd.ban"), t(lang, "cmd.pending"), t(lang, "cmd.audit"));
   }
   return `${prefix}${lines.join("\n")}`;
 }
 
-export function verificationSummaryLine(params: {
+/** @deprecated 保留旧的导出名，避免外部调用崩掉 */
+export const verificationSummaryLine = (params: {
   userLabel: string;
   status: string;
   method: string | null;
-  createdAt: number;
-}): string {
-  return `#${truncate(params.userLabel, 40)} · ${params.status}${params.method ? ` · ${params.method}` : ""}`;
-}
+}): string => `#${truncate(params.userLabel, 40)} · ${params.status}${params.method ? ` · ${params.method}` : ""}`;
