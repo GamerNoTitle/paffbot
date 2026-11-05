@@ -261,7 +261,7 @@ https://verify.bili33.top/api/oauth/github/callback
 | `src/i18n/zh-CN.ts` | 机器人消息（中文） |
 | `src/i18n/en.ts` | 机器人消息（英文） |
 
-- 网页：`t("key", { 占位符 })`，静态节点用 `data-i18n` / `data-i18n-label` / `data-i18n-aria`
+- 网页：全部文案都在 `public/i18n/*.js`，`index.html` 里只有空节点 + `data-i18n` / `data-i18n-label` / `data-i18n-aria` / `data-i18n-alt`，页面标题也是 `t("page.title")` 填的
 - 机器人：`t(lang, "key", vars)`，语言取 Telegram 的 `language_code`
 - 语言选择记在 `localStorage.paffbot.lang`，页脚可以手动切换
 - 新增语言：在两个字典里加同一套 key，再往 `LANGUAGES` 里加一项

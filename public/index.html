@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./icon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <title>芙 Bot · 入群验证</title>
+    <title></title>
     <link rel="stylesheet" href="./styles.css?v=33" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
@@ -15,13 +15,13 @@
     <div class="page">
       <div class="page-top">
         <div class="page-top__left">
-          <img class="logo" src="./icon-192.png" alt="芙 Bot" width="40" height="40" data-i18n-alt="app.name" />
-          <div class="segmented" role="tablist" aria-label="页面" id="nav">
-          <button type="button" role="tab" data-view="verify" aria-selected="true" data-i18n="nav.verify">验证</button>
-            <button type="button" role="tab" data-view="audit" aria-selected="false" data-i18n="nav.audit">审计</button>
+          <img class="logo" src="./icon-192.png" alt="" width="40" height="40" data-i18n-alt="app.name" />
+          <div class="segmented" role="tablist" data-i18n-aria="nav.aria" aria-label="" id="nav">
+          <button type="button" role="tab" data-view="verify" aria-selected="true" data-i18n="nav.verify"></button>
+            <button type="button" role="tab" data-view="audit" aria-selected="false" data-i18n="nav.audit"></button>
           </div>
         </div>
-        <md-icon-button id="theme-toggle" data-i18n-aria="nav.theme" aria-label="切换明暗主题">
+        <md-icon-button id="theme-toggle" data-i18n-aria="nav.theme" aria-label="">
           <md-icon id="theme-icon"></md-icon>
         </md-icon-button>
       </div>
@@ -29,11 +29,11 @@
       <section id="view-verify" class="view">
         <div class="hero" id="hero">
           <div class="hero__copy">
-            <p class="hero__eyebrow" id="hero-eyebrow" data-i18n="app.name">芙 Bot</p>
-            <h1 class="hero__title" id="hero-title" data-i18n="hero.checking">正在检查…</h1>
-            <p class="hero__sub" id="hero-sub" data-i18n="hero.checkingSub">请稍等，正在读取你的申请状态</p>
+            <p class="hero__eyebrow" id="hero-eyebrow" data-i18n="app.name"></p>
+            <h1 class="hero__title" id="hero-title" data-i18n="hero.checking"></h1>
+            <p class="hero__sub" id="hero-sub" data-i18n="hero.checkingSub"></p>
             <div class="hero__chips" id="hero-chips"></div>
-            <div class="hero__progress hidden" id="hero-progress" role="progressbar" aria-label="剩余时间">
+            <div class="hero__progress hidden" id="hero-progress" role="progressbar" data-i18n-aria="hero.progressAria" aria-label="">
               <div class="wavy">
                 <svg class="wavy__svg" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
                   <path class="wavy__track" id="wavy-track" d="" />
@@ -55,13 +55,13 @@
 
         <div class="state hidden" id="state-empty">
           <div class="state__icon"><md-icon id="empty-icon"></md-icon></div>
-          <h2 class="md-typescale-headline-small" id="empty-title" data-i18n="empty.title">暂时没有待处理的申请</h2>
+          <h2 class="md-typescale-headline-small" id="empty-title" data-i18n="empty.title"></h2>
           <p class="md-typescale-body-medium muted" id="empty-text">
-            <span data-i18n="empty.text">请先在群组中点击「申请加入」，再回到这里查看。</span>
+            <span data-i18n="empty.text"></span>
           </p>
           <div class="bound hidden" id="bound"></div>
           <div class="actions">
-            <md-filled-tonal-button id="refresh" data-i18n="empty.refresh">刷新状态</md-filled-tonal-button>
+            <md-filled-tonal-button id="refresh" data-i18n="empty.refresh"></md-filled-tonal-button>
           </div>
         </div>
 
@@ -72,22 +72,22 @@
 
       <section id="view-audit" class="view hidden">
         <header class="page-head">
-          <h1 class="md-typescale-headline-large" data-i18n="audit.title">审计</h1>
-          <p class="md-typescale-body-medium muted" data-i18n="audit.sub">查看各个群组的验证结果与操作记录。</p>
+          <h1 class="md-typescale-headline-large" data-i18n="audit.title"></h1>
+          <p class="md-typescale-body-medium muted" data-i18n="audit.sub"></p>
         </header>
 
         <div class="card hidden" id="token-card">
-          <md-outlined-text-field id="admin-token" data-i18n-label="audit.tokenLabel" label="管理员口令" type="password"></md-outlined-text-field>
+          <md-outlined-text-field id="admin-token" data-i18n-label="audit.tokenLabel" label="" type="password"></md-outlined-text-field>
           <div class="filter-actions">
-            <md-filled-button id="btn-token">保存并使用</md-filled-button>
+            <md-filled-button id="btn-token" data-i18n="audit.saveToken"></md-filled-button>
           </div>
         </div>
 
         <div class="card">
           <div class="filter-row">
-            <select class="select" id="audit-group" data-i18n-aria="audit.groupAll" aria-label="按群筛选"></select>
+            <select class="select" id="audit-group" data-i18n-aria="audit.groupAll" aria-label=""></select>
             <div class="filter-actions">
-              <md-outlined-button id="btn-audit-csv" data-i18n="audit.export">导出 CSV</md-outlined-button>
+              <md-outlined-button id="btn-audit-csv" data-i18n="audit.export"></md-outlined-button>
             </div>
           </div>
           <p class="md-typescale-body-small muted" id="audit-hint"></p>
@@ -101,18 +101,18 @@
     </div>
 
     <md-dialog id="success-dialog" type="alert">
-      <div slot="headline" class="md-typescale-headline-small" id="dialog-title">验证通过</div>
+      <div slot="headline" class="md-typescale-headline-small" id="dialog-title" data-i18n="dialog.approved.title"></div>
       <div slot="content" class="dialog-body">
         <div class="dialog-icon" id="dialog-icon-wrap"><md-icon id="dialog-icon"></md-icon></div>
         <p class="md-typescale-body-medium" id="dialog-text"></p>
       </div>
       <div slot="actions">
-        <md-filled-button id="dialog-close">完成</md-filled-button>
+        <md-filled-button id="dialog-close" data-i18n="dialog.closeDone"></md-filled-button>
       </div>
     </md-dialog>
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=38"></script>
+    <script type="module" src="./app.js?v=39"></script>
   </body>
 </html>

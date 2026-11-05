@@ -1,5 +1,9 @@
 /** 网页中文文案。改这里的值就行，key 不要动。{name} 是占位符。 */
 export default {
+  "page.title": "芙 Bot · 入群验证",
+  "nav.aria": "页面",
+  "hero.progressAria": "剩余时间",
+  "audit.saveToken": "保存并使用",
   "app.name": "芙 Bot",
   "nav.verify": "验证",
   "nav.audit": "审计",

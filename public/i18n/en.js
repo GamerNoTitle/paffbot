@@ -1,5 +1,9 @@
 /** English copy. Same keys as zh-CN.js. */
 export default {
+  "page.title": "PaffBot · join check",
+  "nav.aria": "Sections",
+  "hero.progressAria": "Time left",
+  "audit.saveToken": "Save and use",
   "app.name": "PaffBot",
   "nav.verify": "Verify",
   "nav.audit": "Audit",

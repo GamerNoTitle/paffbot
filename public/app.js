@@ -1180,6 +1180,7 @@ $("btn-token").addEventListener("click", () => {
 function initI18n() {
   const lang = setLang(detectLang(TG_LANG));
   applyStaticI18n();
+  document.title = t("page.title");
 
   const select = $("lang");
   if (!select) return;
@@ -1188,6 +1189,7 @@ function initI18n() {
   select.addEventListener("change", () => {
     setLang(select.value);
     applyStaticI18n();
+    document.title = t("page.title");
     renderFooter();
     if (!$("view-audit").classList.contains("hidden")) loadAudit();
     else loadSession();
@@ -1204,6 +1206,7 @@ loadSession();
 function initI18n() {
   const lang = setLang(detectLang(TG_LANG));
   applyStaticI18n();
+  document.title = t("page.title");
 
   const select = $("lang");
   if (!select) return;
@@ -1212,6 +1215,7 @@ function initI18n() {
   select.addEventListener("change", () => {
     setLang(select.value);
     applyStaticI18n();
+    document.title = t("page.title");
     renderFooter();
     if (!$("view-audit").classList.contains("hidden")) loadAudit();
     else loadSession();
