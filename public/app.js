@@ -526,7 +526,7 @@ function onStandaloneResult(result) {
   $("dialog-title").textContent = "校验通过";
   $("dialog-icon").innerHTML = svgIcon("check", 30);
   $("dialog-text").innerHTML =
-    `确认了，<b>${esc(result.githubUsername)}</b> 这个账号确实是你的。` +
+    `验过了，<b>${esc(result.githubUsername)}</b> 是你的账号。` +
     `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>`;
   $("success-dialog").show();
 }
@@ -650,6 +650,7 @@ const ACTION_LABEL = {
   "verification.banned": "封禁",
   "verification.blocked": "被拦下",
   "verification.rate_limited": "次数用超",
+  "verification.failed": "校验没通过",
   "verification.dm_failed": "私聊没发出去",
   "telegram.action_failed": "Telegram 那边没成功",
   "group.settings": "改了群设置",
@@ -659,7 +660,8 @@ const ACTOR_LABEL = { user: "用户", system: "系统", super_admin: "超级管�
 
 const METHOD_LABEL = {
   github: "GitHub 签名",
-  button: "一键确认",
+  button: "按钮点过",
+  github_oauth: "GitHub 授权",
   admin_pass: "管理员放行",
   profile: "资料筛查",
   timeout: "超时",
@@ -915,7 +917,7 @@ function renderAudit(data) {
     </div>
     <div class="card">
       <div class="table-head">
-        <h2 class="md-typescale-title-medium">都发生了什么</h2>
+        <h2 class="md-typescale-title-medium">谁做了什么</h2>
         <span class="md-typescale-body-small muted" id="a-count"></span>
       </div>
       <div class="toolbar">

@@ -27,11 +27,11 @@ export function dmVerificationPrompt(params: {
   ttlSeconds: number;
   remaining?: number;
 }): string {
-  const list = params.methods.map((m) => `• <b>${escapeHtml(m.label)}</b> — ${escapeHtml(m.description)}`).join("\n");
+  const list = params.methods.map((m) => `• <b>${escapeHtml(m.label)}</b>：${escapeHtml(m.description)}`).join("\n");
   return [
-    `👋 <b>${escapeHtml(params.userName)}</b>，你申请加入「<b>${escapeHtml(params.chatTitle)}</b>」。`,
+    `<b>${escapeHtml(params.userName)}</b>，你申请加入「<b>${escapeHtml(params.chatTitle)}</b>」。`,
     "",
-    "为了挡住批量拉人的机器人，进来前先做个验证：",
+    "进群前先验证一下，防止机器人批量拉人。",
     list,
     "",
     `⏳ ${escapeHtml(formatDuration(params.ttlSeconds))} 内有效，过期就得重新申请。` +
@@ -48,7 +48,7 @@ export function groupJoinNotice(params: {
 }): string {
   const handle = params.botUsername ? `@${params.botUsername}` : "我";
   return [
-    `👤 <a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a> 进群了，现在是禁言状态。`,
+    `<a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a> 进群了，现在是禁言状态。`,
     `让 ta 在 ${escapeHtml(formatDuration(params.ttlSeconds))} 内私聊 ${escapeHtml(handle)} 发一句 /start 完成验证。`,
     "（Telegram 不让机器人主动找没说过话的人，所以要 ta 先发一句。）",
   ].join("\n");
@@ -77,15 +77,15 @@ export function dmBlocked(chatTitle: string, reason: string): string {
 export function commandsHelp(isAdmin: boolean, prefix = ""): string {
   const lines = [
     "<b>命令</b>",
-    "/start — 开始或继续验证",
-    "/id — 看自己的 id",
+    "/start：开始或继续验证",
+    "/id：看自己的 id",
   ];
   if (isAdmin) {
     lines.push(
-      "/pass &lt;uid&gt; — 放人进来（也可以回复对方消息）",
-      "/ban &lt;uid&gt; — 封了并踢出去",
-      "/pending — 还有几个人在等验证",
-      "/audit [n] — 最近 n 条操作记录",
+      "/pass &lt;uid&gt;：放人进来（也可以回复对方消息）",
+      "/ban &lt;uid&gt;：封了并踢出去",
+      "/pending：还有几个人在等验证",
+      "/audit [n]：最近 n 条操作记录",
     );
   }
   return `${prefix}${lines.join("\n")}`;
