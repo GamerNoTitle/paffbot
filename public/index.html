@@ -31,7 +31,7 @@
           <div class="hero__copy">
             <p class="hero__eyebrow" id="hero-eyebrow" data-i18n="app.name">芙 Bot</p>
             <h1 class="hero__title" id="hero-title" data-i18n="hero.checking">正在检查…</h1>
-            <p class="hero__sub" id="hero-sub" data-i18n="hero.checkingSub">稍等，正在看你的申请</p>
+            <p class="hero__sub" id="hero-sub" data-i18n="hero.checkingSub">请稍等，正在读取你的申请状态</p>
             <div class="hero__chips" id="hero-chips"></div>
             <div class="hero__progress hidden" id="hero-progress" role="progressbar" aria-label="剩余时间">
               <div class="wavy">
@@ -55,13 +55,13 @@
 
         <div class="state hidden" id="state-empty">
           <div class="state__icon"><md-icon id="empty-icon"></md-icon></div>
-          <h2 class="md-typescale-headline-small" id="empty-title" data-i18n="empty.title">现在没有要验证的申请</h2>
+          <h2 class="md-typescale-headline-small" id="empty-title" data-i18n="empty.title">暂时没有待处理的申请</h2>
           <p class="md-typescale-body-medium muted" id="empty-text">
-            <span data-i18n="empty.text">先在群里点「申请加入」，然后看私聊。</span>
+            <span data-i18n="empty.text">请先在群组中点击「申请加入」，再回到这里查看。</span>
           </p>
           <div class="bound hidden" id="bound"></div>
           <div class="actions">
-            <md-filled-tonal-button id="refresh" data-i18n="empty.refresh">刷新看看</md-filled-tonal-button>
+            <md-filled-tonal-button id="refresh" data-i18n="empty.refresh">刷新状态</md-filled-tonal-button>
           </div>
         </div>
 
@@ -73,7 +73,7 @@
       <section id="view-audit" class="view hidden">
         <header class="page-head">
           <h1 class="md-typescale-headline-large" data-i18n="audit.title">审计</h1>
-          <p class="md-typescale-body-medium muted" data-i18n="audit.sub">每个群的验证结果和操作记录。</p>
+          <p class="md-typescale-body-medium muted" data-i18n="audit.sub">查看各个群组的验证结果与操作记录。</p>
         </header>
 
         <div class="card hidden" id="token-card">
@@ -113,6 +113,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=36"></script>
+    <script type="module" src="./app.js?v=38"></script>
   </body>
 </html>
