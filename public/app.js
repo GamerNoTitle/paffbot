@@ -172,9 +172,10 @@ async function loadSession() {
       setHero({
         eyebrow: "芙 Bot · 入群验证",
         title: name ? `你好，${name}` : "现在没有要验证的申请",
-        sub: "在群里点「申请加入」后，我会私聊你验证入口；也可以先看看审计。",
+        sub: "没有正在验证中的群。",
         chips: [],
       });
+      renderBoundAccount(data.github);
       applyNavVisibility();
       showState("empty");
       return;
@@ -228,6 +229,22 @@ async function loadPanel() {
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
   }
+}
+
+/** 没有待验证申请时，只显示已经绑定过的 GitHub 账号。 */
+function renderBoundAccount(github) {
+  const box = $("bound");
+  if (!box) return;
+  if (!github?.login) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const login = github.login;
+  box.innerHTML = `
+    <img class="bound__avatar" src="https://github.com/${encodeURIComponent(login)}.png?size=80" alt="" loading="lazy" onerror="this.remove()" />
+    <span>已绑定 <a href="https://github.com/${encodeURIComponent(login)}" target="_blank" rel="noreferrer">${esc(login)}</a></span>`;
+  box.classList.remove("hidden");
 }
 
 /** 面板顶部的方式切换：签名（纯前端算） / OAuth（要跳 GitHub）。 */
@@ -599,6 +616,18 @@ function renderPreview() {
     group: { title: "示例群 · Paff 测试群", photo: "./icon-192.png" },
     chips: [{ text: "剩余 05:00", id: "hero-countdown", strong: true }],
   });
+
+  if (params.get("empty") === "1") {
+    showState("empty");
+    setHero({
+      eyebrow: "芙 Bot · 入群验证",
+      title: "你好，Paff",
+      sub: "没有正在验证中的群。",
+      chips: [],
+    });
+    renderBoundAccount({ login: params.get("gh") || "GamerNoTitle" });
+    return;
+  }
 
   if (params.get("dialog") === "error") {
     showResultDialog({
@@ -1095,7 +1124,7 @@ for (const button of $("nav").querySelectorAll("button")) {
   button.addEventListener("click", () => switchTab(button.dataset.view));
 }
 $("refresh").addEventListener("click", loadSession);
-$("btn-standalone").addEventListener("click", () => enterStandalone());
+
 $("dialog-close").addEventListener("click", () => $("success-dialog").close());
 $("audit-group").addEventListener("change", () => {
   auditView.verify.page = 1;

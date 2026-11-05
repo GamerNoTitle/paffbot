@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>芙 Bot · 入群验证</title>
-    <link rel="stylesheet" href="./styles.css?v=26" />
+    <link rel="stylesheet" href="./styles.css?v=30" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -59,9 +59,9 @@
           <p class="md-typescale-body-medium muted" id="empty-text">
             先在群里点「申请加入」，然后看私聊。
           </p>
+          <div class="bound hidden" id="bound"></div>
           <div class="actions">
             <md-filled-tonal-button id="refresh">刷新看看</md-filled-tonal-button>
-            <md-outlined-button id="btn-standalone">只验一下 GitHub 账号</md-outlined-button>
           </div>
         </div>
 
@@ -113,6 +113,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=29"></script>
+    <script type="module" src="./app.js?v=30"></script>
   </body>
 </html>

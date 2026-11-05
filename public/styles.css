@@ -477,6 +477,34 @@ body {
   border: var(--hairline);
 }
 
+.bound {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 10px;
+  border-radius: var(--shape-pill);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13.5px;
+}
+
+.bound__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: none;
+}
+
+.bound a {
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+
+.bound a:hover {
+  text-decoration: underline;
+}
+
 .state__icon {
   width: 72px;
   height: 72px;
