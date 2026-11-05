@@ -182,6 +182,28 @@ export function createApi(): Hono<AppBindings> {
     return c.json({ ok: true, approved: true, chatTitle: verification.chat_title });
   });
 
+  /** GitHub 头像：走服务端代理，避免客户端直连被拦。 */
+  api.get("/api/github/avatar/:login", async (c) => {
+    const login = normalizeGithubUsername(c.req.param("login"));
+    if (!isValidGithubUsername(login)) return c.text("bad request", 400);
+
+    const res = await fetch(`https://github.com/${encodeURIComponent(login)}.png?size=160`, {
+      headers: { accept: "image/*", "user-agent": "paffbot" },
+      redirect: "follow",
+    });
+    if (!res.ok) return c.text("not found", 404);
+
+    return new Response(res.body, {
+      headers: {
+        "content-type": (() => {
+          const type = res.headers.get("content-type") ?? "";
+          return type.startsWith("image/") ? type : "image/png";
+        })(),
+        "cache-control": "public, max-age=86400",
+      },
+    });
+  });
+
   /** 群头像：从 Telegram 取，浏览器侧不接触 bot token。 */
   api.get("/api/group/photo/:chatId", async (c) => {
     const ctx = c.get("ctx");

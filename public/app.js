@@ -244,7 +244,7 @@ function renderBoundAccount(github) {
   }
   const login = github.login;
   box.innerHTML = `
-    <img class="bound__avatar" src="https://github.com/${encodeURIComponent(login)}.png?size=80" alt="" loading="lazy" onerror="this.remove()" />
+    <img class="bound__avatar" src="/api/github/avatar/${encodeURIComponent(login)}" alt="" loading="lazy" onerror="this.remove()" />
     <span><a href="https://github.com/${encodeURIComponent(login)}" target="_blank" rel="noreferrer">${esc(
       t("empty.bound", { login }),
     )}</a></span>`;
@@ -295,7 +295,15 @@ function renderOAuthPanel(panel) {
       <h2 class="md-typescale-headline-medium">${esc(t("panel.oauth.title"))}</h2>
       <p class="md-typescale-body-medium muted">
         ${esc(t("panel.oauth.desc"))}
-        ${state.githubLogin ? esc(t("panel.oauth.bound", { login: state.githubLogin })) : ""}
+        ${
+          state.githubLogin
+            ? `<span class="bound bound--inline"><img class="bound__avatar" src="/api/github/avatar/${encodeURIComponent(
+                state.githubLogin,
+              )}" alt="" loading="lazy" onerror="this.remove()" />${esc(
+                t("panel.oauth.bound", { login: state.githubLogin }),
+              )}</span>`
+            : ""
+        }
       </p>
     </div>
     <div class="actions">
