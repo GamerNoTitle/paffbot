@@ -45,7 +45,7 @@ export default {
   "cmd.start": "/start：开始或继续验证",
   "cmd.id": "/id：查看当前 id",
   "cmd.pass": "/pass &lt;uid&gt;：回复消息或提供 id 以通过入群验证",
-  "cmd.ban": "/ban &lt;uid&gt;：回复消息或提供 id 以封禁用户",
+  "cmd.ban": "/ban &lt;uid&gt;：回复消息或提供 id 以封禁并移出用户",
   "cmd.pending": "/pending：查看当前等待验证的会话数",
   "cmd.audit": "/audit [n]：显示最近 n 条操作记录",
 

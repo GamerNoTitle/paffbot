@@ -45,7 +45,7 @@ export default {
   "cmd.start": "/start: start or continue verification",
   "cmd.id": "/id: show the chat id and your id",
   "cmd.pass": "/pass &lt;uid&gt;: approve one request, by replying to it or passing the user id",
-  "cmd.ban": "/ban &lt;uid&gt;: ban one user, by replying to their message or passing the id",
+  "cmd.ban": "/ban &lt;uid&gt;: ban one user and remove from group, by replying to their message or passing the id",
   "cmd.pending": "/pending: how many people are waiting",
   "cmd.audit": "/audit [n]: the last n actions",
 
