@@ -1,18 +1,18 @@
 /** Bot copy (English). Same keys as zh-CN.ts. */
 export default {
-  "dm.prompt.head": "Hi <b>{name}</b>, you asked to join “<b>{chat}</b>”.",
-  "dm.prompt.why": "Before you come in, we check that you are not a bot or a spam account.",
-  "dm.prompt.ttl": "This check is valid for {duration}. If it expires, ask to join again.",
-  "dm.prompt.remaining": "Tries left today: {count}.",
-  "dm.prompt.cta": "Pick a method below.",
+  "dm.prompt.head": "Hi <b>{name}</b>, you are trying to join“<b>{chat}</b>”.",
+  "dm.prompt.why": "Before we accept your application, you need to verify that you are not a bot or milicious user.",
+  "dm.prompt.ttl": "This verify process is valid for {duration}. If expired, try to join again",
+  "dm.prompt.remaining": "You have {count} chance(s) left today",
+  "dm.prompt.cta": "Use a proper way for yourself",
 
-  "dm.approved": "Verified. Welcome to “{chat}”.",
-  "dm.rejected": "Could not verify: {reason}\nGroup: {chat}",
-  "dm.timeout": "The check timed out, so your request to join “{chat}” was cancelled. You can ask again.",
-  "dm.blocked": "Verification failed ({reason}). Ask a group admin if you think that is wrong.",
-  "dm.rateLimited": "Too many tries today. Try again tomorrow.",
+  "dm.approved": "Congratulations and welcome to “{chat}”.",
+  "dm.rejected": "Unable to verify: {reason}\nGroup: {chat}",
+  "dm.timeout": "Verfification is expired. Your application for joining {chat} has been cancelled. Please try again",
+  "dm.blocked": "Verification failed ({reason}). Contact administrator for further information",
+  "dm.rateLimited": "Rate limit exceeded for today. Try again tomorrow",
 
-  "group.notice": "Welcome <a href=\"tg://user?id={uid}\">{name}</a>. Please verify before you post.",
+  "group.notice": "Welcome <a href=\"tg://user?id={uid}\">{name}</a>. Please complete the verification.",
   "group.notice.button": "Verify",
 
   "admin.approve": "Approve",
@@ -31,13 +31,13 @@ export default {
   "cmd.pending": "/pending: how many people are waiting",
   "cmd.audit": "/audit [n]: the last n actions",
 
-  "chat.askName": "Send me your GitHub username.",
-  "chat.signCommand": "Hi <code>{username}</code>. To prove the account is yours, sign with a private key that matches one of your GitHub keys. Run this in your terminal:\n<pre>{command}</pre>\nThen send me everything from <code>-----BEGIN SSH SIGNATURE-----</code> to <code>-----END SSH SIGNATURE-----</code>.",
+  "chat.askName": "Tell me what's your Github username",
+  "chat.signCommand": "Hi <code>{username}</code>. To prove yourself, sign with a private key that matches one of your GitHub keys. Run this in your terminal:\n<pre>{command}</pre>\nThen send me everything from <code>-----BEGIN SSH SIGNATURE-----</code> to <code>-----END SSH SIGNATURE-----</code>.",
   "chat.noPending": "You have no join request waiting. Tap Join in the group first, then come back.",
   "chat.badUsername": "That username does not look right. Send it again.",
   "chat.needSignature": "Waiting for the signature. Send everything from <code>-----BEGIN SSH SIGNATURE-----</code> to <code>-----END SSH SIGNATURE-----</code>.",
-  "chat.expired": "That request expired. Ask to join again in the group.",
+  "chat.expired": "Request expired. Try to join again in the group.",
   "chat.failed": "Could not verify: {error}\nTry again.",
-  "chat.alreadyHandled": "That request is already handled. Check the group.",
+  "chat.alreadyHandled": "That request is already handled. Check your status in the group.",
   "chat.unknownSignature": "Unknown signature."
 };
