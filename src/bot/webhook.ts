@@ -448,7 +448,9 @@ async function handleBotSender(ctx: BotContext, message: TgMessage): Promise<voi
     chat_id: message.chat.id,
     user_id: sender.id,
   });
-  if (member && (member.status === "administrator" || member.status === "creator")) return;
+  // 查不到成员状态（接口失败/机器人刚被移出）就不动手：宁可漏杀，不能误封管理员 bot
+  if (!member) return;
+  if (member.status === "administrator" || member.status === "creator") return;
 
   await ctx.tg.deleteMessage(message.chat.id, message.message_id);
   await ctx.tg.banChatMember(message.chat.id, sender.id);
