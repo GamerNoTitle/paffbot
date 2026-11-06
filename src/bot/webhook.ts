@@ -160,7 +160,8 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     return;
   }
 
-  await sendVerificationPrompt(ctx, verification, user, remaining);
+  // 入群审核的更新里带 user_chat_id，5 分钟内可以用它直接私聊用户
+  await sendVerificationPrompt(ctx, verification, user, remaining, request.user_chat_id);
 
   const lang = normalizeLang(user.language_code);
   await ctx.tg.trySendMessage({
@@ -293,8 +294,7 @@ async function startDirectJoinVerification(
     });
   }
 
-  await sendVerificationPrompt(ctx, verification, user, remaining);
-
+  // 先把群里的「前往验证」按钮发出去：没跟机器人说过话的用户收不到私聊
   const bot = await botUsername(ctx.tg);
   const keyboard = groupNoticeKeyboard(bot, verificationId, normalizeLang(user.language_code));
   const notice = await ctx.tg.trySendMessage({
@@ -310,6 +310,9 @@ async function startDirectJoinVerification(
   if (notice) {
     await updateVerificationDetail(ctx.db, verificationId, { notice_message_id: notice.message_id });
   }
+
+  // 私聊只是锦上添花：用户没点过 /start 的话这里会 403，靠群里的按钮兜底
+  await sendVerificationPrompt(ctx, verification, user, remaining);
 }
 
 /** bot 被拉进群 / 被提升时的自检提示，顺便把群 id 打出来。 */

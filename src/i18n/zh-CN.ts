@@ -13,7 +13,7 @@ export default {
   "dm.rateLimited": "今日尝试次数过多，请明天重试",
 
   "group.notice": "欢迎 <a href=\"tg://user?id={uid}\">{name}</a> 入群，请先验证你的身份",
-  "group.notice.button": "开始验证",
+  "group.notice.button": "前往验证",
 
   "admin.approve": "通过",
   "admin.reject": "拒绝",

@@ -13,12 +13,13 @@ export async function sendVerificationPrompt(
   verification: VerificationRow,
   user: TgUser,
   remaining?: number,
+  targetChatId?: number,
 ): Promise<boolean> {
   const methods = ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description }));
   const url = `${miniAppUrl(ctx)}/?chat=${verification.chat_id}`;
 
   const message = await ctx.tg.trySendMessage({
-    chat_id: user.id,
+    chat_id: targetChatId ?? user.id,
     text: dmVerificationPrompt({
       userName: displayName(user),
       chatTitle: verification.chat_title ?? String(verification.chat_id),
