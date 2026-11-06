@@ -89,6 +89,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `ADMIN_TOKEN` | ⭕ | 浏览器直接访问审计 API 的 Bearer token（secret） |
 | `VERIFY_TTL_SECONDS` | ⭕ | 验证有效期，默认 300（与 Telegram 入群申请私聊窗口一致） |
 | `VERIFY_DAILY_LIMIT` | ⭕ | 每个群内每个账号 / 每个 IP 每天可发起的验证次数，默认 3 |
+| `TRUST_DAYS` | ⭕ | 通过后多少天内重进群免验证，默认 30；设 0 表示每次都要验证 |
 | `GITHUB_OAUTH_CLIENT_ID` | ⭕ | GitHub OAuth App 的 Client ID（配置后 Mini App 出现 OAuth 方式） |
 | `GITHUB_OAUTH_SECRET` | 🔒 | OAuth App 的 Client Secret |
 | `GITHUB_OAUTH_REDIRECT` | ⭕ | 回调地址，默认 `<origin>/api/oauth/github/callback` |

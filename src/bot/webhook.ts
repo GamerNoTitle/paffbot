@@ -6,6 +6,7 @@ import {
   getVerification,
   decideVerification,
   findRecentlyApprovedForChat,
+  isTrustedMember,
   parseDetail,
   updateVerificationDetail,
   upsertGroup,
@@ -73,6 +74,21 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
 
   const chatTitle = chatTitleOf(request.chat);
   await upsertGroup(ctx.db, request.chat.id, request.chat.title ?? null);
+
+  // 信任期内验证过的人：直接放进来，不占每日次数、不再发提示
+  if (await isTrustedMember(ctx.db, request.chat.id, user.id, ctx.config.trustDays)) {
+    await ctx.tg.safe("approveChatJoinRequest", { chat_id: request.chat.id, user_id: user.id });
+    await appendAudit(ctx.db, {
+      actorId: 0,
+      actorType: "system",
+      action: "verification.approved",
+      chatId: request.chat.id,
+      targetUserId: user.id,
+      verificationId: null,
+      detail: { method: "trusted", via: "trust_window" },
+    });
+    return;
+  }
 
   // 同一个人重复点"申请加入"：不新建记录，也不再发第二条私聊（窗口内只发第一条）
   const existing = await findOpenVerificationForChat(ctx.db, request.chat.id, user.id);
@@ -215,6 +231,9 @@ async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, up
   // 这条不能再当成"新入群"，否则刚通过的人会被立刻禁言、再开一轮验证。
   const approvedRecently = await findRecentlyApprovedForChat(ctx.db, update.chat.id, user.id, nowMs() - 10 * 60_000);
   if (approvedRecently) return;
+
+  // 信任期内验证过：不再禁言、不再验证
+  if (await isTrustedMember(ctx.db, update.chat.id, user.id, ctx.config.trustDays)) return;
 
   await startDirectJoinVerification(ctx, update.chat.id, update.chat.title ?? String(update.chat.id), user, updateId);
 }
