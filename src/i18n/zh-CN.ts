@@ -56,8 +56,8 @@ export default {
 
   "cmd.info": "/info：关于芙 Bot",
   "about.title": "<b>芙 Bot</b>",
-  "about.body": "群组入群验证机器人，纯 TypeScript 跑在 Cloudflare Workers + D1 上，不依赖任何常驻进程。",
-  "about.repo": "仓库：<a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
+  "about.body": "个性化的群组入群验证机器人",
+  "about.repo": "Repo: <a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
   "about.usage": "发送 /help 查看可用命令。",
 
   "cmd.addAllowedBot": "/addallowedbot：把 bot 加入本群白名单（回复它的消息，或写 @用户名）",
