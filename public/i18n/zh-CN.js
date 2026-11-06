@@ -93,7 +93,7 @@ export default {
   "panel.loading": "加载中",
   "panel.methods": "验证方式",
   "panel.newChallenge": "重新获取",
-  "panel.oauth.bound": "当前已绑定 {login}。",
+  "panel.oauth.bound": "当前已绑定 {login}",
   "panel.oauth.desc": "使用你的 Github 登录并验证你的身份",
   "panel.oauth.done": "已绑定 {login}",
   "panel.oauth.opened": "已打开 GitHub OAuth",
