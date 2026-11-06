@@ -1,6 +1,6 @@
 import { decideVerification, getVerification, parseDetail, type VerificationRow } from "../db";
 import { appendAudit, type ActorType, } from "../db/audit";
-import { markVerified, scheduleMessagePurge } from "../db";
+import { scheduleMessagePurge } from "../db";
 import { DEFAULT_LANG, t, type Lang } from "../i18n";
 import { escapeHtml } from "../lib/html";
 import { dmApproved, dmBlocked, dmRejected, dmTimeout } from "../bot/messages";
@@ -60,8 +60,6 @@ export async function approveVerification(
       detail: { phase: "approve", error: err instanceof Error ? err.message : String(err) },
     });
   }
-
-  await markVerified(deps.db, row.chat_id, row.user_id);
 
   await appendAudit(deps.db, {
     actorId: options.actorId,

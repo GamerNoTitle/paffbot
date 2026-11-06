@@ -27,7 +27,6 @@
   "vars": {
     // 非敏感配置；敏感值用 `wrangler secret put` 或 .dev.vars
     "VERIFY_TTL_SECONDS": "300",
-    "TRUST_DAYS": "30",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liilxKHXwLRrJG2T",
     // 超管 Telegram user id（可跨群操作、看全量审计）
     "ADMIN_IDS": "1762053255",

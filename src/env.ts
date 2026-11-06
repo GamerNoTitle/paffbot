@@ -17,7 +17,6 @@ export interface Env {
 
   VERIFY_TTL_SECONDS?: string;
   VERIFY_DAILY_LIMIT?: string;
-  TRUST_DAYS?: string;
 
   MINI_APP_URL?: string;
   TELEGRAM_API_BASE?: string;
@@ -42,8 +41,6 @@ export interface Config {
   adminToken: string | null;
   ttlSeconds: number;
   dailyAttempts: number;
-  /** 通过后多少天内重进免验证；0 = 每次都要验证 */
-  trustDays: number;
   miniAppUrl: string | null;
   apiBase: string;
   githubToken: string | null;
@@ -114,7 +111,6 @@ export function loadConfig(env: Env): Config {
     adminToken: (env.ADMIN_TOKEN ?? "").trim() || null,
     ttlSeconds: parseIntOr(env.VERIFY_TTL_SECONDS, 300, 60, 24 * 3600),
     dailyAttempts: parseIntOr(env.VERIFY_DAILY_LIMIT, 3, 1, 50),
-    trustDays: parseIntOr(env.TRUST_DAYS, 30, 0, 3650),
     miniAppUrl: (env.MINI_APP_URL ?? "").trim() || null,
     apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
     githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,

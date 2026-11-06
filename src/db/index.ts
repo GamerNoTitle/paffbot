@@ -95,33 +95,6 @@ export async function findOpenVerification(db: D1Database, userId: number): Prom
 }
 
 /** 最近一段时间内已被批准的记录：用来避免 chat_member 又把刚放行的人禁言。 */
-/** 记住某人已经在这个群验证通过。 */
-export async function markVerified(db: D1Database, chatId: number, userId: number): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO verified_members (chat_id, user_id, verified_at) VALUES (?, ?, ?)
-       ON CONFLICT(chat_id, user_id) DO UPDATE SET verified_at = excluded.verified_at`,
-    )
-    .bind(chatId, userId, Date.now())
-    .run();
-}
-
-/** 这个人在这个群是否在信任期内验证过。trustDays = 0 表示不信任。 */
-export async function isTrustedMember(
-  db: D1Database,
-  chatId: number,
-  userId: number,
-  trustDays: number,
-): Promise<boolean> {
-  if (!(trustDays > 0)) return false;
-  const since = Date.now() - trustDays * 86_400_000;
-  const row = await db
-    .prepare("SELECT verified_at FROM verified_members WHERE chat_id = ? AND user_id = ? AND verified_at > ?")
-    .bind(chatId, userId, since)
-    .first<{ verified_at: number }>();
-  return Boolean(row);
-}
-
 /** 排一条"到点删除"的群消息。 */
 export async function scheduleMessagePurge(
   db: D1Database,
