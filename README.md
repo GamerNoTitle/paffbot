@@ -33,7 +33,7 @@ Telegram ──POST─▶│ Worker (Hono)                                  │
                           │  D1 (SQLite)│
                           │verifications│
                           │ audit_log   │
-                          │ ssh_keys    │
+                          │ allowed_bots│
                           └─────────────┘
 Cron（每分钟）→ 扫过期 pending → 按状态机收尾
 ```

@@ -127,14 +127,24 @@ await call("setMyCommands", {
   commands: [
     { command: "start", description: "开始 / 继续验证" },
     { command: "help", description: "查看命令帮助" },
-    { command: "keys", description: "查看已登记的 SSH 公钥" },
     { command: "id", description: "查看当前会话 id" },
+    { command: "info", description: "关于芙 Bot" },
+  ],
+}).catch((err) => console.warn(`setMyCommands 跳过：${err.message}`));
+
+// 管理员命令只对群管理员可见
+await call("setMyCommands", {
+  scope: { type: "all_chat_administrators" },
+  commands: [
     { command: "pass", description: "管理员：放行某个用户" },
     { command: "ban", description: "管理员：封禁某个用户" },
     { command: "pending", description: "管理员：待验证人数" },
     { command: "audit", description: "管理员：最近审计记录" },
+    { command: "allowedbots", description: "管理员：本群 bot 白名单" },
+    { command: "addallowedbot", description: "管理员：把 bot 加入白名单" },
+    { command: "delallowedbot", description: "管理员：从白名单移除 bot" },
   ],
-}).catch((err) => console.warn(`setMyCommands 跳过：${err.message}`));
+}).catch((err) => console.warn(`setMyCommands(管理员) 跳过：${err.message}`));
 
 const after = await call("getWebhookInfo");
 console.log(
