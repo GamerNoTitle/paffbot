@@ -149,6 +149,16 @@ await call("setMyCommands", {
 }).catch((err) => console.warn(`setMyCommands(管理员) 跳过: ${err.message}`));
 
 const after = await call("getWebhookInfo");
+
+// 设完立刻回读：URL 不对或 Telegram 报错就直接失败，别等用户发现命令不回
+if (after.url !== webhookUrl || after.last_error_message) {
+  console.error("webhook 校验失败:");
+  console.error(`  期望: ${webhookUrl}`);
+  console.error(`  实际: ${after.url}`);
+  if (after.last_error_message) console.error(`  错误: ${after.last_error_message}`);
+  process.exit(1);
+}
+
 console.log(
   JSON.stringify(
     {
