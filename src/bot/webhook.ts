@@ -4,6 +4,9 @@ import {
   dedupeUpdate,
   findOpenVerificationForChat,
   getVerification,
+  decideVerification,
+  findRecentlyApprovedForChat,
+  parseDetail,
   updateVerificationDetail,
   upsertGroup,
   type VerificationRow,
@@ -184,7 +187,33 @@ async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, up
   await upsertGroup(ctx.db, update.chat.id, update.chat.title ?? null);
 
   const existing = await findOpenVerificationForChat(ctx.db, update.chat.id, user.id);
-  if (existing) return;
+  if (existing) {
+    // 管理员在 Telegram 自己的界面点了通过，人已经进来了：
+    // 把这条申请记为通过，别让它挂到超时再把记录改成失败。
+    if (existing.source === "join_request") {
+      await decideVerification(ctx.db, existing.id, {
+        status: "approved",
+        method: "admin_pass",
+        operatorId: 0,
+        detail: { ...parseDetail(existing.detail), via: "telegram_ui" },
+      });
+      await appendAudit(ctx.db, {
+        actorId: 0,
+        actorType: "system",
+        action: "verification.approved",
+        chatId: update.chat.id,
+        targetUserId: user.id,
+        verificationId: existing.id,
+        detail: { via: "telegram_ui" },
+      });
+    }
+    return;
+  }
+
+  // 用机器人的按钮或 /pass 放行后，Telegram 还会补一条 chat_member：
+  // 这条不能再当成"新入群"，否则刚通过的人会被立刻禁言、再开一轮验证。
+  const approvedRecently = await findRecentlyApprovedForChat(ctx.db, update.chat.id, user.id, nowMs() - 10 * 60_000);
+  if (approvedRecently) return;
 
   await startDirectJoinVerification(ctx, update.chat.id, update.chat.title ?? String(update.chat.id), user, updateId);
 }

@@ -94,6 +94,23 @@ export async function findOpenVerification(db: D1Database, userId: number): Prom
     .first<VerificationRow>();
 }
 
+/** 最近一段时间内已被批准的记录：用来避免 chat_member 又把刚放行的人禁言。 */
+export async function findRecentlyApprovedForChat(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  sinceMs: number,
+): Promise<VerificationRow | null> {
+  return db
+    .prepare(
+      `SELECT * FROM verifications
+       WHERE chat_id = ? AND user_id = ? AND status = 'approved' AND COALESCE(decided_at, created_at) > ?
+       ORDER BY created_at DESC LIMIT 1`,
+    )
+    .bind(chatId, userId, sinceMs)
+    .first<VerificationRow>();
+}
+
 export async function findOpenVerificationForChat(
   db: D1Database,
   chatId: number,
