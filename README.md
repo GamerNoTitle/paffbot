@@ -155,6 +155,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 - 放行只能由服务端发起：验证通过后 Worker 直接调 `approveChatJoinRequest` / 解除禁言，前端伪造 `sendData` 没有意义。
 - webhook 双重校验：URL 路径段 + `X-Telegram-Bot-Api-Secret-Token`，常数时间比较。
 - `update_id` 幂等表 + 状态 CAS，避免重投导致重复放行。
+- 群里出现「频道身份发言」（`sender_chat` 是频道且不是本群关联频道）：删除消息并 `banChatSenderChat` 封禁该频道，记审计
 - 浏览器校验的挑战 nonce 存库并原子消费，重放无效；每个账号/IP 每天 3 次（`VERIFY_DAILY_LIMIT`）。
 - SSH 挑战串一次性、带命名空间；公钥与 Telegram 账号绑定；单账号最多 5 把。
 - 审计记录带 operator，超时/自动拦截记 `system`。

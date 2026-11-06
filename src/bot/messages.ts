@@ -140,6 +140,7 @@ const ACTION_KEYS: Record<string, string> = {
   "verification.dm_failed": "dmFailed",
   "telegram.action_failed": "telegramFailed",
   "group.settings": "groupSettings",
+  "telegram.channel_banned": "channelBanned",
 };
 
 const ACTOR_KEYS: Record<string, string> = {

@@ -717,6 +717,7 @@ const ACTION_KEYS = {
   "verification.dm_failed": "action.dmFailed",
   "telegram.action_failed": "action.telegramFailed",
   "group.settings": "action.groupSettings",
+  "telegram.channel_banned": "action.channelBanned",
 };
 
 function actionLabel(action) {

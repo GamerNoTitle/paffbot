@@ -4,6 +4,7 @@ export default {
   "action.approved": "Approved",
   "action.banned": "Banned",
   "action.blocked": "Blocked",
+  "action.channelBanned": "channel post banned",
   "action.created": "Awaiting verification",
   "action.declined": "Rejected",
   "action.dmFailed": "Message not delivered",

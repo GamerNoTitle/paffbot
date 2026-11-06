@@ -366,6 +366,12 @@ async function handleMyChatMember(ctx: BotContext, update: TgChatMemberUpdated):
 }
 
 async function handleMessage(ctx: BotContext, message: TgMessage, updateId: number): Promise<void> {
+  // 以频道身份在群里发言：频道成员不在群里，直接删消息并封禁这个频道
+  if (message.sender_chat?.type === "channel") {
+    await handleChannelSender(ctx, message);
+    return;
+  }
+
   const from = message.from;
   if (!from || from.is_bot) return;
 
@@ -390,6 +396,35 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
   if (message.chat.type === "private") {
     await handleChatText(ctx, message);
   }
+}
+
+/** 群里出现"频道发言"：不是本群关联频道就删掉 + 封禁该频道。 */
+async function handleChannelSender(ctx: BotContext, message: TgMessage): Promise<void> {
+  const sender = message.sender_chat;
+  if (!sender) return;
+
+  // 本群自己关联的频道是合法的，放过
+  const chat = await ctx.tg.safe<{ linked_chat_id?: number }>("getChat", { chat_id: message.chat.id });
+  if (chat && chat.linked_chat_id && chat.linked_chat_id === sender.id) return;
+
+  await ctx.tg.deleteMessage(message.chat.id, message.message_id);
+  await ctx.tg.banChatSenderChat(message.chat.id, sender.id);
+
+  await appendAudit(ctx.db, {
+    actorId: 0,
+    actorType: "system",
+    action: "telegram.channel_banned",
+    chatId: message.chat.id,
+    targetUserId: sender.id,
+    verificationId: null,
+    detail: {
+      phase: "channel_post",
+      sender_chat_id: sender.id,
+      sender_title: sender.title ?? null,
+      message_id: message.message_id,
+      preview: (message.text ?? "").slice(0, 120),
+    },
+  });
 }
 
 async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<void> {

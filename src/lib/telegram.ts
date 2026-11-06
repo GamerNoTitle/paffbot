@@ -15,6 +15,7 @@ export interface TgChat {
   title?: string;
   username?: string;
   photo?: { small_file_id: string; big_file_id: string };
+  linked_chat_id?: number;
 }
 
 export interface TgFile {
@@ -29,6 +30,8 @@ export interface TgMessage {
   date: number;
   chat: TgChat;
   from?: TgUser;
+  /** 以频道/群组身份发出的消息（匿名频道发言） */
+  sender_chat?: TgChat;
   text?: string;
   reply_to_message?: TgMessage;
   new_chat_members?: TgUser[];
@@ -190,6 +193,14 @@ export class TelegramApi {
 
   trySendMessage(params: SendMessageParams) {
     return this.safe<TgMessage>("sendMessage", params as unknown as Record<string, unknown>);
+  }
+
+  /** 封禁"以频道身份发言"的频道（sender_chat）。 */
+  banChatSenderChat(chatId: number, senderChatId: number) {
+    return this.safe<boolean>("banChatSenderChat", {
+      chat_id: chatId,
+      sender_chat_id: senderChatId,
+    });
   }
 
   deleteMessage(chatId: number, messageId: number) {
