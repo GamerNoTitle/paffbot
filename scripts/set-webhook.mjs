@@ -114,7 +114,9 @@ if (secret.length < 16) {
   process.exit(1);
 }
 
-const webhookUrl = `${baseUrl.replace(/\/+$/, "")}/tg/${secret}`;
+// 允许把 …/tg 也传进来：脚本自己会补 /tg/<secret>，别拼成 /tg/tg/…
+const base = baseUrl.replace(/\/+$/, "").replace(/\/tg$/, "");
+const webhookUrl = `${base}/tg/${secret}`;
 await call("setWebhook", {
   url: webhookUrl,
   secret_token: secret,
