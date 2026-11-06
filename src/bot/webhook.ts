@@ -74,12 +74,9 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   const chatTitle = chatTitleOf(request.chat);
   await upsertGroup(ctx.db, request.chat.id, request.chat.title ?? null);
 
-  // 同一个人重复点"申请加入"：不新建记录，重发一次提示即可
+  // 同一个人重复点"申请加入"：不新建记录，也不再发第二条私聊（窗口内只发第一条）
   const existing = await findOpenVerificationForChat(ctx.db, request.chat.id, user.id);
-  if (existing) {
-    await sendVerificationPrompt(ctx, existing, user);
-    return;
-  }
+  if (existing) return;
 
   // 超管不占用每日次数（自测用）
   let remaining: number | undefined;
@@ -311,8 +308,7 @@ async function startDirectJoinVerification(
     await updateVerificationDetail(ctx.db, verificationId, { notice_message_id: notice.message_id });
   }
 
-  // 私聊只是锦上添花：用户没点过 /start 的话这里会 403，靠群里的按钮兜底
-  await sendVerificationPrompt(ctx, verification, user, remaining);
+  // 直接入群模式不主动私聊：没跟机器人说过话的用户收不到，统一让用户点群里的按钮
 }
 
 /** bot 被拉进群 / 被提升时的自检提示，顺便把群 id 打出来。 */
