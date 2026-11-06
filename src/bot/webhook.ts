@@ -161,7 +161,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   await sendVerificationPrompt(ctx, verification, user, remaining, request.user_chat_id);
 
   const lang = normalizeLang(user.language_code);
-  await ctx.tg.trySendMessage({
+  const adminMsg = await ctx.tg.trySendMessage({
     chat_id: request.chat.id,
     text: adminNotice({
       chatTitle: chatTitleOf(request.chat),
@@ -172,6 +172,9 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     parse_mode: "HTML",
     reply_markup: adminKeyboard(verification.id, lang),
   });
+  if (adminMsg) {
+    await updateVerificationDetail(ctx.db, verification.id, { admin_message_id: adminMsg.message_id });
+  }
 }
 
 async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, updateId: number): Promise<void> {

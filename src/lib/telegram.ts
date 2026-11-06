@@ -196,6 +196,16 @@ export class TelegramApi {
     return this.safe<boolean>("deleteMessage", { chat_id: chatId, message_id: messageId });
   }
 
+  /** 改一条已发出的消息（顺便清掉按钮）。失败不算错误：消息可能已被删除。 */
+  editMessageText(params: { chat_id: number; message_id: number; text: string; parse_mode?: "HTML" }) {
+    return this.safe<TgMessage | boolean>("editMessageText", {
+      chat_id: params.chat_id,
+      message_id: params.message_id,
+      text: params.text,
+      ...(params.parse_mode ? { parse_mode: params.parse_mode } : {}),
+    });
+  }
+
   answerCallbackQuery(id: string, text: string, showAlert = false) {
     return this.safe<boolean>("answerCallbackQuery", { callback_query_id: id, text, show_alert: showAlert });
   }

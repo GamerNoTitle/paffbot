@@ -1,5 +1,7 @@
 import { decideVerification, getVerification, parseDetail, type VerificationRow } from "../db";
 import { appendAudit, type ActorType } from "../db/audit";
+import { DEFAULT_LANG, t, type Lang } from "../i18n";
+import { escapeHtml } from "../lib/html";
 import { dmApproved, dmBlocked, dmRejected, dmTimeout } from "../bot/messages";
 import type { TelegramApi } from "../lib/telegram";
 
@@ -86,6 +88,39 @@ export async function approveVerification(
 
 export type RejectStatus = "declined" | "timeout" | "banned" | "blocked";
 
+/** 超时后把群里那两条带按钮的消息改成结果，避免留下点不动的按钮。 */
+async function markTimeoutMessages(
+  deps: FinalizeDeps,
+  row: VerificationRow,
+  lang: Lang,
+): Promise<void> {
+  const detail = parseDetail(row.detail);
+  const name = row.display_name ?? row.username ?? String(row.user_id);
+
+  const noticeId = detail.notice_message_id;
+  if (typeof noticeId === "number") {
+    await deps.tg.editMessageText({
+      chat_id: row.chat_id,
+      message_id: noticeId,
+      text: t(lang, "group.notice.timeout", { name: escapeHtml(name) }),
+      parse_mode: "HTML",
+    });
+  }
+
+  const adminId = detail.admin_message_id;
+  if (typeof adminId === "number") {
+    await deps.tg.editMessageText({
+      chat_id: row.chat_id,
+      message_id: adminId,
+      text: t(lang, "admin.notice.timeout", {
+        chat: escapeHtml(row.chat_title ?? String(row.chat_id)),
+        name: `<a href="tg://user?id=${row.user_id}">${escapeHtml(name)}</a>`,
+      }),
+      parse_mode: "HTML",
+    });
+  }
+}
+
 export interface RejectOptions {
   status: RejectStatus;
   method: string;
@@ -137,6 +172,10 @@ export async function rejectVerification(
       verificationId: row.id,
       detail: { phase: options.status, error: err instanceof Error ? err.message : String(err) },
     });
+  }
+
+  if (options.status === "timeout") {
+    await markTimeoutMessages(deps, row, DEFAULT_LANG);
   }
 
   await appendAudit(deps.db, {

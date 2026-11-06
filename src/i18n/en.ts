@@ -13,6 +13,8 @@ export default {
   "dm.rateLimited": "Too many attempts today. Please try again tomorrow",
 
   "group.notice": "Welcome <a href=\"tg://user?id={uid}\">{name}</a>. Please verify your identity first",
+  "group.notice.timeout": "{name} timed out and has been removed",
+  "admin.notice.timeout": "Someone asked to join “{chat}”: {name} (timed out, auto-declined)",
   "group.notice.button": "Verify",
 
   "admin.approve": "Approve",
