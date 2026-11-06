@@ -58,6 +58,12 @@ const state = {
   timer: 0,
   token: localStorage.getItem("paffbot.token") || "",
   botUsername: "",
+  session: null,
+  github: null,
+  panelData: null,
+  standaloneData: null,
+  standaloneRemaining: null,
+  countdownText: "",
   superAdmin: false,
   auditLoaded: false,
   oauthEnabled: false,
@@ -164,6 +170,8 @@ async function loadSession() {
   try {
     const data = await api("/api/session");
     state.verification = data.verification;
+    state.session = data;
+    state.github = data.github || null;
     state.botUsername = data.botUsername || "";
     state.superAdmin = Boolean(data.superAdmin);
     state.oauthEnabled = Boolean(data.oauth?.enabled);
@@ -212,6 +220,7 @@ async function loadPanel() {
   panel.innerHTML = `<p class="md-typescale-body-medium muted">${esc(t("panel.loading"))}</p>`;
   if (PREVIEW) {
     const fake = { challenge: state.challenge, requirements: { minAccountAgeDays: 0, requiredOrg: null } };
+    state.panelData = fake;
     if (state.oauthEnabled) {
       renderMethodPanel(panel, fake);
       return;
@@ -227,6 +236,7 @@ async function loadPanel() {
       `/api/verify/start?method=github&verificationId=${encodeURIComponent(state.verification.id)}`,
     );
     state.challenge = data.challenge || "";
+    state.panelData = data;
     renderMethodPanel(panel, data);
   } catch (err) {
     panel.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(err.message)}</p>`;
@@ -540,6 +550,8 @@ async function loadStandalonePanel() {
       ],
     });
     startCountdown(data.expiresAt);
+    state.standaloneData = data;
+    state.standaloneRemaining = typeof data.remaining === "number" ? data.remaining : null;
     renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
   } catch (err) {
     // 没有可用挑战：hero 里的进度条和按钮都不该再显示
@@ -596,6 +608,7 @@ function startCountdown(expiresAt) {
     const total = Math.floor(left / 1000);
     const time = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
     const text = left > 0 ? t("hero.remaining", { time }) : t("hero.expired");
+    state.countdownText = time;
     const chip = $("hero-countdown");
     if (chip) chip.textContent = text;
     const mask = $("wavy-mask");
@@ -1175,30 +1188,7 @@ $("btn-token").addEventListener("click", () => {
   state.token = $("admin-token").value.trim();
   localStorage.setItem("paffbot.token", state.token);
   $("token-card").classList.add("hidden");
-  /* ---------------------------------------------------------------- i18n */
-
-function initI18n() {
-  const lang = setLang(detectLang(TG_LANG));
-  applyStaticI18n();
-  document.title = t("page.title");
-
-  const select = $("lang");
-  if (!select) return;
-  select.innerHTML = LANGUAGES.map(([code, label]) => `<option value="${code}">${label}</option>`).join("");
-  select.value = lang;
-  select.addEventListener("change", () => {
-    setLang(select.value);
-    applyStaticI18n();
-    document.title = t("page.title");
-    renderFooter();
-    if (!$("view-audit").classList.contains("hidden")) loadAudit();
-    else loadSession();
-  });
-}
-
-initI18n();
-applyNavVisibility();
-loadSession();
+  loadAudit();
 });
 
 /* ---------------------------------------------------------------- i18n */
@@ -1214,12 +1204,85 @@ function initI18n() {
   select.value = lang;
   select.addEventListener("change", () => {
     setLang(select.value);
-    applyStaticI18n();
-    document.title = t("page.title");
-    renderFooter();
-    if (!$("view-audit").classList.contains("hidden")) loadAudit();
-    else loadSession();
+    retranslate();
   });
+}
+
+/** 切语言只重画文案：不重新请求，也不丢已经填进去的用户名和签名。 */
+function retranslate() {
+  document.title = t("page.title");
+  applyStaticI18n();
+  renderFooter();
+
+  if (!$("view-audit").classList.contains("hidden")) {
+    loadAudit();
+    return;
+  }
+
+  if (state.standalone && !$("pending").classList.contains("hidden")) {
+    if (state.standaloneData) {
+      const typed = {
+        username: $("gh-username")?.value ?? "",
+        signature: $("gh-signature")?.value ?? "",
+      };
+      setHero({
+        eyebrow: t("app.name"),
+        title: t("hero.verifyTitle"),
+        sub: t("panel.ssh.desc"),
+        chips: [
+          ...(state.standaloneRemaining !== null
+            ? [{ text: t("hero.attemptsLeft", { count: state.standaloneRemaining }) }]
+            : []),
+          { text: t("hero.remaining", { time: state.countdownText || "05:00" }), id: "hero-countdown", strong: true },
+        ],
+      });
+      renderGithubPanel($("method-panel"), { challenge: state.standaloneData.challenge, requirements: {} }, "standalone");
+      if ($("gh-username")) $("gh-username").value = typed.username;
+      if ($("gh-signature")) $("gh-signature").value = typed.signature;
+      const submit = $("gh-submit");
+      if (submit && typed.username && typed.signature) submit.disabled = false;
+    }
+    return;
+  }
+
+  const pending = state.verification && !$("pending").classList.contains("hidden");
+  if (pending) {
+    setHero({
+      eyebrow: t("hero.eyebrow"),
+      title: t("hero.verifyTitle"),
+      group: {
+        title: state.verification.chatTitle ?? String(state.verification.chatId),
+        photo: state.verification.chatPhoto || "",
+      },
+      chips: [
+        { text: t("hero.remaining", { time: state.countdownText || "00:00" }), id: "hero-countdown", strong: true },
+      ],
+    });
+
+    if (state.panelData) {
+      const typed = {
+        username: $("gh-username")?.value ?? "",
+        signature: $("gh-signature")?.value ?? "",
+      };
+      renderMethodPanel($("method-panel"), state.panelData);
+      if ($("gh-username")) $("gh-username").value = typed.username;
+      if ($("gh-signature")) $("gh-signature").value = typed.signature;
+      const submit = $("gh-submit");
+      if (submit && typed.username && typed.signature) submit.disabled = false;
+    }
+    return;
+  }
+
+  const name = state.session?.user?.name?.split(" ")[0];
+  setHero({
+    eyebrow: t("hero.eyebrow"),
+    title: name ? t("hero.greeting", { name }) : t("hero.noPending"),
+    sub: t("hero.noPendingGroup"),
+    chips: [],
+  });
+  $("empty-title").textContent = t("empty.title");
+  $("empty-text").textContent = t("empty.text");
+  renderBoundAccount(state.github);
 }
 
 initI18n();
