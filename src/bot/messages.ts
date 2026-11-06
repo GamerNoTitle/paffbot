@@ -120,11 +120,47 @@ export function dmBlocked(chatTitle: string, reason: string, lang: Lang = DEFAUL
 }
 
 export function commandsHelp(isAdmin: boolean, prefix = "", lang: Lang = DEFAULT_LANG): string {
-  const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.verify"), t(lang, "cmd.id")];
+  const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.id"), t(lang, "cmd.help")];
   if (isAdmin) {
     lines.push(t(lang, "cmd.pass"), t(lang, "cmd.ban"), t(lang, "cmd.pending"), t(lang, "cmd.audit"));
+    lines.push("", t(lang, "cmd.buttons"));
   }
   return `${prefix}${lines.join("\n")}`;
+}
+
+const ACTION_KEYS: Record<string, string> = {
+  "verification.created": "created",
+  "verification.approved": "approved",
+  "verification.declined": "declined",
+  "verification.timeout": "timeout",
+  "verification.banned": "banned",
+  "verification.blocked": "blocked",
+  "verification.rate_limited": "rateLimited",
+  "verification.failed": "failed",
+  "verification.dm_failed": "dmFailed",
+  "telegram.action_failed": "telegramFailed",
+  "group.settings": "groupSettings",
+};
+
+const ACTOR_KEYS: Record<string, string> = {
+  user: "user",
+  system: "system",
+  super_admin: "superAdmin",
+  admin: "admin",
+};
+
+/** /audit 输出的一行：动作和操作者都翻成人话。 */
+export function auditLine(
+  ts: string,
+  action: string,
+  actorType: string,
+  actorId: number,
+  targetId: number | null,
+  lang: Lang = DEFAULT_LANG,
+): string {
+  const actionText = ACTION_KEYS[action] ? t(lang, `action.${ACTION_KEYS[action]}`) : action;
+  const actorText = ACTOR_KEYS[actorType] ? t(lang, `actor.${ACTOR_KEYS[actorType]}`) : actorType;
+  return `${ts} ${escapeHtml(actionText)} ${escapeHtml(actorText)} ${actorId}${targetId ? ` → ${targetId}` : ""}`;
 }
 
 /** @deprecated 保留旧的导出名，避免外部调用崩掉 */

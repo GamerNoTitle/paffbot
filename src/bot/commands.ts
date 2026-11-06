@@ -16,7 +16,7 @@ import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
-import { commandsHelp, miniAppKeyboard } from "./messages";
+import { auditLine, commandsHelp, miniAppKeyboard } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
 import { normalizeLang, type Lang } from "../i18n";
 
@@ -282,10 +282,8 @@ async function handleAudit(env: CommandEnv): Promise<void> {
     await reply(env, "还没有审计记录。");
     return;
   }
-  const lines = rows.map(
-    (row) =>
-      `${formatDateTime(row.ts)} <code>${escapeHtml(row.action)}</code> ${escapeHtml(row.actor_type)} ${row.actor_id}` +
-      `${row.target_user_id ? ` → ${row.target_user_id}` : ""}`,
+  const lines = rows.map((row) =>
+    auditLine(formatDateTime(row.ts), row.action, row.actor_type, row.actor_id, row.target_user_id, env.lang),
   );
   await reply(env, `<b>最近 ${rows.length} 条审计</b>\n${lines.join("\n")}\n\n完整查询见 Mini App 的审计页。`);
 }
