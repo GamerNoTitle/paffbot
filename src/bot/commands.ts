@@ -89,7 +89,7 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       await handleStart(env);
       return;
     case "help":
-      await reply(env, commandsHelp(env.superAdmin, "", env.lang));
+      await reply(env, commandsHelp(env.superAdmin && !env.isPrivate, "", env.lang));
       return;
     case "id":
       await reply(
@@ -155,7 +155,7 @@ async function handleStart(env: CommandEnv): Promise<void> {
   await reply(
     env,
     commandsHelp(
-      env.superAdmin,
+      env.superAdmin && !env.isPrivate,
       `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`,
       env.lang,
     ),
