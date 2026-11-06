@@ -6,7 +6,7 @@
  *   node scripts/set-webhook.mjs --url https://... --delete
  *   node scripts/set-webhook.mjs --info
  *
- * 读取顺序：命令行 > 环境变量 > .dev.vars
+ * 读取顺序: 命令行 > 环境变量 > .dev.vars
  */
 
 import { execFileSync } from "node:child_process";
@@ -74,7 +74,7 @@ async function call(method, payload = {}) {
       { encoding: "utf8" },
     );
     body = JSON.parse(out);
-    if (!body?.ok) throw new Error(`${method} 失败：${body?.description ?? "未知错误"}`);
+    if (!body?.ok) throw new Error(`${method} 失败: ${body?.description ?? "未知错误"}`);
     return body.result;
   }
 
@@ -85,7 +85,7 @@ async function call(method, payload = {}) {
   });
   body = await res.json().catch(() => null);
   if (!res.ok || !body?.ok) {
-    throw new Error(`${method} 失败：${body?.description ?? res.status}`);
+    throw new Error(`${method} 失败: ${body?.description ?? res.status}`);
   }
   return body.result;
 }
@@ -106,7 +106,7 @@ if (args.includes("--delete")) {
 }
 
 if (!baseUrl || !secret) {
-  console.error("缺少 --url 或 WEBHOOK_SECRET。用法：node scripts/set-webhook.mjs --url https://xxx.workers.dev");
+  console.error("缺少 --url 或 WEBHOOK_SECRET。用法: node scripts/set-webhook.mjs --url https://xxx.workers.dev");
   process.exit(1);
 }
 if (secret.length < 16) {
@@ -121,7 +121,7 @@ await call("setWebhook", {
   allowed_updates: ["message", "callback_query", "chat_join_request", "chat_member", "my_chat_member"],
   drop_pending_updates: false,
 });
-console.log(`webhook 已设置：${webhookUrl}`);
+console.log(`webhook 已设置: ${webhookUrl}`);
 
 await call("setMyCommands", {
   commands: [
@@ -130,21 +130,21 @@ await call("setMyCommands", {
     { command: "id", description: "查看当前会话 id" },
     { command: "info", description: "关于芙 Bot" },
   ],
-}).catch((err) => console.warn(`setMyCommands 跳过：${err.message}`));
+}).catch((err) => console.warn(`setMyCommands 跳过: ${err.message}`));
 
 // 管理员命令只对群管理员可见
 await call("setMyCommands", {
   scope: { type: "all_chat_administrators" },
   commands: [
-    { command: "pass", description: "管理员：放行某个用户" },
-    { command: "ban", description: "管理员：封禁某个用户" },
-    { command: "pending", description: "管理员：待验证人数" },
-    { command: "audit", description: "管理员：最近审计记录" },
-    { command: "allowedbots", description: "管理员：本群 bot 白名单" },
-    { command: "addallowedbot", description: "管理员：把 bot 加入白名单" },
-    { command: "delallowedbot", description: "管理员：从白名单移除 bot" },
+    { command: "pass", description: "管理员: 放行某个用户" },
+    { command: "ban", description: "管理员: 封禁某个用户" },
+    { command: "pending", description: "管理员: 待验证人数" },
+    { command: "audit", description: "管理员: 最近审计记录" },
+    { command: "allowedbots", description: "管理员: 本群 bot 白名单" },
+    { command: "addallowedbot", description: "管理员: 把 bot 加入白名单" },
+    { command: "delallowedbot", description: "管理员: 从白名单移除 bot" },
   ],
-}).catch((err) => console.warn(`setMyCommands(管理员) 跳过：${err.message}`));
+}).catch((err) => console.warn(`setMyCommands(管理员) 跳过: ${err.message}`));
 
 const after = await call("getWebhookInfo");
 console.log(

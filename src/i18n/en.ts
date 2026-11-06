@@ -56,8 +56,8 @@ export default {
 
   "cmd.info": "/info: about this bot",
   "about.title": "<b>PaffBot</b>",
-  "about.body": "A join-verification bot for Telegram groups. Pure TypeScript on Cloudflare Workers + D1, no long-running process.",
-  "about.repo": "Repository: <a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
+  "about.body": "A personalised join-verification bot for Telegram groups",
+  "about.repo": "Repo: <a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
   "about.usage": "Send /help to see the commands.",
 
   "cmd.addAllowedBot": "/addallowedbot: allow a bot in this group (reply to it, or pass @username)",
