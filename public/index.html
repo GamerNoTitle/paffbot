@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title></title>
-    <link rel="stylesheet" href="./styles.css?v=40" />
+    <link rel="stylesheet" href="./styles.css?v=41" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -100,10 +100,13 @@
         <div id="audit-body"></div>
       </section>
 
-      <footer class="foot md-typescale-label-medium"><span id="foot"></span><div class="dd dd--sm">
-            <button type="button" class="dd__btn" id="lang" aria-label="Language" aria-haspopup="listbox" aria-expanded="false"><span class="dd__label"></span></button>
-            <div class="dd__menu" role="listbox" hidden></div>
-          </div></footer>
+      <footer class="foot md-typescale-label-medium">
+        <div class="dd dd--sm">
+          <button type="button" class="dd__btn" id="lang" aria-label="Language" aria-haspopup="listbox" aria-expanded="false"><span class="dd__label"></span></button>
+          <div class="dd__menu" role="listbox" hidden></div>
+        </div>
+        <span id="foot"></span>
+      </footer>
     </div>
 
     <md-dialog id="success-dialog" type="alert">
@@ -119,6 +122,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=53"></script>
+    <script type="module" src="./app.js?v=57"></script>
   </body>
 </html>

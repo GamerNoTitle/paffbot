@@ -910,11 +910,15 @@ function openDdMenu(btn) {
   }
   closeDd();
   document.body.appendChild(menu);
+  menu.hidden = false;                       // 先显示，否则量不到高度
   const rect = btn.getBoundingClientRect();
   menu.style.left = `${Math.round(rect.left)}px`;
-  menu.style.top = `${Math.round(rect.bottom + 6)}px`;
   menu.style.minWidth = `${Math.round(rect.width)}px`;
-  menu.hidden = false;
+  // 页脚的下拉往下开会跑出屏幕，靠近底部时改成向上展开
+  const height = menu.offsetHeight;
+  // 页脚的语言下拉固定往上开，免得盖住 copyright
+  const openUp = btn.closest(".foot") !== null || rect.bottom + 6 + height > window.innerHeight - 8;
+  menu.style.top = `${Math.round(openUp ? Math.max(8, rect.top - height - 6) : rect.bottom + 6)}px`;
   menu._owner = btn;
   btn.setAttribute("aria-expanded", "true");
   openDd = { btn, menu };
