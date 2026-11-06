@@ -186,7 +186,7 @@ export class TelegramApi {
   }
 
   /** 群信息（标题、头像 file_id）。 */
-  getChat(chatId: number) {
+  getChat(chatId: number | string) {
     return this.call<TgChat>("getChat", { chat_id: chatId });
   }
 

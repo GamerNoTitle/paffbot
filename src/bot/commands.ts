@@ -17,6 +17,8 @@ import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
 import { aboutText, auditLine, commandsHelp, miniAppKeyboard } from "./messages";
+import { t } from "../i18n";
+import { addAllowedBot, listAllowedBots, removeAllowedBot, type AllowedBotRow } from "../db";
 import { sendVerificationPrompt } from "./prompt";
 import { normalizeLang, type Lang } from "../i18n";
 
@@ -106,6 +108,15 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       return;
     case "ban":
       await handleBan(env);
+      return;
+    case "allowedbots":
+      await handleAllowedList(env);
+      return;
+    case "addallowedbot":
+      await handleAllowedBot(env, true);
+      return;
+    case "delallowedbot":
+      await handleAllowedBot(env, false);
       return;
     case "pending":
       await handlePending(env);
@@ -250,6 +261,103 @@ async function handleBan(env: CommandEnv): Promise<void> {
     detail: { method: "admin_ban", note: "no pending row" },
   });
   await reply(env, `已封禁 <code>${target}</code>。`);
+}
+
+/** /addallowedbot 与 /delallowedbot：回复消息取被回复者，否则用 @用户名 解析。 */
+async function handleAllowedBot(env: CommandEnv, adding: boolean): Promise<void> {
+  const auth = await requireAdmin(env);
+  if (!auth) {
+    await reply(env, t(env.lang, "allowed.denied"));
+    return;
+  }
+
+  const replied = env.message.reply_to_message?.from;
+  let botId: number | null = null;
+  let botUsername: string | null = null;
+
+  if (replied?.is_bot) {
+    botId = replied.id;
+    botUsername = replied.username ?? null;
+  } else {
+    const raw = (env.args[0] ?? "").replace(/^@/, "").trim();
+    if (!raw) {
+      await reply(env, t(env.lang, "allowed.needTarget"));
+      return;
+    }
+    // 能解析出 id 就一起存，解析不到就只按用户名登记
+    try {
+      const chat = await env.ctx.tg.getChat(`@${raw}`);
+      if (chat && typeof chat.id === "number" && Number.isSafeInteger(chat.id) && chat.id !== 0) {
+        botId = chat.id;
+        botUsername = typeof chat.username === "string" ? chat.username : raw;
+      } else {
+        botUsername = raw;
+      }
+    } catch {
+      botUsername = raw;
+    }
+  }
+
+  if (botId === null && botUsername === null) {
+    await reply(env, t(env.lang, "allowed.needTarget"));
+    return;
+  }
+
+  const label = botUsername ? `@${botUsername}` : String(botId);
+  if (adding) {
+    await addAllowedBot(env.ctx.db, env.chatId, botId, botUsername, env.userId);
+    await appendAudit(env.ctx.db, {
+      actorId: env.userId,
+      actorType: auth.actorType,
+      action: "telegram.bot_allowed",
+      chatId: env.chatId,
+      targetUserId: botId ?? 0,
+      verificationId: null,
+      detail: { phase: "command", username: botUsername },
+    });
+    await reply(env, t(env.lang, "allowed.added", { name: escapeHtml(label), id: botId ?? 0 }));
+    return;
+  }
+
+  if (botId === null) {
+    await reply(env, t(env.lang, "allowed.notFound"));
+    return;
+  }
+  const removed = await removeAllowedBot(env.ctx.db, env.chatId, botId);
+  if (!removed) {
+    await reply(env, t(env.lang, "allowed.notFound"));
+    return;
+  }
+  await appendAudit(env.ctx.db, {
+    actorId: env.userId,
+    actorType: auth.actorType,
+    action: "telegram.bot_allowed",
+    chatId: env.chatId,
+    targetUserId: botId,
+    verificationId: null,
+    detail: { phase: "command_remove", username: botUsername },
+  });
+  await reply(env, t(env.lang, "allowed.removed", { id: botId }));
+}
+
+async function handleAllowedList(env: CommandEnv): Promise<void> {
+  const auth = await requireAdmin(env);
+  if (!auth) {
+    await reply(env, t(env.lang, "allowed.denied"));
+    return;
+  }
+  const bots = await listAllowedBots(env.ctx.db, env.chatId);
+  if (bots.length === 0) {
+    await reply(env, t(env.lang, "allowed.empty"));
+    return;
+  }
+  const lines = bots.map((b: AllowedBotRow) =>
+    t(env.lang, "allowed.listItem", {
+      name: escapeHtml(b.username ? `@${b.username}` : String(b.bot_id ?? "")),
+      id: b.bot_id ?? 0,
+    }),
+  );
+  await reply(env, t(env.lang, "allowed.list", { count: bots.length, list: lines.join("\n") }));
 }
 
 async function handlePending(env: CommandEnv): Promise<void> {

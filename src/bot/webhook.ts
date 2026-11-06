@@ -12,6 +12,7 @@ import {
   type VerificationRow,
 } from "../db";
 import { appendAudit } from "../db/audit";
+import { addAllowedBot, matchAllowedBot } from "../db";
 import { randomToken } from "../lib/crypto";
 import { displayName } from "../lib/html";
 import { screenProfile } from "../lib/screen";
@@ -382,7 +383,41 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
     const chatTitle = chatTitleOf(message.chat);
     await upsertGroup(ctx.db, message.chat.id, message.chat.title ?? null);
     for (const member of message.new_chat_members) {
-      if (member.is_bot) continue;
+      if (member.is_bot) {
+        // 公开群有人用 /start @bot 把 bot 拉进来发广告：不是管理员拉的就直接踢
+        const allowed =
+          ctx.config.allowedBotIds.includes(member.id) ||
+          (await matchAllowedBot(ctx.db, message.chat.id, member.id, member.username ?? null));
+        if (allowed) continue;
+
+        const adderIsAdmin = from ? await isGroupAdmin(ctx, message.chat.id, from.id) : false;
+        if (adderIsAdmin) {
+          await addAllowedBot(ctx.db, message.chat.id, member.id, member.username ?? null, from?.id ?? null);
+          await appendAudit(ctx.db, {
+            actorId: from?.id ?? 0,
+            actorType: "group_admin",
+            action: "telegram.bot_allowed",
+            chatId: message.chat.id,
+            targetUserId: member.id,
+            verificationId: null,
+            detail: { phase: "added_by_admin", username: member.username ?? null },
+          });
+          continue;
+        }
+
+        await ctx.tg.banChatMember(message.chat.id, member.id);
+        await appendAudit(ctx.db, {
+          actorId: from?.id ?? 0,
+          actorType: "user",
+          action: "telegram.bot_kicked",
+          chatId: message.chat.id,
+          targetUserId: member.id,
+          verificationId: null,
+          detail: { phase: "added_by_member", username: member.username ?? null, adder: from?.id ?? null },
+        });
+        continue;
+      }
+
       const existing = await findOpenVerificationForChat(ctx.db, message.chat.id, member.id);
       if (existing) continue;
       await startDirectJoinVerification(ctx, message.chat.id, chatTitle, member, updateId);
@@ -407,6 +442,7 @@ async function handleBotSender(ctx: BotContext, message: TgMessage): Promise<voi
   if (!sender) return;
   if (message.chat.type === "private") return;
   if (ctx.config.allowedBotIds.includes(sender.id)) return;
+  if (await matchAllowedBot(ctx.db, message.chat.id, sender.id, sender.username ?? null)) return;
 
   const member = await ctx.tg.safe<TgChatMemberInfo>("getChatMember", {
     chat_id: message.chat.id,

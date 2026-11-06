@@ -145,7 +145,15 @@ export function aboutText(lang: Lang = DEFAULT_LANG): string {
 export function commandsHelp(isAdmin: boolean, prefix = "", lang: Lang = DEFAULT_LANG): string {
   const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.id"), t(lang, "cmd.info"), t(lang, "cmd.help")];
   if (isAdmin) {
-    lines.push(t(lang, "cmd.pass"), t(lang, "cmd.ban"), t(lang, "cmd.pending"), t(lang, "cmd.audit"));
+    lines.push(
+      t(lang, "cmd.pass"),
+      t(lang, "cmd.ban"),
+      t(lang, "cmd.pending"),
+      t(lang, "cmd.audit"),
+      t(lang, "cmd.allowedBots"),
+      t(lang, "cmd.addAllowedBot"),
+      t(lang, "cmd.delAllowedBot"),
+    );
     lines.push("", t(lang, "cmd.buttons"));
   }
   return `${prefix}${lines.join("\n")}`;
@@ -165,6 +173,8 @@ const ACTION_KEYS: Record<string, string> = {
   "group.settings": "groupSettings",
   "telegram.channel_banned": "channelBanned",
   "telegram.bot_banned": "botBanned",
+  "telegram.bot_allowed": "botAllowed",
+  "telegram.bot_kicked": "botKicked",
 };
 
 const ACTOR_KEYS: Record<string, string> = {

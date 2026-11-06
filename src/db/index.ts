@@ -95,6 +95,69 @@ export async function findOpenVerification(db: D1Database, userId: number): Prom
 }
 
 /** 最近一段时间内已被批准的记录：用来避免 chat_member 又把刚放行的人禁言。 */
+/* ------------------------------------------------------------ bot 白名单 */
+
+export interface AllowedBotRow {
+  bot_id: number | null;
+  username: string | null;
+}
+
+export async function addAllowedBot(
+  db: D1Database,
+  chatId: number,
+  botId: number | null,
+  username: string | null,
+  addedBy: number | null,
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT INTO allowed_bots (chat_id, bot_id, username, added_by, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+    )
+    .bind(chatId, botId ?? null, username ?? null, addedBy ?? null, Date.now())
+    .run();
+}
+
+export async function removeAllowedBot(db: D1Database, chatId: number, botId: number): Promise<boolean> {
+  const res = await db.prepare("DELETE FROM allowed_bots WHERE chat_id = ? AND bot_id = ?").bind(chatId, botId).run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function listAllowedBots(db: D1Database, chatId: number): Promise<AllowedBotRow[]> {
+  const { results } = await db
+    .prepare("SELECT bot_id, username FROM allowed_bots WHERE chat_id = ? ORDER BY created_at ASC")
+    .bind(chatId)
+    .all<AllowedBotRow>();
+  return results ?? [];
+}
+
+/** 命中白名单：按 id 或用户名都算。命中用户名时顺手把 id 补上。 */
+export async function matchAllowedBot(
+  db: D1Database,
+  chatId: number,
+  botId: number,
+  username: string | null,
+): Promise<boolean> {
+  const byId = await db
+    .prepare("SELECT id FROM allowed_bots WHERE chat_id = ? AND bot_id = ?")
+    .bind(chatId, botId)
+    .first<{ id: number }>();
+  if (byId) return true;
+
+  if (!username) return false;
+  const byName = await db
+    .prepare("SELECT id FROM allowed_bots WHERE chat_id = ? AND lower(username) = lower(?)")
+    .bind(chatId, username)
+    .first<{ id: number }>();
+  if (!byName) return false;
+
+  await db
+    .prepare("UPDATE allowed_bots SET bot_id = ? WHERE id = ?")
+    .bind(botId, byName.id)
+    .run()
+    .catch(() => undefined);
+  return true;
+}
+
 /** 排一条"到点删除"的群消息。 */
 export async function scheduleMessagePurge(
   db: D1Database,
