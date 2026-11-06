@@ -517,17 +517,30 @@ body {
   text-decoration: underline;
 }
 
+/* 形状只做底，图标叠在上面，别把图标也一起裁了 */
 .state__icon {
-  width: 72px;
-  height: 72px;
+  position: relative;
+  width: 76px;
+  height: 76px;
   display: grid;
   place-items: center;
-  background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
+}
+
+.state__icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--md-sys-color-secondary-container);
   -webkit-mask-image: var(--shape-empty);
   mask-image: var(--shape-empty);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
+}
+
+.state__icon svg {
+  position: relative;
+  opacity: 0.9;
 }
 
 .state h2 {

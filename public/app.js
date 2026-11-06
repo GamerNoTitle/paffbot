@@ -20,7 +20,7 @@ const ICONS = {
     '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.2V11c0 3.9-2.5 7.6-6 8.8-3.5-1.2-6-4.9-6-8.8V6.4l6-2.2Z"/>',
   list: '<path d="M4 6h2v2H4V6Zm4 0h12v2H8V6ZM4 11h2v2H4v-2Zm4 0h12v2H8v-2ZM4 16h2v2H4v-2Zm4 0h12v2H8v-2Z"/>',
   inbox:
-    '<path d="M19 3H5a2 2 0 0 0-2 2v14l4-4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12H6.17L5 16.17V5h14v10Z"/>',
+    '<path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12h-4a3 3 0 0 1-6 0H5V5h14v10Z"/>',
   copy: '<path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/>',
   error: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/>',
   clock: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-13h-2v6l5 3 1-1.7-4-2.3V7Z"/>',
@@ -562,7 +562,7 @@ async function loadStandalonePanel() {
 
     panel.innerHTML = `
       <div class="state">
-        <div class="state__icon">${svgIcon("clock", 26)}</div>
+        <div class="state__icon">${svgIcon("clock", 30)}</div>
         <h2 class="md-typescale-headline-small">${esc(t("state.rateLimited.title"))}</h2>
         <p class="md-typescale-body-medium muted">${esc(err.message)}</p>
       </div>`;
@@ -1196,7 +1196,7 @@ function switchTab(name) {
   }
 }
 
-$("empty-icon").innerHTML = svgIcon("inbox", 28);
+$("empty-icon").innerHTML = svgIcon("inbox", 34);
 
 /** 版权：起始年固定，跨年后自动变成区间。 */
 function renderFooter() {
