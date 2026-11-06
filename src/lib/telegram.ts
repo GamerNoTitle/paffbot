@@ -93,9 +93,17 @@ export interface InlineKeyboardMarkup {
   inline_keyboard: InlineKeyboardButton[][];
 }
 
+export interface TgEntity {
+  type: "text_mention" | "bold" | "italic" | "code";
+  offset: number;
+  length: number;
+  user?: { id: number; first_name?: string; is_bot?: boolean };
+}
+
 export interface SendMessageParams {
   chat_id: number | string;
   text: string;
+  entities?: TgEntity[];
   parse_mode?: "HTML" | "MarkdownV2";
   disable_web_page_preview?: boolean;
   reply_markup?: InlineKeyboardMarkup;

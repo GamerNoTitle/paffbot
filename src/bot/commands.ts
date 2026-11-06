@@ -16,7 +16,7 @@ import { approveVerification, rejectVerification } from "../verify/finalize";
 import { isGroupAdmin, isSuperAdmin } from "./auth";
 import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
-import { auditLine, commandsHelp, miniAppKeyboard } from "./messages";
+import { aboutText, auditLine, commandsHelp, miniAppKeyboard } from "./messages";
 import { sendVerificationPrompt } from "./prompt";
 import { normalizeLang, type Lang } from "../i18n";
 
@@ -87,6 +87,10 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
   switch (command) {
     case "start":
       await handleStart(env);
+      return;
+    case "info":
+    case "about":
+      await reply(env, aboutText(env.lang));
       return;
     case "help":
       await reply(env, commandsHelp(env.superAdmin && !env.isPrivate, "", env.lang));

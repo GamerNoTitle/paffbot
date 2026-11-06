@@ -58,6 +58,8 @@ export default {
   "err.notInGroup": "该用户不在群组中",
   "err.rights": "机器人在该群组权限不足",
   "err.telegram": "Telegram 接口调用失败",
+  "foot.repo": "源代码",
+  "foot.about": "关于",
   "hero.attemptsLeft": "今日剩余 {count} 次",
   "hero.checking": "正在检查",
   "hero.checkingSub": "读取申请状态中，请稍等",

@@ -58,6 +58,8 @@ export default {
   "err.notInGroup": "That user is not in the group",
   "err.rights": "The bot lacks permissions in that group",
   "err.telegram": "Telegram API call failed",
+  "foot.repo": "Source",
+  "foot.about": "About",
   "hero.attemptsLeft": "{count} left today",
   "hero.checking": "Checking",
   "hero.checkingSub": "Reading your request, one moment",

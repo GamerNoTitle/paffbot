@@ -84,7 +84,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
       chatId: request.chat.id,
       targetUserId: user.id,
       verificationId: null,
-      detail: { method: "trusted", via: "trust_window" },
+      detail: { method: "admin_pass", via: "redelivered" },
     });
     return;
   }
@@ -176,15 +176,11 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   await sendVerificationPrompt(ctx, verification, user, remaining, request.user_chat_id);
 
   const lang = normalizeLang(user.language_code);
+  const notice = adminNotice({ userId: user.id, userName: displayName(user), lang });
   const adminMsg = await ctx.tg.trySendMessage({
     chat_id: request.chat.id,
-    text: adminNotice({
-      chatTitle: chatTitleOf(request.chat),
-      userId: user.id,
-      userName: displayName(user),
-      lang,
-    }),
-    parse_mode: "HTML",
+    text: notice.text,
+    entities: notice.entities,
     reply_markup: adminKeyboard(verification.id, lang),
   });
   if (adminMsg) {

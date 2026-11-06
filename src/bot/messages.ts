@@ -1,4 +1,4 @@
-import type { InlineKeyboardButton, InlineKeyboardMarkup } from "../lib/telegram";
+import type { InlineKeyboardButton, InlineKeyboardMarkup, TgEntity } from "../lib/telegram";
 import { escapeHtml, truncate } from "../lib/html";
 import { formatDuration } from "../lib/time";
 import { t, type Lang, DEFAULT_LANG } from "../i18n";
@@ -87,16 +87,35 @@ export function groupNoticeKeyboard(
 
 /** 入群申请（还没进群）时发给群里的管理员消息。 */
 export function adminNotice(params: {
-  chatTitle: string;
   userId: number;
   userName: string;
   lang?: Lang;
-}): string {
+}): { text: string; entities: TgEntity[] } {
   const lang = params.lang ?? DEFAULT_LANG;
-  return t(lang, "admin.notice", {
-    chat: escapeHtml(params.chatTitle),
-    name: `<a href=\"tg://user?id=${params.userId}\">${escapeHtml(params.userName)}</a>`,
-  });
+  const name = params.userName;
+  const text = t(lang, "admin.notice", { name });
+  const offset = text.indexOf(name);
+  return {
+    text,
+    entities: [
+      { type: "text_mention", offset: Math.max(0, offset), length: name.length, user: { id: params.userId, first_name: name } },
+    ],
+  };
+}
+
+const METHOD_KEYS: Record<string, string> = {
+  github: "method.github",
+  github_oauth: "method.githubOauth",
+  admin_pass: "method.adminPass",
+  button: "method.button",
+  profile: "method.profile",
+  timeout: "method.timeout",
+};
+
+/** 验证方式说人话，通过/超时文案里用。 */
+export function methodLabel(method: string | null, lang: Lang = DEFAULT_LANG): string {
+  const key = method ? METHOD_KEYS[method] : undefined;
+  return key ? t(lang, key) : (method ?? "");
 }
 
 export function dmApproved(chatTitle: string, lang: Lang = DEFAULT_LANG): string {
@@ -119,8 +138,12 @@ export function dmBlocked(chatTitle: string, reason: string, lang: Lang = DEFAUL
   return t(lang, "dm.blocked", { reason: escapeHtml(reason) });
 }
 
+export function aboutText(lang: Lang = DEFAULT_LANG): string {
+  return [t(lang, "about.title"), t(lang, "about.body"), t(lang, "about.repo"), t(lang, "about.usage")].join("\n\n");
+}
+
 export function commandsHelp(isAdmin: boolean, prefix = "", lang: Lang = DEFAULT_LANG): string {
-  const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.id"), t(lang, "cmd.help")];
+  const lines = [t(lang, "cmd.header"), t(lang, "cmd.start"), t(lang, "cmd.id"), t(lang, "cmd.info"), t(lang, "cmd.help")];
   if (isAdmin) {
     lines.push(t(lang, "cmd.pass"), t(lang, "cmd.ban"), t(lang, "cmd.pending"), t(lang, "cmd.audit"));
     lines.push("", t(lang, "cmd.buttons"));

@@ -14,16 +14,25 @@ export default {
 
   "group.notice": "Welcome <a href=\"tg://user?id={uid}\">{name}</a>. Please verify your identity first",
   "group.notice.timeout": "{name} timed out and has been removed",
-  "admin.notice.timeout": "Someone asked to join “{chat}”: {name} (timed out, auto-declined)",
+  "admin.notice.timeout": "{name} asked to join (timed out, auto-declined)",
   "group.notice.button": "Verify",
 
   "admin.approve": "Approve",
   "admin.reject": "Reject",
   "admin.ban": "Ban",
-  "admin.notice": "Someone asked to join “{chat}”: {name}. An admin can handle it here",
+  "admin.notice": "{name} asked to join. An admin can handle it here.",
   "admin.done.approve": "Approved",
   "admin.done.reject": "Rejected",
   "admin.done.ban": "Banned",
+
+  "group.notice.approved": "{name} passed verification via {method}. Welcome",
+  "admin.notice.approved": "{name} passed verification via {method}",
+  "method.github": "GitHub SSH signature",
+  "method.githubOauth": "GitHub authorisation",
+  "method.adminPass": "admin approval",
+  "method.button": "button confirmation",
+  "method.profile": "profile screening",
+  "method.timeout": "timeout",
 
   "cmd.help": "/help: show this command list",
   "cmd.buttons": "Every join request comes with Approve / Reject / Ban buttons. One tap handles it",
@@ -43,6 +52,12 @@ export default {
   "action.telegramFailed": "Telegram call failed",
   "action.channelBanned": "channel post banned",
   "action.groupSettings": "group settings changed",
+
+  "cmd.info": "/info: about this bot",
+  "about.title": "<b>PaffBot</b>",
+  "about.body": "A join-verification bot for Telegram groups. Pure TypeScript on Cloudflare Workers + D1, no long-running process.",
+  "about.repo": "Repository: <a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
+  "about.usage": "Send /help to see the commands.",
 
   "cmd.header": "<b>Commands</b>",
   "cmd.start": "/start: start or continue verification",

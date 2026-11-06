@@ -2,6 +2,7 @@ import { decideVerification, getVerification, parseDetail, type VerificationRow 
 import { appendAudit, type ActorType, } from "../db/audit";
 import { scheduleMessagePurge } from "../db";
 import { DEFAULT_LANG, t, type Lang } from "../i18n";
+import { methodLabel } from "../bot/messages";
 import { escapeHtml } from "../lib/html";
 import { dmApproved, dmBlocked, dmRejected, dmTimeout } from "../bot/messages";
 import type { TelegramApi } from "../lib/telegram";
@@ -71,10 +72,31 @@ export async function approveVerification(
     detail: { method: options.method, source: row.source, proof: options.proof ?? null },
   });
 
-  // 直接入群模式下群里那条"请验证"的提示，放行后删掉保持群面干净
-  const noticeId = parseDetail(row.detail).notice_message_id;
+  // 通过后把群里的提示改成结果，留 5 分钟再自动删除
+  const info = parseDetail(row.detail);
+  const name = row.display_name ?? row.username ?? String(row.user_id);
+  const method = methodLabel(row.method, DEFAULT_LANG);
+
+  const noticeId = info.notice_message_id;
   if (typeof noticeId === "number") {
-    await deps.tg.deleteMessage(row.chat_id, noticeId);
+    const edited = await deps.tg.editMessageText({
+      chat_id: row.chat_id,
+      message_id: noticeId,
+      text: t(DEFAULT_LANG, "group.notice.approved", { name: escapeHtml(name), method: escapeHtml(method) }),
+      parse_mode: "HTML",
+    });
+    if (edited) await scheduleMessagePurge(deps.db, row.chat_id, noticeId, Date.now() + PURGE_DELAY_MS);
+  }
+
+  const adminMsgId = info.admin_message_id;
+  if (typeof adminMsgId === "number") {
+    const edited = await deps.tg.editMessageText({
+      chat_id: row.chat_id,
+      message_id: adminMsgId,
+      text: t(DEFAULT_LANG, "admin.notice.approved", { name: escapeHtml(name), method: escapeHtml(method) }),
+      parse_mode: "HTML",
+    });
+    if (edited) await scheduleMessagePurge(deps.db, row.chat_id, adminMsgId, Date.now() + PURGE_DELAY_MS);
   }
 
   if (options.notify !== false) {
@@ -117,10 +139,7 @@ async function markTimeoutMessages(
     const edited = await deps.tg.editMessageText({
       chat_id: row.chat_id,
       message_id: adminId,
-      text: t(lang, "admin.notice.timeout", {
-        chat: escapeHtml(row.chat_title ?? String(row.chat_id)),
-        name: `<a href="tg://user?id=${row.user_id}">${escapeHtml(name)}</a>`,
-      }),
+      text: t(lang, "admin.notice.timeout", { name: escapeHtml(name) }),
       parse_mode: "HTML",
     });
     if (edited) await scheduleMessagePurge(deps.db, row.chat_id, adminId, Date.now() + PURGE_DELAY_MS);

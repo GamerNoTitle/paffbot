@@ -14,16 +14,25 @@ export default {
 
   "group.notice": "欢迎 <a href=\"tg://user?id={uid}\">{name}</a> 入群，请先验证你的身份",
   "group.notice.timeout": "「{name}」验证超时，已移出",
-  "admin.notice.timeout": "「{chat}」有人申请加入：{name}（验证超时，已自动拒绝）",
+  "admin.notice.timeout": "{name} 申请加入（验证超时，已自动拒绝）",
   "group.notice.button": "前往验证",
 
   "admin.approve": "通过",
   "admin.reject": "拒绝",
   "admin.ban": "封禁",
-  "admin.notice": "「{chat}」有人申请加入：{name}，管理员可以直接处理",
+  "admin.notice": "{name} 申请加入，管理员可以直接处理",
   "admin.done.approve": "已通过",
   "admin.done.reject": "已拒绝",
   "admin.done.ban": "已封禁",
+
+  "group.notice.approved": "用户「{name}」通过 {method} 验证，欢迎",
+  "admin.notice.approved": "{name} 已通过 {method} 验证",
+  "method.github": "GitHub SSH 签名",
+  "method.githubOauth": "GitHub 授权",
+  "method.adminPass": "管理员放行",
+  "method.button": "按钮确认",
+  "method.profile": "资料筛查",
+  "method.timeout": "超时",
 
   "cmd.help": "/help：显示这份命令列表",
   "cmd.buttons": "群里每条入群申请都带「通过 / 拒绝 / 封禁」按钮，点一下就能处理",
@@ -43,6 +52,12 @@ export default {
   "action.telegramFailed": "Telegram 调用失败",
   "action.channelBanned": "频道发言已封禁",
   "action.groupSettings": "群设置变更",
+
+  "cmd.info": "/info：关于芙 Bot",
+  "about.title": "<b>芙 Bot</b>",
+  "about.body": "群组入群验证机器人，纯 TypeScript 跑在 Cloudflare Workers + D1 上，不依赖任何常驻进程。",
+  "about.repo": "仓库：<a href=\"https://github.com/GamerNoTitle/Paffbot\">GamerNoTitle/Paffbot</a>",
+  "about.usage": "发送 /help 查看可用命令。",
 
   "cmd.header": "<b>命令列表</b>",
   "cmd.start": "/start：开始或继续验证",
