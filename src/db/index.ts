@@ -95,6 +95,35 @@ export async function findOpenVerification(db: D1Database, userId: number): Prom
 }
 
 /** 最近一段时间内已被批准的记录：用来避免 chat_member 又把刚放行的人禁言。 */
+/** 排一条"到点删除"的群消息。 */
+export async function scheduleMessagePurge(
+  db: D1Database,
+  chatId: number,
+  messageId: number,
+  dueAt: number,
+): Promise<void> {
+  await db
+    .prepare("INSERT INTO message_purges (chat_id, message_id, due_at, created_at) VALUES (?, ?, ?, ?)")
+    .bind(chatId, messageId, dueAt, Date.now())
+    .run();
+}
+
+export async function listDuePurges(
+  db: D1Database,
+  now: number,
+  limit = 50,
+): Promise<Array<{ id: number; chat_id: number; message_id: number }>> {
+  const { results } = await db
+    .prepare("SELECT id, chat_id, message_id FROM message_purges WHERE due_at <= ? ORDER BY due_at ASC LIMIT ?")
+    .bind(now, limit)
+    .all<{ id: number; chat_id: number; message_id: number }>();
+  return results ?? [];
+}
+
+export async function deletePurge(db: D1Database, id: number): Promise<void> {
+  await db.prepare("DELETE FROM message_purges WHERE id = ?").bind(id).run();
+}
+
 export async function findRecentlyApprovedForChat(
   db: D1Database,
   chatId: number,

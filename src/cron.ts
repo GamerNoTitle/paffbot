@@ -1,4 +1,10 @@
-import { listExpiredPending, pruneOldVerifications, pruneRateLimits } from "./db";
+import {
+  deletePurge,
+  listDuePurges,
+  listExpiredPending,
+  pruneOldVerifications,
+  pruneRateLimits,
+} from "./db";
 import { pruneChallenges } from "./lib/challenge";
 import { verifyAuditChain } from "./db/audit";
 import { loadConfig, type Env } from "./env";
@@ -32,6 +38,14 @@ export async function runScheduled(env: Env): Promise<void> {
     );
   }
   if (expired.length > 0) console.log(`[cron] 处理超时验证 ${expired.length} 条`);
+
+  // 到点的失败消息删掉，避免群里堆积
+  const due = await listDuePurges(env.DB, Date.now(), 50);
+  for (const item of due) {
+    await tg.deleteMessage(item.chat_id, item.message_id);
+    await deletePurge(env.DB, item.id);
+  }
+  if (due.length > 0) console.log(`[cron] 清理过期提示消息 ${due.length} 条`);
 
   const now = new Date();
   if (now.getUTCHours() === 3 && now.getUTCMinutes() < 2) {

@@ -1,5 +1,6 @@
 import { decideVerification, getVerification, parseDetail, type VerificationRow } from "../db";
-import { appendAudit, type ActorType } from "../db/audit";
+import { appendAudit, type ActorType, } from "../db/audit";
+import { scheduleMessagePurge } from "../db";
 import { DEFAULT_LANG, t, type Lang } from "../i18n";
 import { escapeHtml } from "../lib/html";
 import { dmApproved, dmBlocked, dmRejected, dmTimeout } from "../bot/messages";
@@ -88,6 +89,9 @@ export async function approveVerification(
 
 export type RejectStatus = "declined" | "timeout" | "banned" | "blocked";
 
+/** 失败消息留 5 分钟给人看清结果，之后自动删掉，避免群里越堆越多。 */
+const PURGE_DELAY_MS = 5 * 60_000;
+
 /** 超时后把群里那两条带按钮的消息改成结果，避免留下点不动的按钮。 */
 async function markTimeoutMessages(
   deps: FinalizeDeps,
@@ -99,17 +103,18 @@ async function markTimeoutMessages(
 
   const noticeId = detail.notice_message_id;
   if (typeof noticeId === "number") {
-    await deps.tg.editMessageText({
+    const edited = await deps.tg.editMessageText({
       chat_id: row.chat_id,
       message_id: noticeId,
       text: t(lang, "group.notice.timeout", { name: escapeHtml(name) }),
       parse_mode: "HTML",
     });
+    if (edited) await scheduleMessagePurge(deps.db, row.chat_id, noticeId, Date.now() + PURGE_DELAY_MS);
   }
 
   const adminId = detail.admin_message_id;
   if (typeof adminId === "number") {
-    await deps.tg.editMessageText({
+    const edited = await deps.tg.editMessageText({
       chat_id: row.chat_id,
       message_id: adminId,
       text: t(lang, "admin.notice.timeout", {
@@ -118,6 +123,7 @@ async function markTimeoutMessages(
       }),
       parse_mode: "HTML",
     });
+    if (edited) await scheduleMessagePurge(deps.db, row.chat_id, adminId, Date.now() + PURGE_DELAY_MS);
   }
 }
 
