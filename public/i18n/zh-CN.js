@@ -114,7 +114,7 @@ export default {
   "panel.ssh.step1.label": "GamerNoTitle",
   "panel.ssh.step1.sub": "请输入你登录时使用的 Github 用户名",
   "panel.ssh.step1.title": "GitHub 用户名",
-  "panel.ssh.step2.sub": "在终端中执行下面的的命令来完成 SSH 签名，如果私钥位置有误，请自行修改",
+  "panel.ssh.step2.sub": "在终端中执行下面的命令来完成 SSH 签名，如果私钥位置有误，请自行修改",
   "panel.ssh.step2.title": "SSH 签名",
   "panel.ssh.step3.label": "-----BEGIN SSH SIGNATURE-----\n......\n-----END SSH SIGNATURE-----",
   "panel.ssh.step3.title": "签名结果",
