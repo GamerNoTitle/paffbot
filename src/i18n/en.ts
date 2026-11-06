@@ -50,6 +50,7 @@ export default {
   "action.failed": "check failed",
   "action.dmFailed": "DM failed",
   "action.telegramFailed": "Telegram call failed",
+  "action.botBanned": "bot post banned",
   "action.channelBanned": "channel post banned",
   "action.groupSettings": "group settings changed",
 

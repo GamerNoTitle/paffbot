@@ -98,6 +98,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 | `GITHUB_MIN_ACCOUNT_AGE_DAYS` | ⭕ | GitHub 账号最小年龄，默认 0（关闭） |
 | `GITHUB_REQUIRED_ORG` | ⭕ | 要求属于某个 GitHub 组织（按公开组织成员判断） |
 | `SCREEN_KEYWORDS` | ⭕ | 覆盖默认拦截关键词，逗号分隔 |
+| `ALLOWED_BOTS` | ⭕ | 允许在群里发言的 bot id，逗号分隔；其余 bot 发言一律删消息并封禁 |
 | `AUDIT_RETENTION_DAYS` | ⭕ | 已结案验证记录保留天数，默认 365（审计日志不清理） |
 
 ## 验证方式
@@ -155,6 +156,7 @@ Telegram 侧还要做三件事（漏了会白干）：
 - 放行只能由服务端发起：验证通过后 Worker 直接调 `approveChatJoinRequest` / 解除禁言，前端伪造 `sendData` 没有意义。
 - webhook 双重校验：URL 路径段 + `X-Telegram-Bot-Api-Secret-Token`，常数时间比较。
 - `update_id` 幂等表 + 状态 CAS，避免重投导致重复放行。
+- 群里出现 bot 发言（`from.is_bot`）：不在 `ALLOWED_BOTS`、也不是群管理员的，删消息并封禁
 - 群里出现「频道身份发言」（`sender_chat` 是频道且不是本群关联频道）：删除消息并 `banChatSenderChat` 封禁该频道，记审计
 - 浏览器校验的挑战 nonce 存库并原子消费，重放无效；每个账号/IP 每天 3 次（`VERIFY_DAILY_LIMIT`）。
 - SSH 挑战串一次性、带命名空间；公钥与 Telegram 账号绑定；单账号最多 5 把。

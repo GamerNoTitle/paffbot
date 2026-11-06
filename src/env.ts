@@ -31,6 +31,7 @@ export interface Env {
 
   AUDIT_RETENTION_DAYS?: string;
   SCREEN_KEYWORDS?: string;
+  ALLOWED_BOTS?: string;
   ENVIRONMENT?: string;
 }
 
@@ -52,6 +53,8 @@ export interface Config {
   githubRequiredOrg: string | null;
   retentionDays: number;
   screenKeywords: string[];
+  /** 允许在群里发言的 bot（Telegram id），其余一律删消息 + 封禁 */
+  allowedBotIds: number[];
   environment: string;
 }
 
@@ -122,6 +125,7 @@ export function loadConfig(env: Env): Config {
     githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
     retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
+    allowedBotIds: parseIntList(env.ALLOWED_BOTS),
     environment: (env.ENVIRONMENT ?? "production").trim(),
   };
 }

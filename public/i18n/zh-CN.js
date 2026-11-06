@@ -4,6 +4,7 @@ export default {
   "action.approved": "通过",
   "action.banned": "封禁",
   "action.blocked": "拦截",
+  "action.botBanned": "Bot 发言已封禁",
   "action.channelBanned": "频道发言已封禁",
   "action.created": "等待验证",
   "action.declined": "拒绝",

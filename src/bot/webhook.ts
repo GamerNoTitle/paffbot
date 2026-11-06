@@ -20,6 +20,7 @@ import {
   type TelegramApi,
   type TgCallbackQuery,
   type TgChatJoinRequest,
+  type TgChatMemberInfo,
   type TgChatMemberUpdated,
   type TgMessage,
   type TgUpdate,
@@ -369,7 +370,13 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
   }
 
   const from = message.from;
-  if (!from || from.is_bot) return;
+  if (!from) return;
+
+  // 群里出现 bot 发言：不是白名单、也不是管理员 → 删消息并封禁这个 bot
+  if (from.is_bot) {
+    await handleBotSender(ctx, message);
+    return;
+  }
 
   if (message.new_chat_members?.length) {
     const chatTitle = chatTitleOf(message.chat);
@@ -392,6 +399,39 @@ async function handleMessage(ctx: BotContext, message: TgMessage, updateId: numb
   if (message.chat.type === "private") {
     await handleChatText(ctx, message);
   }
+}
+
+/** 群里出现 bot 发言：白名单或管理员放行，其余删消息 + 封禁。 */
+async function handleBotSender(ctx: BotContext, message: TgMessage): Promise<void> {
+  const sender = message.from;
+  if (!sender) return;
+  if (message.chat.type === "private") return;
+  if (ctx.config.allowedBotIds.includes(sender.id)) return;
+
+  const member = await ctx.tg.safe<TgChatMemberInfo>("getChatMember", {
+    chat_id: message.chat.id,
+    user_id: sender.id,
+  });
+  if (member && (member.status === "administrator" || member.status === "creator")) return;
+
+  await ctx.tg.deleteMessage(message.chat.id, message.message_id);
+  await ctx.tg.banChatMember(message.chat.id, sender.id);
+
+  await appendAudit(ctx.db, {
+    actorId: 0,
+    actorType: "system",
+    action: "telegram.bot_banned",
+    chatId: message.chat.id,
+    targetUserId: sender.id,
+    verificationId: null,
+    detail: {
+      phase: "bot_post",
+      username: sender.username ?? null,
+      name: displayName(sender),
+      message_id: message.message_id,
+      preview: (message.text ?? "").slice(0, 120),
+    },
+  });
 }
 
 /** 群里出现"频道发言"：不是本群关联频道就删掉 + 封禁该频道。 */
