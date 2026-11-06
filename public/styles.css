@@ -888,15 +888,93 @@ md-filled-tonal-button {
   flex: 1 1 220px;
 }
 
-.select {
-  appearance: auto;
+/* 自绘下拉：避免原生 <select> 弹出系统菜单 */
+.dd {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.dd__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 190px;
+  max-width: 300px;
+  height: 48px;
+  padding: 0 16px 0 18px;
   border: var(--hairline);
+  border-radius: var(--shape-pill);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  border-radius: var(--shape-pill);
-  padding: 11px 16px;
   font: 500 13px/1 var(--md-ref-typeface-plain);
   cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.dd__btn:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.dd__btn:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.dd__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd__menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 100%;
+  max-width: 320px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--md-sys-color-surface-container);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  z-index: 60;
+}
+
+.dd__menu[hidden] {
+  display: none;
+}
+
+.dd__item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--md-sys-color-on-surface);
+  font: 500 13px/1.2 var(--md-ref-typeface-plain);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dd__item:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.dd__item[aria-selected="true"] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.dd--sm .dd__btn {
+  min-width: 116px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 .pager {

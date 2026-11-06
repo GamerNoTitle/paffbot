@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title></title>
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=38" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -85,7 +85,10 @@
 
         <div class="card">
           <div class="filter-row">
-            <select class="select" id="audit-group" data-i18n-aria="audit.groupAll" aria-label=""></select>
+            <div class="dd">
+            <button type="button" class="dd__btn" id="audit-group" data-i18n-aria="audit.groupAll" aria-label="" aria-haspopup="listbox" aria-expanded="false"><span class="dd__label"></span></button>
+            <div class="dd__menu" role="listbox" hidden></div>
+          </div>
             <div class="filter-actions">
               <md-outlined-button id="btn-audit-csv" data-i18n="audit.export"></md-outlined-button>
             </div>
@@ -97,7 +100,10 @@
         <div id="audit-body"></div>
       </section>
 
-      <footer class="foot md-typescale-label-medium"><span id="foot"></span><select class="select select--sm" id="lang" aria-label="Language"></select></footer>
+      <footer class="foot md-typescale-label-medium"><span id="foot"></span><div class="dd dd--sm">
+            <button type="button" class="dd__btn" id="lang" aria-label="Language" aria-haspopup="listbox" aria-expanded="false"><span class="dd__label"></span></button>
+            <div class="dd__menu" role="listbox" hidden></div>
+          </div></footer>
     </div>
 
     <md-dialog id="success-dialog" type="alert">
@@ -113,6 +119,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=44"></script>
+    <script type="module" src="./app.js?v=49"></script>
   </body>
 </html>

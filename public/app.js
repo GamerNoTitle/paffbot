@@ -25,6 +25,7 @@ const ICONS = {
   error: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/>',
   clock: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-13h-2v6l5 3 1-1.7-4-2.3V7Z"/>',
   stack: '<path d="M12 3 2 8l10 5 10-5-10-5Zm0 7.8L4.5 7 12 3.2 19.5 7 12 10.8ZM2 16l10 5 10-5-1.8-.9L12 18.8 3.8 15.1 2 16Zm0-4 10 5 10-5-1.8-.9L12 14.8 3.8 11.1 2 12Z"/>',
+  chevron: '<path d="M12 15.4 5.6 9 7 7.6l5 5 5-5L18.4 9 12 15.4Z"/>',
 };
 
 function svgIcon(name, size = 20) {
@@ -687,7 +688,7 @@ function renderPreview() {
 /* ---------------------------------------------------------------- 审计 */
 
 async function loadAudit() {
-  const chatId = $("audit-group")?.value ?? "";
+  const chatId = ddValue("audit-group");
   $("audit-hint").textContent = t("audit.loading");
   try {
     const query = chatId ? `?chatId=${encodeURIComponent(chatId)}` : "";
@@ -842,11 +843,109 @@ function actionOptions() {
   ];
 }
 
-function selectHtml(id, options) {
-  return `<select class="select" id="${id}">${options
-    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
-    .join("")}</select>`;
+function ddItemsHtml(options) {
+  return options
+    .map(([value, label]) => `<button type="button" class="dd__item" role="option" data-value="${esc(value)}">${esc(label)}</button>`)
+    .join("");
 }
+
+function selectHtml(id, options) {
+  return `<div class="dd">
+    <button type="button" class="dd__btn" id="${id}" aria-haspopup="listbox" aria-expanded="false"><span class="dd__label">${esc(options[0]?.[1] ?? "")}</span>${svgIcon("chevron", 18)}</button>
+    <div class="dd__menu" role="listbox" hidden>${ddItemsHtml(options)}</div>
+  </div>`;
+}
+
+/** 下拉当前值：直接读写按钮上的 value，原有代码不用改。 */
+function ddValue(id) {
+  const el = $(id);
+  return el?.value ?? "";
+}
+
+function setDdValue(idOrEl, value) {
+  const btn = typeof idOrEl === "string" ? $(idOrEl) : idOrEl;
+  if (!btn) return;
+  const menu = btn._menu ?? btn.nextElementSibling;
+  const item = menu?.querySelector(`.dd__item[data-value="${value}"]`) ?? menu?.querySelector(".dd__item");
+  btn.value = item?.dataset.value ?? "";
+  const label = btn.querySelector(".dd__label");
+  if (label) label.textContent = item?.textContent ?? "";
+  menu?.querySelectorAll(".dd__item").forEach((el) => el.setAttribute("aria-selected", String(el === item)));
+  if (menu) menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+}
+
+function fillDd(id, options, value) {
+  const btn = $(id);
+  if (!btn) return;
+  const menu = btn._menu ?? btn.nextElementSibling;
+  if (menu) {
+    btn._menu = menu;
+    menu.innerHTML = ddItemsHtml(options);
+  }
+  setDdValue(btn, options.some(([v]) => v === value) ? value : (options[0]?.[0] ?? ""));
+}
+
+/* 下拉菜单要逃出卡片的 overflow，打开时挂到 body 上 */
+let openDd = null;
+
+function closeDd() {
+  if (!openDd) return;
+  const { menu, btn } = openDd;
+  menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+  if (menu.parentElement === document.body) btn.parentElement.appendChild(menu);
+  openDd = null;
+}
+
+function openDdMenu(btn) {
+  const menu = btn._menu ?? btn.nextElementSibling;
+  if (!menu) return;
+  btn._menu = menu;
+  if (openDd?.menu === menu) {
+    closeDd();
+    return;
+  }
+  closeDd();
+  document.body.appendChild(menu);
+  const rect = btn.getBoundingClientRect();
+  menu.style.left = `${Math.round(rect.left)}px`;
+  menu.style.top = `${Math.round(rect.bottom + 6)}px`;
+  menu.style.minWidth = `${Math.round(rect.width)}px`;
+  menu.hidden = false;
+  menu._owner = btn;
+  btn.setAttribute("aria-expanded", "true");
+  openDd = { btn, menu };
+}
+
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest?.(".dd__btn");
+  const item = event.target.closest?.(".dd__item");
+
+  if (item) {
+    const menu = item.parentElement;
+    const owner = menu?._owner;
+    if (owner) {
+      setDdValue(owner, item.dataset.value);
+      owner.dispatchEvent(new Event("change", { bubbles: true }));
+      closeDd();
+    }
+    return;
+  }
+
+  if (btn) {
+    openDdMenu(btn);
+    return;
+  }
+
+  if (openDd && !event.target.closest?.(".dd__menu")) closeDd();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeDd();
+});
+
+window.addEventListener("scroll", closeDd, { passive: true });
 
 function groupCell(title, id) {
   if (!title && !id) return '<div class="cell muted">—</div>';
@@ -959,11 +1058,8 @@ function renderAudit(data) {
     const options = [["", t("audit.groupAll")]].concat(
       (data.groups ?? []).map((g) => [String(g.chatId), g.title || String(g.chatId)]),
     );
-    groupSelect.innerHTML = options
-      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
-      .join("");
-    groupSelect.value = options.some(([v]) => v === current) ? current : "";
-    auditView.chatId = groupSelect.value;
+    fillDd("audit-group", options, current);
+    auditView.chatId = ddValue("audit-group");
   }
   auditView.verify = { page: 1, status: "", q: "" };
   auditView.log = { page: 1, action: "", q: "" };
@@ -1032,7 +1128,7 @@ function renderAudit(data) {
 function bindFilter(prefix, _key, apply, reload, event) {
   const el = $(`${prefix}-${prefix === "v" ? "status" : "action"}`);
   el?.addEventListener(event, () => {
-    apply(el.value);
+    apply(el.value ?? "");
     auditView[prefix === "v" ? "verify" : "log"].page = 1;
     reload();
   });
@@ -1052,7 +1148,7 @@ function bindSearch(id, apply, reload) {
 }
 
 async function downloadCsv() {
-  const chatId = $("audit-group")?.value ?? "";
+  const chatId = ddValue("audit-group");
   try {
     const headers = tg?.initData
       ? { "X-Telegram-Init-Data": tg.initData }
@@ -1193,6 +1289,11 @@ $("btn-token").addEventListener("click", () => {
 
 /* ---------------------------------------------------------------- i18n */
 
+
+document.querySelectorAll(".dd__btn").forEach((btn) => {
+  if (!btn.querySelector("svg")) btn.insertAdjacentHTML("beforeend", svgIcon("chevron", 18));
+});
+
 function initI18n() {
   const lang = setLang(detectLang(TG_LANG));
   applyStaticI18n();
@@ -1200,8 +1301,7 @@ function initI18n() {
 
   const select = $("lang");
   if (!select) return;
-  select.innerHTML = LANGUAGES.map(([code, label]) => `<option value="${code}">${label}</option>`).join("");
-  select.value = lang;
+  fillDd("lang", LANGUAGES.map(([code, label]) => [code, label]), lang);
   select.addEventListener("change", () => {
     setLang(select.value);
     retranslate();
