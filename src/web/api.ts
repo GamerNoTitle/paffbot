@@ -74,12 +74,13 @@ async function markCaptchaPassed(ctx: BotContext, verification: VerificationRow)
   });
 
   const name = verification.display_name ?? verification.username ?? String(verification.user_id);
-  await ctx.tg.trySendMessage({
+  const sent = await ctx.tg.trySendMessage({
     chat_id: verification.chat_id,
     text: t(DEFAULT_LANG, "group.notice.captcha", { name: escapeHtml(name) }),
     parse_mode: "HTML",
     reply_markup: adminKeyboard(verification.id, DEFAULT_LANG),
   });
+  if (!sent) console.error("[captcha] 群提醒发送失败", verification.chat_id, verification.id);
 }
 
 function publicVerification(row: VerificationRow) {

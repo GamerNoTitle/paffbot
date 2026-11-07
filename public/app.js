@@ -346,7 +346,7 @@ async function renderCaptchaPanel(body) {
 
   const req = start.requirements ?? {};
 
-  // Turnstile：官方脚本渲染，回调里拿 token 再交给后端 siteverify
+  // Turnstile：官方脚本渲染，成功后由用户点按钮再提交
   if (req.provider === "turnstile") {
     if (!req.siteKey) {
       body.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(t("panel.captcha.failed"))}</p>`;
@@ -356,26 +356,44 @@ async function renderCaptchaPanel(body) {
 
     body.innerHTML = `
       <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
-      <div id="ts-slot" class="captcha"></div>`;
+      <div id="ts-slot" class="captcha"></div>
+      <div class="captcha__actions">
+        <md-filled-button id="cap-go" disabled>${esc(t("panel.captcha.submit"))}</md-filled-button>
+      </div>`;
 
-    const submitTurnstile = async (token) => {
+    let turnstileToken = "";
+    const go = $("cap-go");
+    go.addEventListener("click", async () => {
+      if (!turnstileToken || go.disabled) return;
+      go.disabled = true;
       const res = await api("/api/verify/submit", {
         method: "POST",
-        body: { method: "captcha", turnstileToken: token, verificationId: state.verification?.id },
+        body: { method: "captcha", turnstileToken, verificationId: state.verification?.id },
       });
-      if (res.ok) {
-        stopCaptchaPolling();
-        const fresh = await api("/api/session");
-        if (fresh.ok) state.verification = fresh.data.verification;
-        renderCaptchaPanel(body);
+      if (!res.ok) {
+        go.disabled = false;
+        window.turnstile?.reset("#ts-slot");
+        turnstileToken = "";
+        return;
       }
-    };
+      stopCaptchaPolling();
+      const fresh = await api("/api/session");
+      if (fresh.ok) state.verification = fresh.data.verification;
+      renderCaptchaPanel(body);
+    });
 
     window.turnstile?.render("#ts-slot", {
       sitekey: String(req.siteKey),
       appearance: "always",
       theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
-      callback: (token) => void submitTurnstile(token),
+      callback: (token) => {
+        turnstileToken = token;
+        go.disabled = false;
+      },
+      "expired-callback": () => {
+        turnstileToken = "";
+        go.disabled = true;
+      },
     });
     return;
   }

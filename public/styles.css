@@ -193,6 +193,12 @@ body {
   display: none !important;
 }
 
+.captcha__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
 .foot {
   margin-top: 44px;
   display: flex;
