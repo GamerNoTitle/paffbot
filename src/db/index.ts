@@ -253,6 +253,11 @@ export async function decideVerification(
   return (result.meta.changes ?? 0) > 0;
 }
 
+/** 只改到期时间（人机验证通过后延长保留时限）。 */
+export async function extendVerificationExpiry(db: D1Database, id: string, expiresAt: number): Promise<void> {
+  await db.prepare("UPDATE verifications SET expires_at = ? WHERE id = ?").bind(expiresAt, id).run();
+}
+
 export async function updateVerificationDetail(
   db: D1Database,
   id: string,

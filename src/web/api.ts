@@ -11,11 +11,15 @@ import {
   getVerification,
   listVerifications,
   parseDetail,
+  extendVerificationExpiry,
   updateVerificationDetail,
   verificationStats,
   type VerificationRow,
 } from "../db";
 import { appendAudit, listAudit, verifyAuditChain } from "../db/audit";
+import { adminKeyboard } from "../bot/messages";
+import { DEFAULT_LANG, t } from "../i18n";
+import { escapeHtml } from "../lib/html";
 import { loadConfig, type Env } from "../env";
 import { consumeChallenge, issueChallenge, readChallenge } from "../lib/challenge";
 import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
@@ -45,9 +49,37 @@ export function buildContext(env: Env, origin: string): BotContext {
     config,
     db: env.DB,
     tg: new TelegramApi(config.botToken, config.apiBase),
-    providers: createProviderRegistry(),
+    providers: createProviderRegistry(config),
     origin,
   };
+}
+
+/** 人机验证通过：延长保留时限、记审计、通知管理员放行；不放行、不解禁。 */
+async function markCaptchaPassed(ctx: BotContext, verification: VerificationRow): Promise<void> {
+  const detail = parseDetail(verification.detail);
+  if (detail.captcha_passed) return;
+
+  const holdMs = ctx.config.captchaHoldHours * 3_600_000;
+  await updateVerificationDetail(ctx.db, verification.id, { captcha_passed: true, captcha_at: Date.now() });
+  await extendVerificationExpiry(ctx.db, verification.id, Date.now() + holdMs);
+
+  await appendAudit(ctx.db, {
+    actorId: verification.user_id,
+    actorType: "user",
+    action: "verification.captcha_passed",
+    chatId: verification.chat_id,
+    targetUserId: verification.user_id,
+    verificationId: verification.id,
+    detail: { method: "captcha", holdHours: ctx.config.captchaHoldHours },
+  });
+
+  const name = verification.display_name ?? verification.username ?? String(verification.user_id);
+  await ctx.tg.trySendMessage({
+    chat_id: verification.chat_id,
+    text: t(DEFAULT_LANG, "group.notice.captcha", { name: escapeHtml(name) }),
+    parse_mode: "HTML",
+    reply_markup: adminKeyboard(verification.id, DEFAULT_LANG),
+  });
 }
 
 function publicVerification(row: VerificationRow) {
@@ -60,6 +92,7 @@ function publicVerification(row: VerificationRow) {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     method: row.method,
+    captchaPassed: Boolean(parseDetail(row.detail).captcha_passed),
   };
 }
 
@@ -99,6 +132,40 @@ export function createApi(): Hono<AppBindings> {
       verification: open ? { ...publicVerification(open), chatPhoto: `/api/group/photo/${open.chat_id}` } : null,
     });
   });
+
+  /**
+   * 人机验证代理：前端 Cap 组件打这两个接口，服务端再转给 Cap 实例。
+   * 用 verification id 当票据（UUID，不可猜），redeem 成功才落状态。
+   */
+  const casProxy = async (c: Context<AppBindings>, path: "challenge" | "redeem") => {
+    const ctx = c.get("ctx");
+    const base = ctx.config.captchaUrl;
+    if (!ctx.config.captchaEnabled || !base) return c.json({ success: false, error: "人机验证未启用" }, 404);
+
+    const id = c.req.param("id") ?? "";
+    const verification = await getVerification(ctx.db, id);
+    if (!verification || verification.status !== "pending" || verification.expires_at <= Date.now()) {
+      return c.json({ success: false, error: "验证已过期，请重新申请" }, 409);
+    }
+
+    const upstream = await fetch(`${base.replace(/\/+$/, "")}/api/${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: path === "challenge" ? "{}" : await c.req.text(),
+    }).catch(() => null);
+    if (!upstream) return c.json({ success: false, error: "人机验证服务连接失败" }, 502);
+
+    const payload = (await upstream.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!payload) return c.json({ success: false, error: "人机验证服务返回异常" }, 502);
+
+    if (path === "redeem" && payload.success === true) {
+      await markCaptchaPassed(ctx, verification);
+    }
+    return c.json(payload, upstream.status as 200);
+  };
+
+  api.post("/api/captcha/:id/challenge", (c) => casProxy(c, "challenge"));
+  api.post("/api/captcha/:id/redeem", (c) => casProxy(c, "redeem"));
 
   api.get("/api/verify/start", async (c) => {
     const auth = await readInitUser(c);
@@ -162,6 +229,11 @@ export function createApi(): Hono<AppBindings> {
         detail: { method, error: result.error },
       });
       return c.json({ ok: false, error: result.error }, 400);
+    }
+
+    if (result.needsReview) {
+      await markCaptchaPassed(ctx, verification);
+      return c.json({ ok: true, approved: false, pendingReview: true, chatTitle: verification.chat_title });
     }
 
     const approved = await approveVerification({ db: ctx.db, tg: ctx.tg }, verification, {

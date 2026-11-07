@@ -19,6 +19,7 @@ import {
  */
 export const githubProvider: VerifyProvider = {
   id: "github",
+  chatCapable: true,
   label: "GitHub SSH",
   description: "用已添加到 GitHub 账号的 SSH 私钥签名，证明你拥有该账号",
 

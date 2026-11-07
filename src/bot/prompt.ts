@@ -15,7 +15,10 @@ export async function sendVerificationPrompt(
   remaining?: number,
   targetChatId?: number,
 ): Promise<boolean> {
-  const methods = ctx.providers.list().map((p) => ({ id: p.id, label: p.label, description: p.description }));
+  const methods = ctx.providers
+    .list()
+    .filter((p) => p.chatCapable !== false)
+    .map((p) => ({ id: p.id, label: p.label, description: p.description }));
   const url = `${miniAppUrl(ctx)}/?chat=${verification.chat_id}`;
 
   const message = await ctx.tg.trySendMessage({

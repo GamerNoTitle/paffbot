@@ -16,7 +16,9 @@ export interface ProviderStart {
   requirements?: Record<string, unknown>;
 }
 
-export type ProviderSubmitResult = { ok: true; proof?: Record<string, unknown> } | { ok: false; error: string };
+export type ProviderSubmitResult =
+  | { ok: true; proof?: Record<string, unknown>; needsReview?: boolean }
+  | { ok: false; error: string };
 
 /**
  * 验证方式插件接口。加一种新方式 = 新增一个实现 + 在 registry 里注册，
@@ -24,6 +26,8 @@ export type ProviderSubmitResult = { ok: true; proof?: Record<string, unknown> }
  */
 export interface VerifyProvider {
   readonly id: string;
+  /** 能否在私聊里完成（目前只有签名可以；人机验证只能在小程序里做） */
+  readonly chatCapable?: boolean;
   readonly label: string;
   readonly description: string;
   start(ctx: VerifyContext): Promise<ProviderStart>;

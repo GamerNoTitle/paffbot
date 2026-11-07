@@ -27,6 +27,16 @@
   "vars": {
     // 非敏感配置；敏感值用 `wrangler secret put` 或 .dev.vars
     "VERIFY_TTL_SECONDS": "300",
+    // 人机验证：免签名通道，通过后仍需管理员放行
+    // CAPTCHA_PROVIDER 二选一：cap（自建 Cap.js）或 turnstile（Cloudflare）
+    "CAPTCHA_ENABLED": "true",
+    "CAPTCHA_PROVIDER": "cap",
+    "CAPTCHA_URL": "https://cap.bili33.top",
+    // 选 turnstile 时改成：
+    // "CAPTCHA_PROVIDER": "turnstile",
+    // "TURNSTILE_SITE_KEY": "<site key>",
+    // "TURNSTILE_SECRET": "<secret>",   // 敏感值建议用 wrangler secret put
+    "CAPTCHA_HOLD_HOURS": "24",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liilxKHXwLRrJG2T",
     // 超管 Telegram user id（可跨群操作、看全量审计）
     "ADMIN_IDS": "1762053255",

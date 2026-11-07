@@ -50,6 +50,8 @@ export default {
   "action.failed": "校验失败",
   "action.dmFailed": "私聊发送失败",
   "action.telegramFailed": "Telegram 调用失败",
+  "group.notice.captcha": "{name} 通过了人机验证，等待管理员放行",
+  "action.captchaPassed": "人机验证通过",
   "action.botBanned": "Bot 发言已封禁",
   "action.channelBanned": "频道发言已封禁",
   "action.groupSettings": "群设置变更",

@@ -68,6 +68,8 @@ const state = {
   superAdmin: false,
   auditLoaded: false,
   oauthEnabled: false,
+  captchaEnabled: false,
+  captchaTimer: null,
   githubLogin: "",
   oauthTimer: 0,
 };
@@ -176,6 +178,7 @@ async function loadSession() {
     state.botUsername = data.botUsername || "";
     state.superAdmin = Boolean(data.superAdmin);
     state.oauthEnabled = Boolean(data.oauth?.enabled);
+    state.captchaEnabled = (data.methods ?? []).some((m) => m.id === "captcha");
     state.githubLogin = data.github?.login || "";
 
     if (!data.verification) {
@@ -264,15 +267,35 @@ function renderBoundAccount(github) {
 
 /** 面板顶部的方式切换：签名（纯前端算） / OAuth（要跳 GitHub）。 */
 function renderMethodPanel(panel, data) {
-  if (state.standalone || !state.oauthEnabled) {
+  // 人机验证已通过：不再给任何提交入口，只等管理员放行
+  if (state.verification?.captchaPassed) {
+    panel.innerHTML = `
+      <div class="state">
+        <div class="state__icon" id="empty-icon"></div>
+        <h2 class="md-typescale-headline-small">${esc(t("panel.captcha.waiting"))}</h2>
+      </div>`;
+    const icon = $("empty-icon");
+    if (icon) icon.innerHTML = svgIcon("check", 30);
+    return;
+  }
+
+  const tabs = [{ id: "ssh", label: t("method.ssh") }];
+  if (state.oauthEnabled) tabs.push({ id: "oauth", label: t("method.oauth") });
+  if (state.captchaEnabled) tabs.push({ id: "captcha", label: t("method.captcha") });
+
+  if (state.standalone || tabs.length === 1) {
     renderGithubPanel(panel, data);
     return;
   }
 
   panel.innerHTML = `
     <div class="segmented segmented--sm panel__switch" role="tablist" aria-label="${esc(t("panel.methods"))}" id="pm-switch">
-      <button type="button" role="tab" data-method="ssh" aria-selected="true">${esc(t("method.ssh"))}</button>
-      <button type="button" role="tab" data-method="oauth" aria-selected="false">${esc(t("method.oauth"))}</button>
+      ${tabs
+        .map(
+          (tab, i) =>
+            `<button type="button" role="tab" data-method="${tab.id}" aria-selected="${i === 0}">${esc(tab.label)}</button>`,
+        )
+        .join("")}
     </div>
     <div id="pm-body"></div>`;
 
@@ -282,7 +305,9 @@ function renderMethodPanel(panel, data) {
       b.setAttribute("aria-selected", String(b.dataset.method === method));
     }
     stopOAuthPolling();
+    stopCaptchaPolling();
     if (method === "oauth") renderOAuthPanel(body);
+    else if (method === "captcha") renderCaptchaPanel(body);
     else renderGithubPanel(body, data);
   };
 
@@ -290,6 +315,102 @@ function renderMethodPanel(panel, data) {
     b.addEventListener("click", () => switchTo(b.dataset.method));
   }
   switchTo("ssh");
+}
+
+function stopCaptchaPolling() {
+  if (state.captchaTimer) {
+    clearInterval(state.captchaTimer);
+    state.captchaTimer = null;
+  }
+}
+
+/** 人机验证：Cap 的 web component 自己解题，打完这两枪我们这边只等管理员放行。 */
+async function renderCaptchaPanel(body) {
+  if (state.verification?.captchaPassed) {
+    body.innerHTML = `<div class="state">
+      <div class="state__icon" id="empty-icon"></div>
+      <h2 class="md-typescale-headline-small">${esc(t("panel.captcha.waiting"))}</h2>
+    </div>`;
+    const icon = $("empty-icon");
+    if (icon) icon.innerHTML = svgIcon("check", 30);
+    return;
+  }
+
+  body.innerHTML = `<p class="md-typescale-body-medium muted">${esc(t("panel.captcha.loading"))}</p>`;
+
+  const start = await api(`/api/verify/start?method=captcha&verificationId=${state.verification?.id ?? ""}`);
+  if (!start.ok) {
+    body.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(start.error ?? "")}</p>`;
+    return;
+  }
+
+  const req = start.requirements ?? {};
+
+  // Turnstile：官方脚本渲染，回调里拿 token 再交给后端 siteverify
+  if (req.provider === "turnstile") {
+    if (!req.siteKey) {
+      body.innerHTML = `<p class="md-typescale-body-medium" style="color:var(--md-sys-color-error)">${esc(t("panel.captcha.failed"))}</p>`;
+      return;
+    }
+    await loadScriptOnce("https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit");
+
+    body.innerHTML = `
+      <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
+      <div id="ts-slot" class="captcha"></div>`;
+
+    const submitTurnstile = async (token) => {
+      const res = await api("/api/verify/submit", {
+        method: "POST",
+        body: { method: "captcha", turnstileToken: token, verificationId: state.verification?.id },
+      });
+      if (res.ok) {
+        stopCaptchaPolling();
+        const fresh = await api("/api/session");
+        if (fresh.ok) state.verification = fresh.data.verification;
+        renderCaptchaPanel(body);
+      }
+    };
+
+    window.turnstile?.render("#ts-slot", {
+      sitekey: String(req.siteKey),
+      theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+      callback: (token) => void submitTurnstile(token),
+    });
+    return;
+  }
+
+  if (req.widget) await loadScriptOnce(req.widget);
+
+  body.innerHTML = `
+    <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
+    <div class="captcha" data-endpoint="${esc(req.endpoint ?? "")}"></div>`;
+
+  const mount = body.querySelector(".captcha");
+  const widget = document.createElement("cap-widget");
+  widget.setAttribute("data-cap-api-endpoint", String(req.endpoint ?? ""));
+  mount.appendChild(widget);
+
+  // 组件自己会解题并调用代理，这里只等状态变化
+  stopCaptchaPolling();
+  state.captchaTimer = setInterval(async () => {
+    const fresh = await api("/api/session");
+    if (fresh.ok && fresh.data.verification?.captchaPassed) {
+      stopCaptchaPolling();
+      state.verification = fresh.data.verification;
+      renderCaptchaPanel(body);
+    }
+  }, 3000);
+}
+
+function loadScriptOnce(src) {
+  if ([...document.scripts].some((s) => s.src === src)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error("captcha script failed"));
+    document.head.appendChild(el);
+  });
 }
 
 function stopOAuthPolling() {
@@ -719,6 +840,7 @@ const ACTION_KEYS = {
   "group.settings": "action.groupSettings",
   "telegram.channel_banned": "action.channelBanned",
   "telegram.bot_banned": "action.botBanned",
+  "verification.captcha_passed": "action.captchaPassed",
 };
 
 function actionLabel(action) {

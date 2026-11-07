@@ -50,6 +50,8 @@ export default {
   "action.failed": "check failed",
   "action.dmFailed": "DM failed",
   "action.telegramFailed": "Telegram call failed",
+  "group.notice.captcha": "{name} passed the captcha and is waiting for an admin",
+  "action.captchaPassed": "captcha passed",
   "action.botBanned": "bot post banned",
   "action.channelBanned": "channel post banned",
   "action.groupSettings": "group settings changed",

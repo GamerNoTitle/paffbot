@@ -31,6 +31,13 @@ export interface Env {
 
   AUDIT_RETENTION_DAYS?: string;
   SCREEN_KEYWORDS?: string;
+  CAPTCHA_ENABLED?: string;
+  CAPTCHA_PROVIDER?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET?: string;
+  TURNSTILE_VERIFY_URL?: string;
+  CAPTCHA_URL?: string;
+  CAPTCHA_HOLD_HOURS?: string;
   ALLOWED_BOTS?: string;
   ENVIRONMENT?: string;
 }
@@ -53,9 +60,28 @@ export interface Config {
   githubRequiredOrg: string | null;
   retentionDays: number;
   screenKeywords: string[];
+  /** 人机验证（Cap.js）：开启后作为「免签名」通道，通过后仍待管理员放行 */
+  captchaEnabled: boolean;
+  /** 二选一：cap（自建 Cap.js）或 turnstile（Cloudflare） */
+  captchaProvider: "cap" | "turnstile" | null;
+  captchaUrl: string | null;
+  turnstileSiteKey: string | null;
+  turnstileSecret: string | null;
+  turnstileVerifyUrl: string;
+  captchaHoldHours: number;
   /** 允许在群里发言的 bot（Telegram id），其余一律删消息 + 封禁 */
   allowedBotIds: number[];
   environment: string;
+}
+
+/** 二选一：显式配置优先，其次按已填的字段推断；都缺就当没开。 */
+function resolveCaptchaProvider(env: Env): "cap" | "turnstile" | null {
+  const explicit = (env.CAPTCHA_PROVIDER ?? "").trim().toLowerCase();
+  if (explicit === "cap") return "cap";
+  if (explicit === "turnstile") return "turnstile";
+  if ((env.TURNSTILE_SITE_KEY ?? "").trim() && (env.TURNSTILE_SECRET ?? "").trim()) return "turnstile";
+  if ((env.CAPTCHA_URL ?? "").trim()) return "cap";
+  return null;
 }
 
 const DEFAULT_SCREEN_KEYWORDS = [
@@ -125,6 +151,14 @@ export function loadConfig(env: Env): Config {
     githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
     retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
+    captchaEnabled: ["1", "true", "yes"].includes((env.CAPTCHA_ENABLED ?? "").toLowerCase()),
+    captchaProvider: resolveCaptchaProvider(env),
+    captchaUrl: (env.CAPTCHA_URL ?? "").trim() || null,
+    turnstileSiteKey: (env.TURNSTILE_SITE_KEY ?? "").trim() || null,
+    turnstileSecret: (env.TURNSTILE_SECRET ?? "").trim() || null,
+    turnstileVerifyUrl:
+      (env.TURNSTILE_VERIFY_URL ?? "").trim() || "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    captchaHoldHours: parseIntOr(env.CAPTCHA_HOLD_HOURS, 24, 1, 720),
     allowedBotIds: parseIntList(env.ALLOWED_BOTS),
     environment: (env.ENVIRONMENT ?? "production").trim(),
   };
