@@ -362,18 +362,34 @@ async function renderCaptchaPanel(body) {
       </div>`;
 
     let turnstileToken = "";
+    let submitting = false;
+    let widgetId = null;
     const go = $("cap-go");
-    go.addEventListener("click", async () => {
-      if (!turnstileToken || go.disabled) return;
+    const enable = () => {
+      go.removeAttribute("disabled");
+      go.disabled = false;
+    };
+    const disable = () => {
+      go.setAttribute("disabled", "");
       go.disabled = true;
+    };
+
+    go.addEventListener("click", async () => {
+      // 某些情况下 callback 没跑，但组件其实已经出 token，这里兜一下
+      if (!turnstileToken) turnstileToken = window.turnstile?.getResponse?.("#ts-slot") || "";
+      if (!turnstileToken || submitting) return;
+
+      submitting = true;
+      disable();
       const res = await api("/api/verify/submit", {
         method: "POST",
         body: { method: "captcha", turnstileToken, verificationId: state.verification?.id },
       });
       if (!res.ok) {
-        go.disabled = false;
-        window.turnstile?.reset("#ts-slot");
+        submitting = false;
         turnstileToken = "";
+        window.turnstile?.reset("#ts-slot");
+        disable();
         return;
       }
       stopCaptchaPolling();
@@ -382,19 +398,32 @@ async function renderCaptchaPanel(body) {
       renderCaptchaPanel(body);
     });
 
-    window.turnstile?.render("#ts-slot", {
+    widgetId = window.turnstile?.render("#ts-slot", {
       sitekey: String(req.siteKey),
       appearance: "always",
       theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
       callback: (token) => {
         turnstileToken = token;
-        go.disabled = false;
+        enable();
+        // 自定义元素可能还没升级完，升级后再解一次
+        globalThis.customElements?.whenDefined?.("md-filled-button").then(enable).catch(() => undefined);
       },
       "expired-callback": () => {
         turnstileToken = "";
-        go.disabled = true;
+        disable();
       },
     });
+
+    // 组件自己过掉时 callback 可能已经绑到旧的 DOM 上，这里再盯一眼输入框
+    stopCaptchaPolling();
+    state.captchaTimer = setInterval(() => {
+      if (turnstileToken) return;
+      const token = window.turnstile?.getResponse?.(widgetId ?? "#ts-slot");
+      if (typeof token === "string" && token) {
+        turnstileToken = token;
+        enable();
+      }
+    }, 800);
     return;
   }
 
