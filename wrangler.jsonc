@@ -38,8 +38,8 @@
     // TURNSTILE_SECRET 用 wrangler secret put 写入，不落仓库
     "CAPTCHA_HOLD_HOURS": "24",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liilxKHXwLRrJG2T",
-    // 超管 Telegram user id（可跨群操作、看全量审计）
-    "ADMIN_IDS": "1762053255",
+    // 超管 Telegram id 存在 secret（ADMIN_IDS）里：它同时是“救急入口”，
+    // 数据库 settings 也有一份，两者取并集。仓库里不写具体 id。
     "ENVIRONMENT": "production"
   }
 }
