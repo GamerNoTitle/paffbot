@@ -20,7 +20,7 @@ import { appendAudit, listAudit, verifyAuditChain } from "../db/audit";
 import { adminKeyboard } from "../bot/messages";
 import { DEFAULT_LANG, t } from "../i18n";
 import { escapeHtml } from "../lib/html";
-import { loadConfig, type Env } from "../env";
+import { loadConfig, type Config as BOT_CONFIG, type Env } from "../env";
 import { consumeChallenge, issueChallenge, readChallenge } from "../lib/challenge";
 import { isValidGithubUsername, normalizeGithubUsername } from "../lib/github";
 import { verifyGithubOwnership } from "../verify/github-verify";
@@ -31,6 +31,7 @@ import { isGroupAdmin, isSuperAdmin } from "../bot/auth";
 import type { BotContext } from "../bot/context";
 import { approveVerification } from "../verify/finalize";
 import { createProviderRegistry } from "../verify/registry";
+import { SETTINGS, SETTING_MAP, readSettings, writeSettings, validateSetting } from "../config/settings";
 import {
   authorizeUrl,
   exchangeCode,
@@ -42,8 +43,8 @@ import { validateInitData, type InitDataUser } from "./initdata";
 
 export type AppBindings = { Bindings: Env; Variables: { ctx: BotContext } };
 
-export function buildContext(env: Env, origin: string): BotContext {
-  const config = loadConfig(env);
+export async function buildContext(env: Env, origin: string): Promise<BotContext> {
+  const config = await loadConfig(env);
   return {
     env,
     config,
@@ -118,7 +119,7 @@ export function createApi(): Hono<AppBindings> {
   const api = new Hono<AppBindings>();
 
   api.use("*", async (c, next) => {
-    c.set("ctx", buildContext(c.env, new URL(c.req.url).origin));
+    c.set("ctx", await buildContext(c.env, new URL(c.req.url).origin));
     await next();
   });
 
@@ -447,6 +448,140 @@ export function createApi(): Hono<AppBindings> {
   // ------------------------------------------------------------ 审计（管理者）
 
   /** 验证记录：分页 + 状态筛选 + 关键字搜索。 */
+  /** 配置读写：只有超管能碰，写操作进审计（只记键名，不记值）。 */
+  const settingsAdmin = async (c: Context<AppBindings>) => {
+    const auth = await readInitUser(c);
+    if (!auth.user) return { error: "请从 Telegram 里打开", status: 401 as const };
+    const ctx = c.get("ctx");
+    if (!isSuperAdmin(ctx.config, auth.user.id)) return { error: "只有超级管理员能修改配置", status: 403 as const };
+    return { ctx, userId: auth.user.id };
+  };
+
+  /** 当前真正生效的值（DB 覆盖 env，再回退默认）。 */
+  const effectiveSettings = (config: BOT_CONFIG): Record<string, string> => ({
+    ADMIN_IDS: config.adminIds.join(","),
+    MINI_APP_URL: config.miniAppUrl ?? "",
+    ALLOWED_BOTS: config.allowedBotIds.join(","),
+    VERIFY_TTL_SECONDS: String(config.ttlSeconds),
+    VERIFY_DAILY_LIMIT: String(config.dailyAttempts),
+    AUDIT_RETENTION_DAYS: String(config.retentionDays),
+    SCREEN_KEYWORDS: config.screenKeywords.join(","),
+    GITHUB_MIN_ACCOUNT_AGE_DAYS: String(config.githubMinAccountAgeDays),
+    GITHUB_REQUIRED_ORG: config.githubRequiredOrg ?? "",
+    GITHUB_TOKEN: config.githubToken ?? "",
+    GITHUB_OAUTH_CLIENT_ID: config.oauthClientId ?? "",
+    GITHUB_OAUTH_SECRET: config.oauthSecret ?? "",
+    GITHUB_OAUTH_REDIRECT: config.oauthRedirect ?? "",
+    CAPTCHA_ENABLED: config.captchaEnabled ? "true" : "false",
+    CAPTCHA_PROVIDER: config.captchaProvider ?? "",
+    CAPTCHA_URL: config.captchaUrl ?? "",
+    CAPTCHA_HOLD_HOURS: String(config.captchaHoldHours),
+    TURNSTILE_SITE_KEY: config.turnstileSiteKey ?? "",
+    TURNSTILE_SECRET: config.turnstileSecret ?? "",
+  });
+
+  api.get("/api/admin/settings", async (c) => {
+    const auth = await settingsAdmin(c);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const stored = await readSettings(auth.ctx.env);
+    const effective = effectiveSettings(auth.ctx.config);
+    const fields = SETTINGS.map((spec) => {
+      const raw = stored.get(spec.key) ?? "";
+      const fallback = raw === "" ? String((auth.ctx.env as unknown as Record<string, unknown>)[spec.key] ?? "") : "";
+      const value = raw === "" ? fallback : raw;
+      return {
+        key: spec.key,
+        group: spec.group,
+        type: spec.type,
+        hint: spec.hint ?? "",
+        min: spec.min ?? null,
+        max: spec.max ?? null,
+        options: spec.options ?? null,
+        secret: Boolean(spec.secret),
+        // 密钥只回报「有没有值」，不回显内容
+        value: spec.secret ? "" : value,
+        hasValue: value !== "",
+        // 没显式配置时的实际生效值，前端用它做 placeholder
+        effective: spec.secret ? "" : (effective[spec.key] ?? ""),
+      };
+    });
+    return c.json({ ok: true, fields });
+  });
+
+  api.put("/api/admin/settings", async (c) => {
+    const auth = await settingsAdmin(c);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const body = (await safeJson(c.req.raw)) as { values?: Record<string, unknown> };
+    const input = body.values ?? {};
+    const writes: Array<{ key: string; value: string }> = [];
+    const changed: string[] = [];
+
+    for (const spec of SETTINGS) {
+      if (!(spec.key in input)) continue;
+      const raw = input[spec.key];
+      const next = typeof raw === "string" ? raw.trim() : String(raw ?? "").trim();
+
+      const checked = validateSetting(spec, next);
+      if (!checked.ok) return c.json({ ok: false, error: checked.error }, 400);
+      writes.push({ key: spec.key, value: checked.value });
+      changed.push(spec.key);
+    }
+
+    if (changed.length === 0) return c.json({ ok: false, error: "没有要保存的配置" }, 400);
+
+    // 超管至少要留一个，否则没人能再进这页
+    if (changed.includes("ADMIN_IDS")) {
+      const next = writes.find((w) => w.key === "ADMIN_IDS")?.value ?? "";
+      if (next.split(/[,\s]+/).filter(Boolean).length === 0) {
+        return c.json({ ok: false, error: "至少要保留一个超级管理员" }, 400);
+      }
+    }
+
+    await writeSettings(auth.ctx.env, writes, auth.userId);
+    await appendAudit(auth.ctx.db, {
+      actorId: auth.userId,
+      actorType: "super_admin",
+      action: "settings.updated",
+      chatId: null,
+      targetUserId: null,
+      verificationId: null,
+      detail: { keys: changed },
+    });
+
+    return c.json({ ok: true, updated: changed });
+  });
+
+  api.post("/api/admin/settings/reset", async (c) => {
+    const auth = await settingsAdmin(c);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const body = (await safeJson(c.req.raw)) as { keys?: unknown };
+    const keys = Array.isArray(body.keys) ? body.keys.filter((k): k is string => typeof k === "string") : [];
+    const allowed = keys.filter((k) => SETTING_MAP.has(k));
+    if (allowed.length === 0) return c.json({ ok: false, error: "没有要重置的配置" }, 400);
+    if (allowed.includes("ADMIN_IDS")) {
+      return c.json({ ok: false, error: "超级管理员不能通过重置清空，请直接填写" }, 400);
+    }
+
+    await writeSettings(
+      auth.ctx.env,
+      allowed.map((key) => ({ key, value: "" })),
+      auth.userId,
+    );
+    await appendAudit(auth.ctx.db, {
+      actorId: auth.userId,
+      actorType: "super_admin",
+      action: "settings.reset",
+      chatId: null,
+      targetUserId: null,
+      verificationId: null,
+      detail: { keys: allowed },
+    });
+    return c.json({ ok: true, reset: allowed });
+  });
+
   api.get("/api/audit/verifications", async (c) => {
     const ctx = c.get("ctx");
     const auth = await authorizeAudit(c, ctx);

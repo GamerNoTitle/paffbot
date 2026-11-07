@@ -19,7 +19,7 @@ import { rejectVerification } from "./verify/finalize";
  * 注意：审计日志不参与清理——它是账本，删了就失去审计意义。
  */
 export async function runScheduled(env: Env): Promise<void> {
-  const config = loadConfig(env);
+  const config = await loadConfig(env);
   const tg = new TelegramApi(config.botToken, config.apiBase);
 
   const expired = await listExpiredPending(env.DB, 50);

@@ -6,12 +6,16 @@
  * 非敏感项（方法列表、TTL、题面阈值）放在 wrangler.jsonc 的 vars 里随代码走。
  */
 
+import { readSettings } from "./config/settings";
+
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
 
   BOT_TOKEN?: string;
   WEBHOOK_SECRET?: string;
+  /** 配置加密用的根密钥；不填则退回用 BOT_TOKEN 派生 */
+  SETTINGS_KEY?: string;
   ADMIN_IDS?: string;
   ADMIN_TOKEN?: string;
 
@@ -75,12 +79,17 @@ export interface Config {
 }
 
 /** 二选一：显式配置优先，其次按已填的字段推断；都缺就当没开。 */
-function resolveCaptchaProvider(env: Env): "cap" | "turnstile" | null {
-  const explicit = (env.CAPTCHA_PROVIDER ?? "").trim().toLowerCase();
+function resolveCaptchaProvider(values: {
+  provider: string;
+  siteKey: string;
+  secret: string;
+  url: string;
+}): "cap" | "turnstile" | null {
+  const explicit = values.provider.trim().toLowerCase();
   if (explicit === "cap") return "cap";
   if (explicit === "turnstile") return "turnstile";
-  if ((env.TURNSTILE_SITE_KEY ?? "").trim() && (env.TURNSTILE_SECRET ?? "").trim()) return "turnstile";
-  if ((env.CAPTCHA_URL ?? "").trim()) return "cap";
+  if (values.siteKey.trim() && values.secret.trim()) return "turnstile";
+  if (values.url.trim()) return "cap";
   return null;
 }
 
@@ -121,14 +130,22 @@ function parseIntOr(raw: string | undefined, fallback: number, min: number, max:
   return Math.min(max, Math.max(min, parsed));
 }
 
-export function loadConfig(env: Env): Config {
-  const botToken = (env.BOT_TOKEN ?? "").trim();
+export async function loadConfig(env: Env): Promise<Config> {
+  // 数据库里的配置优先，缺省回退到 Worker 的 env；读失败就当没配，不影响启动
+  const stored = await readSettings(env).catch(() => new Map<string, string>());
+  const get = (name: keyof Env): string => {
+    const fromDb = stored.get(name as string);
+    if (fromDb !== undefined) return fromDb;
+    return (env[name] as string | undefined) ?? "";
+  };
+
+  const botToken = get("BOT_TOKEN").trim();
   if (!botToken) throw new Error("BOT_TOKEN 未配置");
-  const webhookSecret = (env.WEBHOOK_SECRET ?? "").trim();
+  const webhookSecret = get("WEBHOOK_SECRET").trim();
   if (!webhookSecret) throw new Error("WEBHOOK_SECRET 未配置");
   if (webhookSecret.length < 16) throw new Error("WEBHOOK_SECRET 至少 16 个字符（它同时是 URL 路径段）");
 
-  const keywords = (env.SCREEN_KEYWORDS ?? "")
+  const keywords = (get("SCREEN_KEYWORDS") ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -136,30 +153,35 @@ export function loadConfig(env: Env): Config {
   return {
     botToken,
     webhookSecret,
-    adminIds: parseIntList(env.ADMIN_IDS),
-    adminToken: (env.ADMIN_TOKEN ?? "").trim() || null,
-    ttlSeconds: parseIntOr(env.VERIFY_TTL_SECONDS, 300, 60, 24 * 3600),
-    dailyAttempts: parseIntOr(env.VERIFY_DAILY_LIMIT, 3, 1, 50),
-    miniAppUrl: (env.MINI_APP_URL ?? "").trim() || null,
-    apiBase: (env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, ""),
-    githubToken: (env.GITHUB_TOKEN ?? "").trim() || null,
-    githubKeysBase: (env.GITHUB_KEYS_BASE ?? "https://github.com").replace(/\/+$/, ""),
-    oauthClientId: (env.GITHUB_OAUTH_CLIENT_ID ?? "").trim() || null,
-    oauthSecret: (env.GITHUB_OAUTH_SECRET ?? "").trim() || null,
-    oauthRedirect: (env.GITHUB_OAUTH_REDIRECT ?? "").trim() || null,
-    githubMinAccountAgeDays: parseIntOr(env.GITHUB_MIN_ACCOUNT_AGE_DAYS, 0, 0, 3650),
-    githubRequiredOrg: (env.GITHUB_REQUIRED_ORG ?? "").trim() || null,
-    retentionDays: parseIntOr(env.AUDIT_RETENTION_DAYS, 365, 1, 3650),
+    adminIds: parseIntList(get("ADMIN_IDS")),
+    adminToken: (get("ADMIN_TOKEN") ?? "").trim() || null,
+    ttlSeconds: parseIntOr(get("VERIFY_TTL_SECONDS"), 300, 60, 24 * 3600),
+    dailyAttempts: parseIntOr(get("VERIFY_DAILY_LIMIT"), 3, 1, 50),
+    miniAppUrl: (get("MINI_APP_URL") ?? "").trim() || null,
+    apiBase: (get("TELEGRAM_API_BASE") ?? "https://api.telegram.org").replace(/\/+$/, ""),
+    githubToken: (get("GITHUB_TOKEN") ?? "").trim() || null,
+    githubKeysBase: (get("GITHUB_KEYS_BASE") ?? "https://github.com").replace(/\/+$/, ""),
+    oauthClientId: (get("GITHUB_OAUTH_CLIENT_ID") ?? "").trim() || null,
+    oauthSecret: (get("GITHUB_OAUTH_SECRET") ?? "").trim() || null,
+    oauthRedirect: (get("GITHUB_OAUTH_REDIRECT") ?? "").trim() || null,
+    githubMinAccountAgeDays: parseIntOr(get("GITHUB_MIN_ACCOUNT_AGE_DAYS"), 0, 0, 3650),
+    githubRequiredOrg: (get("GITHUB_REQUIRED_ORG") ?? "").trim() || null,
+    retentionDays: parseIntOr(get("AUDIT_RETENTION_DAYS"), 365, 1, 3650),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
-    captchaEnabled: ["1", "true", "yes"].includes((env.CAPTCHA_ENABLED ?? "").toLowerCase()),
-    captchaProvider: resolveCaptchaProvider(env),
-    captchaUrl: (env.CAPTCHA_URL ?? "").trim() || null,
-    turnstileSiteKey: (env.TURNSTILE_SITE_KEY ?? "").trim() || null,
-    turnstileSecret: (env.TURNSTILE_SECRET ?? "").trim() || null,
+    captchaEnabled: ["1", "true", "yes"].includes((get("CAPTCHA_ENABLED") ?? "").toLowerCase()),
+    captchaProvider: resolveCaptchaProvider({
+      provider: get("CAPTCHA_PROVIDER"),
+      siteKey: get("TURNSTILE_SITE_KEY"),
+      secret: get("TURNSTILE_SECRET"),
+      url: get("CAPTCHA_URL"),
+    }),
+    captchaUrl: (get("CAPTCHA_URL") ?? "").trim() || null,
+    turnstileSiteKey: (get("TURNSTILE_SITE_KEY") ?? "").trim() || null,
+    turnstileSecret: (get("TURNSTILE_SECRET") ?? "").trim() || null,
     turnstileVerifyUrl:
-      (env.TURNSTILE_VERIFY_URL ?? "").trim() || "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    captchaHoldHours: parseIntOr(env.CAPTCHA_HOLD_HOURS, 24, 1, 720),
-    allowedBotIds: parseIntList(env.ALLOWED_BOTS),
-    environment: (env.ENVIRONMENT ?? "production").trim(),
+      (get("TURNSTILE_VERIFY_URL") ?? "").trim() || "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    captchaHoldHours: parseIntOr(get("CAPTCHA_HOLD_HOURS"), 24, 1, 720),
+    allowedBotIds: parseIntList(get("ALLOWED_BOTS")),
+    environment: (get("ENVIRONMENT") ?? "production").trim(),
   };
 }

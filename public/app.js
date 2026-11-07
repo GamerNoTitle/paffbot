@@ -1441,6 +1441,186 @@ async function downloadCsv() {
   }
 }
 
+
+/* ---------------------------------------------------------------- 运行配置 */
+
+const settingsState = { fields: [], cleared: new Set(), busy: false };
+
+const SETTINGS_GROUPS = ["basic", "verify", "github", "captcha"];
+
+async function loadSettings() {
+  const form = $("settings-form");
+  form.innerHTML = `<p class="md-typescale-body-medium muted">${esc(t("settings.saving"))}</p>`;
+  try {
+    const data = await api("/api/admin/settings");
+    settingsState.fields = data.fields ?? [];
+    settingsState.cleared = new Set();
+    renderSettings();
+  } catch (err) {
+    form.innerHTML = `<p class="captcha__err">${esc(err.message)}</p>`;
+  }
+}
+
+function settingsFieldHtml(field) {
+  const key = esc(field.key);
+  const hint = field.hint ? `<p class="settings__hint">${esc(field.hint)}</p>` : "";
+
+  if (field.type === "bool") {
+    const on = (field.value || field.effective) === "true";
+    return `<label class="settings__row settings__row--switch">
+      <span class="settings__label">${key}</span>
+      <input type="checkbox" data-key="${key}" data-type="bool" ${on ? "checked" : ""} />
+      ${hint}
+    </label>`;
+  }
+
+  if (field.type === "enum") {
+    const options = field.options ?? [];
+    const buttons = options
+      .map(
+        (opt) =>
+          `<button type="button" data-val="${esc(opt)}" aria-selected="${opt === (field.value || field.effective)}">${esc(opt || t("settings.auto"))}</button>`,
+      )
+      .join("");
+    return `<div class="settings__row">
+      <span class="settings__label">${key}</span>
+      <div class="segmented segmented--sm settings__enum" data-key="${key}" data-type="enum">${buttons}</div>
+      ${hint}
+    </div>`;
+  }
+
+  if (field.secret) {
+    return `<div class="settings__row">
+      <span class="settings__label">${key}</span>
+      <input class="settings__input" type="password" data-key="${key}" data-type="secret" data-secret="1"
+        placeholder="${esc(field.hasValue ? t("settings.secretSet") : "")}" value="" autocomplete="new-password" />
+      ${field.hasValue ? `<button type="button" class="settings__clear" data-clear="${key}">${esc(t("settings.clear"))}</button>` : ""}
+      ${hint}
+    </div>`;
+  }
+
+  const inputType = field.type === "int" ? "number" : field.type === "url" ? "url" : "text";
+  const range = field.type === "int" ? ` min="${field.min ?? ""}" max="${field.max ?? ""}"` : "";
+  return `<div class="settings__row">
+    <span class="settings__label">${key}</span>
+    <input class="settings__input" type="${inputType}"${range} data-key="${key}" data-type="${esc(field.type)}"
+      value="${esc(field.value ?? "")}"
+      placeholder="${esc(field.value ? "" : (field.effective ? `默认 ${field.effective}` : ""))}" />
+    ${hint}
+  </div>`;
+}
+
+function renderSettings() {
+  const form = $("settings-form");
+  let html = "";
+  for (const group of SETTINGS_GROUPS) {
+    const fields = settingsState.fields.filter((f) => f.group === group);
+    if (fields.length === 0) continue;
+    html += `<h3 class="settings__group">${esc(t(`settings.group.${group}`))}</h3>`;
+    html += fields.map(settingsFieldHtml).join("");
+  }
+  form.innerHTML = html;
+
+  for (const en of form.querySelectorAll(".settings__enum")) {
+    for (const button of en.querySelectorAll("button")) {
+      button.addEventListener("click", () => {
+        for (const other of en.querySelectorAll("button")) {
+          other.setAttribute("aria-selected", String(other === button));
+        }
+      });
+    }
+  }
+  for (const button of form.querySelectorAll("[data-clear]")) {
+    button.addEventListener("click", () => {
+      const key = button.dataset.clear;
+      settingsState.cleared.add(key);
+      const input = form.querySelector(`input[data-key="${key}"]`);
+      if (input) {
+        input.value = "";
+        input.placeholder = "";
+      }
+      $("settings-hint").textContent = "";
+    });
+  }
+  $("settings-save").removeAttribute("disabled");
+}
+
+function collectSettings() {
+  const values = {};
+  for (const field of settingsState.fields) {
+    if (field.type === "bool") {
+      const el = document.querySelector(`input[data-key="${field.key}"]`);
+      values[field.key] = el?.checked ? "true" : "false";
+      continue;
+    }
+    if (field.type === "enum") {
+      const active = document.querySelector(`.settings__enum[data-key="${field.key}"] button[aria-selected="true"]`);
+      values[field.key] = active?.dataset.val ?? "";
+      continue;
+    }
+    const el = document.querySelector(`input[data-key="${field.key}"]`);
+    const raw = (el?.value ?? "").trim();
+    if (field.secret) {
+      // 留空表示不修改；只有点了「清除」才显式清空
+      if (raw === "" && !settingsState.cleared.has(field.key)) continue;
+      values[field.key] = raw;
+      continue;
+    }
+    values[field.key] = raw;
+  }
+  return values;
+}
+
+/** 前端先拦一遍，规则和后端一致，省得每次都要往返。 */
+function checkSettings(values) {
+  for (const field of settingsState.fields) {
+    if (!(field.key in values)) continue;
+    const raw = values[field.key];
+    if (field.key === "ADMIN_IDS" && raw.split(/[,\s]+/).filter(Boolean).length === 0) {
+      return t("settings.needAdmin");
+    }
+    if (field.type === "int" && raw !== "") {
+      if (!/^\d+$/.test(raw)) return `${field.key}: ${t("settings.invalid")}`;
+      const n = Number.parseInt(raw, 10);
+      if (field.min !== null && n < field.min) return `${field.key} ≥ ${field.min}`;
+      if (field.max !== null && n > field.max) return `${field.key} ≤ ${field.max}`;
+    }
+    if (field.type === "intList" && raw !== "" && !raw.split(/[,\s]+/).every((v) => /^\d+$/.test(v))) {
+      return `${field.key}: ${t("settings.invalid")}`;
+    }
+    if (field.type === "url" && raw !== "" && !/^https?:\/\//i.test(raw)) {
+      return `${field.key}: ${t("settings.invalid")}`;
+    }
+  }
+  return "";
+}
+
+async function saveSettings() {
+  if (settingsState.busy) return;
+  const values = collectSettings();
+  const problem = checkSettings(values);
+  if (problem) {
+    $("settings-hint").textContent = problem;
+    return;
+  }
+
+  settingsState.busy = true;
+  $("settings-save").setAttribute("disabled", "");
+  $("settings-hint").textContent = t("settings.saving");
+  try {
+    await api("/api/admin/settings", { method: "PUT", body: { values } });
+    $("settings-hint").textContent = t("settings.saved");
+    await loadSettings();
+  } catch (err) {
+    $("settings-hint").textContent = err.message;
+  } finally {
+    settingsState.busy = false;
+    $("settings-save").removeAttribute("disabled");
+  }
+}
+
+$("settings-save").addEventListener("click", () => void saveSettings());
+
 /* ---------------------------------------------------------------- 初始化 */
 
 /** 审计只给管理员：Mini App 里 superAdmin，或网页端直接访问 /admin。 */
@@ -1448,12 +1628,16 @@ function applyNavVisibility() {
   const isAdmin = state.superAdmin || location.pathname === "/admin" || params.get("admin") === "1";
   const auditButton = $("nav").querySelector('button[data-view="audit"]');
   if (auditButton) auditButton.classList.toggle("hidden", !isAdmin);
+  const settingsButton = $("nav").querySelector('button[data-view="settings"]');
+  if (settingsButton) settingsButton.classList.toggle("hidden", !state.superAdmin);
   if (isAdmin && location.pathname === "/admin") switchTab("audit");
 }
 
 function switchTab(name) {
   $("view-verify").classList.toggle("hidden", name !== "verify");
   $("view-audit").classList.toggle("hidden", name !== "audit");
+  $("view-settings").classList.toggle("hidden", name !== "settings");
+  if (name === "settings" && settingsState.fields.length === 0) void loadSettings();
   for (const button of $("nav").querySelectorAll("button")) {
     button.setAttribute("aria-selected", String(button.dataset.view === name));
   }

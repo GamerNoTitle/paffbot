@@ -28,7 +28,7 @@ app.get("/api/health", async (c) => c.json(await health(c.env.DB)));
  * 两处都校验，避免路径泄露后被人伪造 update。
  */
 app.post("/tg/:secret", async (c) => {
-  const ctx = buildContext(c.env, new URL(c.req.url).origin);
+  const ctx = await buildContext(c.env, new URL(c.req.url).origin);
   const secret = c.req.param("secret") ?? "";
   const header = c.req.header("x-telegram-bot-api-secret-token") ?? "";
 

@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title></title>
-    <link rel="stylesheet" href="./styles.css?v=49" />
+    <link rel="stylesheet" href="./styles.css?v=50" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -19,6 +19,7 @@
           <div class="segmented" role="tablist" data-i18n-aria="nav.aria" aria-label="" id="nav">
           <button type="button" role="tab" data-view="verify" aria-selected="true" data-i18n="nav.verify"></button>
             <button type="button" role="tab" data-view="audit" aria-selected="false" data-i18n="nav.audit"></button>
+            <button type="button" role="tab" data-view="settings" aria-selected="false" data-i18n="nav.settings" class="hidden"></button>
           </div>
         </div>
         <md-icon-button id="theme-toggle" data-i18n-aria="nav.theme" aria-label="">
@@ -67,6 +68,20 @@
 
         <div id="pending" class="hidden">
           <div class="panel" id="method-panel"></div>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view hidden">
+        <div class="panel" id="settings-panel">
+          <div class="panel__head">
+            <h2 class="md-typescale-headline-medium" data-i18n="settings.title"></h2>
+            <p class="md-typescale-body-medium muted" data-i18n="settings.desc"></p>
+          </div>
+          <div id="settings-form"></div>
+          <div class="settings__actions">
+            <md-filled-button id="settings-save" disabled data-i18n="settings.save"></md-filled-button>
+            <span id="settings-hint" class="md-typescale-body-small muted"></span>
+          </div>
         </div>
       </section>
 
@@ -122,6 +137,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=71"></script>
+    <script type="module" src="./app.js?v=72"></script>
   </body>
 </html>
