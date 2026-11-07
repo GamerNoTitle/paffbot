@@ -370,7 +370,10 @@ async function renderCaptchaPanel(body) {
     await loadScriptOnce("https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit");
 
     body.innerHTML = `
-      <p class="md-typescale-body-medium muted captcha__hint">${esc(t("panel.captcha.desc"))}</p>
+      <div class="panel__head panel__head--center">
+        <h2 class="md-typescale-headline-medium">${esc(t("panel.captcha.title"))}</h2>
+        <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
+      </div>
       <div id="ts-slot" class="captcha"></div>
       <div class="captcha__actions">
         <md-filled-button id="cap-go" disabled>${esc(t("panel.captcha.submit"))}</md-filled-button>
@@ -449,7 +452,10 @@ async function renderCaptchaPanel(body) {
   if (req.widget) await loadScriptOnce(req.widget);
 
   body.innerHTML = `
-    <p class="md-typescale-body-medium muted captcha__hint">${esc(t("panel.captcha.desc"))}</p>
+    <div class="panel__head panel__head--center">
+      <h2 class="md-typescale-headline-medium">${esc(t("panel.captcha.title"))}</h2>
+      <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
+    </div>
     <div class="captcha" data-endpoint="${esc(req.endpoint ?? "")}"></div>`;
 
   const mount = body.querySelector(".captcha");

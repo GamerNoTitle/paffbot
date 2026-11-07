@@ -76,7 +76,7 @@ export default {
   "method.adminReject": "管理员拒绝",
   "method.button": "按钮确认",
   "method.captcha": "人机验证",
-  "panel.captcha.title": "人机验证",
+  "panel.captcha.title": "完成人机验证",
   "panel.captcha.desc": "请完成下方的验证码并等待管理员放行",
   "panel.captcha.submit": "通过验证码验证",
   "panel.captcha.loading": "正在加载验证组件",

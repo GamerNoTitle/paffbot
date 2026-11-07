@@ -76,7 +76,7 @@ export default {
   "method.adminReject": "Rejected by an admin",
   "method.button": "Button confirmation",
   "method.captcha": "Captcha",
-  "panel.captcha.title": "Captcha",
+  "panel.captcha.title": "Complete the captcha",
   "panel.captcha.desc": "Solve a captcha and wait for an admin to approve.",
   "panel.captcha.submit": "Verify with the captcha",
   "panel.captcha.loading": "Loading the captcha",
