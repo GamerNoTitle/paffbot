@@ -60,7 +60,11 @@ async function markCaptchaPassed(ctx: BotContext, verification: VerificationRow)
   if (detail.captcha_passed) return;
 
   const holdMs = ctx.config.captchaHoldHours * 3_600_000;
-  await updateVerificationDetail(ctx.db, verification.id, { captcha_passed: true, captcha_at: Date.now() });
+  await updateVerificationDetail(ctx.db, verification.id, {
+    captcha_passed: true,
+    captcha_at: Date.now(),
+    cap_solved_at: null,
+  });
   await extendVerificationExpiry(ctx.db, verification.id, Date.now() + holdMs);
 
   await appendAudit(ctx.db, {
@@ -99,6 +103,7 @@ function publicVerification(row: VerificationRow) {
     expiresAt: row.expires_at,
     method: row.method,
     captchaPassed: Boolean(parseDetail(row.detail).captcha_passed),
+    captchaSolved: Boolean(parseDetail(row.detail).cap_solved_at),
   };
 }
 
@@ -165,7 +170,8 @@ export function createApi(): Hono<AppBindings> {
     if (!payload) return c.json({ success: false, error: "人机验证服务返回异常" }, 502);
 
     if (path === "redeem" && payload.success === true) {
-      await markCaptchaPassed(ctx, verification);
+      // 只记「算完了」，等用户点按钮再落 captcha_passed 并通知管理员
+      await updateVerificationDetail(ctx.db, verification.id, { cap_solved_at: Date.now() });
     }
     return c.json(payload, upstream.status as 200);
   };

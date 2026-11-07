@@ -461,7 +461,11 @@ async function renderCaptchaPanel(body) {
       <h2 class="md-typescale-headline-medium">${esc(t("panel.captcha.title"))}</h2>
       <p class="md-typescale-body-medium muted">${esc(t("panel.captcha.desc"))}</p>
     </div>
-    <div class="captcha" data-endpoint="${esc(req.endpoint ?? "")}"></div>`;
+    <div class="captcha" data-endpoint="${esc(req.endpoint ?? "")}"></div>
+    <div class="captcha__actions">
+      <md-filled-button id="cap-go" disabled>${esc(t("panel.captcha.submit"))}</md-filled-button>
+    </div>
+    <p id="cap-err" class="md-typescale-body-small captcha__err"></p>`;
 
   const mount = body.querySelector(".captcha");
   const widget = document.createElement("cap-widget");
@@ -470,26 +474,66 @@ async function renderCaptchaPanel(body) {
   const capCopy = {
     "data-cap-i18n-initial-state": "点击开始验证",
     "data-cap-i18n-verifying-label": "正在计算…",
-    "data-cap-i18n-solved-label": "已完成",
+    "data-cap-i18n-solved-label": "计算完成",
     "data-cap-i18n-error-label": "验证失败，重试一次",
     "data-cap-i18n-verify-aria-label": "点击开始验证",
     "data-cap-i18n-verifying-aria-label": "正在计算，请稍候",
-    "data-cap-i18n-verified-aria-label": "计算完成",
+    "data-cap-i18n-verified-aria-label": "计算完成，请点下方按钮",
     "data-cap-i18n-error-aria-label": "验证出错，请重试",
   };
   for (const [k, v] of Object.entries(capCopy)) widget.setAttribute(k, v);
   mount.appendChild(widget);
 
-  // 组件自己会解题并调用代理，这里只等状态变化
+  const go = $("cap-go");
+  let submitting = false;
+  const enable = () => {
+    go.removeAttribute("disabled");
+    go.disabled = false;
+  };
+  const disable = () => {
+    go.setAttribute("disabled", "");
+    go.disabled = true;
+  };
+
+  // 组件算完只会解锁按钮，真正的提交和推送要点一下
+  widget.addEventListener("solve", enable);
+
+  go.addEventListener("click", async () => {
+    if (submitting || go.hasAttribute("disabled")) return;
+    submitting = true;
+    disable();
+    try {
+      await api("/api/verify/submit", {
+        method: "POST",
+        body: { method: "captcha", verificationId: state.verification?.id },
+      });
+    } catch (err) {
+      submitting = false;
+      disable();
+      const hint = $("cap-err");
+      if (hint) hint.textContent = err?.message ?? t("panel.captcha.failed");
+      return;
+    }
+    stopCaptchaPolling();
+    const fresh = await api("/api/session").catch(() => null);
+    if (fresh?.verification) state.verification = fresh.verification;
+    renderCaptchaPanel(body);
+  });
+
+  // 兜底：没收到 solve 事件时，靠会话状态解锁
   stopCaptchaPolling();
   state.captchaTimer = setInterval(async () => {
-    const fresh = await api("/api/session");
-    if (fresh.ok && fresh.data.verification?.captchaPassed) {
+    const fresh = await api("/api/session").catch(() => null);
+    const current = fresh?.verification;
+    if (!current) return;
+    if (current.captchaPassed) {
       stopCaptchaPolling();
-      state.verification = fresh.data.verification;
+      state.verification = current;
       renderCaptchaPanel(body);
+      return;
     }
-  }, 3000);
+    if (current.captchaSolved) enable();
+  }, 2000);
 }
 
 function loadScriptOnce(src) {

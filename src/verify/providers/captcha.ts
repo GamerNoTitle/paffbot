@@ -1,3 +1,4 @@
+import { parseDetail } from "../../db";
 import {
   challengeFor,
   assertPending,
@@ -15,6 +16,9 @@ import {
  * 定位：给没有 GitHub 的人一条非签名通道；但人机验证不能自证身份，
  * 所以通过后只延长保留时限，仍然要群管理员点「通过」才放行。
  */
+/** 解完题到点按钮之间允许的间隔，超时要求重做。 */
+const CAP_SOLVED_TTL_MS = 10 * 60_000;
+
 export const captchaProvider: VerifyProvider = {
   id: "captcha",
   chatCapable: false,
@@ -75,9 +79,11 @@ export const captchaProvider: VerifyProvider = {
       return { ok: true, needsReview: true, proof: { turnstile: true } };
     }
 
-    // cap 的解题由前端组件自己完成，代理端点会把状态落到 verification 上
-    const passed = body.captchaPassed === true;
-    if (!passed) return { ok: false, error: "还没有完成人机验证" };
+    // cap：必须由代理端点的 redeem 成功写过 cap_solved_at，光传个 true 不认
+    const detail = parseDetail(ctx.verification.detail);
+    const solvedAt = typeof detail.cap_solved_at === "number" ? detail.cap_solved_at : 0;
+    if (!solvedAt) return { ok: false, error: "还没有完成人机验证" };
+    if (Date.now() - solvedAt > CAP_SOLVED_TTL_MS) return { ok: false, error: "验证已过期，重新做一次" };
     return { ok: true, needsReview: true, proof: { captcha: true } };
   },
 };
