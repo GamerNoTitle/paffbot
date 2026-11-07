@@ -205,11 +205,17 @@ body {
 
 .panel__head--center {
   text-align: center;
+  margin-bottom: 24px;
+}
+
+.panel__head--center h2 {
+  margin-bottom: 14px;
 }
 
 .captcha {
   display: flex;
   justify-content: center;
+  margin-top: 20px;
 }
 
 .captcha__hint {
