@@ -203,6 +203,13 @@ body {
   display: none !important;
 }
 
+.captcha__err {
+  color: var(--md-sys-color-error);
+  text-align: center;
+  min-height: 1em;
+  margin: 8px 0 0;
+}
+
 .captcha__actions {
   display: flex;
   justify-content: center;

@@ -108,7 +108,10 @@ async function api(path, options = {}) {
   if (tg?.initData) headers["X-Telegram-Init-Data"] = tg.initData;
   else if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
-  const res = await fetch(path, { ...options, headers });
+  // 传对象也当成 JSON，省得每个调用点都写 JSON.stringify
+  const init = { ...options, headers };
+  if (init.body && typeof init.body === "object") init.body = JSON.stringify(init.body);
+  const res = await fetch(path, init);
   let data = {};
   try {
     data = await res.json();
@@ -371,7 +374,8 @@ async function renderCaptchaPanel(body) {
       <div id="ts-slot" class="captcha"></div>
       <div class="captcha__actions">
         <md-filled-button id="cap-go" disabled>${esc(t("panel.captcha.submit"))}</md-filled-button>
-      </div>`;
+      </div>
+      <p id="cap-err" class="md-typescale-body-small captcha__err"></p>`;
 
     let turnstileToken = "";
     let submitting = false;
@@ -393,20 +397,23 @@ async function renderCaptchaPanel(body) {
 
       submitting = true;
       disable();
-      const res = await api("/api/verify/submit", {
-        method: "POST",
-        body: { method: "captcha", turnstileToken, verificationId: state.verification?.id },
-      });
-      if (!res.ok) {
+      try {
+        await api("/api/verify/submit", {
+          method: "POST",
+          body: { method: "captcha", turnstileToken, verificationId: state.verification?.id },
+        });
+      } catch (err) {
         submitting = false;
         turnstileToken = "";
         window.turnstile?.reset("#ts-slot");
         disable();
+        const hint = document.getElementById("cap-err");
+        if (hint) hint.textContent = err?.message ?? t("panel.captcha.failed");
         return;
       }
       stopCaptchaPolling();
-      const fresh = await api("/api/session");
-      if (fresh.ok) state.verification = fresh.data.verification;
+      const fresh = await api("/api/session").catch(() => null);
+      if (fresh?.verification) state.verification = fresh.verification;
       renderCaptchaPanel(body);
     });
 
