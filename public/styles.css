@@ -203,6 +203,15 @@ body {
   display: none !important;
 }
 
+.captcha {
+  display: flex;
+  justify-content: center;
+}
+
+.captcha__hint {
+  text-align: center;
+}
+
 .captcha__err {
   color: var(--md-sys-color-error);
   text-align: center;
@@ -589,7 +598,9 @@ body {
 }
 
 .panel__switch {
-  margin-bottom: 22px;
+  display: flex;
+  width: fit-content;
+  margin: 0 auto 22px;
 }
 
 .panel__head h2 {
