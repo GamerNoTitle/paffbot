@@ -2,6 +2,8 @@
 export default {
   "dm.prompt.head": "Hi <b>{name}</b>, you are asking to join “<b>{chat}</b>”",
   "dm.prompt.why": "Before you come in, we need to make sure you are not a bot or a malicious user",
+  "dm.prompt.miniapp": "• <b>MiniApp verification</b>: verify inside the Mini App, which offers several methods",
+  "dm.prompt.chat": "• <b>Chat verification</b>: verify right here in the chat; signature only, using a key pair added to GitHub",
   "dm.prompt.ttl": "This verification is valid for {duration}. If you need a new one, ask to join the group again",
   "dm.prompt.remaining": "Tries left today: {count}",
   "dm.prompt.cta": "Pick a method below",

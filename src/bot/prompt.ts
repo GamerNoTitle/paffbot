@@ -26,8 +26,7 @@ export async function sendVerificationPrompt(
     text: dmVerificationPrompt({
       userName: displayName(user),
       chatTitle: verification.chat_title ?? String(verification.chat_id),
-      methods,
-      ttlSeconds: ctx.config.ttlSeconds,
+        ttlSeconds: ctx.config.ttlSeconds,
       remaining,
       lang: normalizeLang(user.language_code),
     }),

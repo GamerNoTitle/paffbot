@@ -3,12 +3,6 @@ import { escapeHtml, truncate } from "../lib/html";
 import { formatDuration } from "../lib/time";
 import { t, type Lang, DEFAULT_LANG } from "../i18n";
 
-export interface MethodSummary {
-  id: string;
-  label: string;
-  description: string;
-}
-
 export function miniAppKeyboard(
   url: string,
   text = "打开 Miniapp 验证",
@@ -24,15 +18,13 @@ export function miniAppKeyboard(
 export function dmVerificationPrompt(params: {
   userName: string;
   chatTitle: string;
-  methods: MethodSummary[];
   ttlSeconds: number;
   remaining?: number;
   lang?: Lang;
 }): string {
   const lang = params.lang ?? DEFAULT_LANG;
-  const list = params.methods
-    .map((m) => `• <b>${escapeHtml(m.label)}</b>：${escapeHtml(m.description)}`)
-    .join("\n");
+  // 只说明两条通路，具体验证方式在小程序里列
+  const list = [t(lang, "dm.prompt.miniapp"), t(lang, "dm.prompt.chat")].join("\n");
 
   const lines = [
     t(lang, "dm.prompt.head", { name: escapeHtml(params.userName), chat: escapeHtml(params.chatTitle) }),

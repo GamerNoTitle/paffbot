@@ -2,6 +2,8 @@
 export default {
   "dm.prompt.head": "Hello <b>{name}</b>，你正在申请加入群组「<b>{chat}</b>」",
   "dm.prompt.why": "在进群之前，我们要确认你不是机器人或者恶意用户",
+  "dm.prompt.miniapp": "• <b>MiniApp 验证</b>: 通过预设的 MiniApp 完成验证，MiniApp 中提供多种验证方式",
+  "dm.prompt.chat": "• <b>聊天验证</b>: 直接通过聊天框完成验证，但只提供使用已经添加到 Github 的公私钥对签名验签的方式",
   "dm.prompt.ttl": "本次验证将在 {duration} 内有效，如需重新发起验证，请尝试重新加入群组",
   "dm.prompt.remaining": "今日剩余尝试次数: {count} 次",
   "dm.prompt.cta": "从下方的按钮中选择一个合适的验证方式吧",
