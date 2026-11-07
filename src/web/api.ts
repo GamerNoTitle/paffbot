@@ -80,7 +80,12 @@ async function markCaptchaPassed(ctx: BotContext, verification: VerificationRow)
     parse_mode: "HTML",
     reply_markup: adminKeyboard(verification.id, DEFAULT_LANG),
   });
-  if (!sent) console.error("[captcha] 群提醒发送失败", verification.chat_id, verification.id);
+  if (!sent) {
+    console.error("[captcha] 群提醒发送失败", verification.chat_id, verification.id);
+    return;
+  }
+  // 记住这条消息，管理员点了通过/拒绝后要把它改成结果
+  await updateVerificationDetail(ctx.db, verification.id, { admin_message_id: sent.message_id });
 }
 
 function publicVerification(row: VerificationRow) {

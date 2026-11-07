@@ -216,12 +216,20 @@ export class TelegramApi {
   }
 
   /** 改一条已发出的消息（顺便清掉按钮）。失败不算错误：消息可能已被删除。 */
-  editMessageText(params: { chat_id: number; message_id: number; text: string; parse_mode?: "HTML" }) {
+  editMessageText(params: {
+    chat_id: number;
+    message_id: number;
+    text: string;
+    parse_mode?: "HTML";
+    /** 传空键盘可把消息上的按钮去掉 */
+    reply_markup?: { inline_keyboard: unknown[] };
+  }) {
     return this.safe<TgMessage | boolean>("editMessageText", {
       chat_id: params.chat_id,
       message_id: params.message_id,
       text: params.text,
       ...(params.parse_mode ? { parse_mode: params.parse_mode } : {}),
+      ...(params.reply_markup ? { reply_markup: params.reply_markup } : {}),
     });
   }
 

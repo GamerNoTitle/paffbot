@@ -13,6 +13,10 @@ export default {
   "dm.rateLimited": "今日尝试次数过多，请明天重试",
 
   "group.notice": "欢迎 <a href=\"tg://user?id={uid}\">{name}</a> 入群，请先验证你的身份",
+  "group.notice.declined": "管理员拒绝了「{name}」的入群申请",
+  "group.notice.banned": "管理员封禁了「{name}」",
+  "admin.notice.declined": "{name} 的入群申请已被拒绝",
+  "admin.notice.banned": "{name} 已被封禁",
   "group.notice.timeout": "「{name}」验证超时，已移出",
   "admin.notice.timeout": "{name} 申请加入（验证超时，已自动拒绝）",
   "group.notice.button": "前往验证",

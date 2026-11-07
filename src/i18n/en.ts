@@ -13,6 +13,10 @@ export default {
   "dm.rateLimited": "Too many attempts today. Please try again tomorrow",
 
   "group.notice": "Welcome <a href=\"tg://user?id={uid}\">{name}</a>. Please verify your identity first",
+  "group.notice.declined": "An admin declined the join request from {name}",
+  "group.notice.banned": "An admin banned {name}",
+  "admin.notice.declined": "{name}'s join request was declined",
+  "admin.notice.banned": "{name} was banned",
   "group.notice.timeout": "{name} timed out and has been removed",
   "admin.notice.timeout": "{name} asked to join (timed out, auto-declined)",
   "group.notice.button": "Verify",

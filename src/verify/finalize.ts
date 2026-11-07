@@ -84,6 +84,7 @@ export async function approveVerification(
       message_id: noticeId,
       text: t(DEFAULT_LANG, "group.notice.approved", { name: escapeHtml(name), method: escapeHtml(method) }),
       parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [] },
     });
     if (edited) await scheduleMessagePurge(deps.db, row.chat_id, noticeId, Date.now() + PURGE_DELAY_MS);
   }
@@ -95,6 +96,7 @@ export async function approveVerification(
       message_id: adminMsgId,
       text: t(DEFAULT_LANG, "admin.notice.approved", { name: escapeHtml(name), method: escapeHtml(method) }),
       parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [] },
     });
     if (edited) await scheduleMessagePurge(deps.db, row.chat_id, adminMsgId, Date.now() + PURGE_DELAY_MS);
   }
@@ -130,6 +132,7 @@ async function markTimeoutMessages(
       message_id: noticeId,
       text: t(lang, "group.notice.timeout", { name: escapeHtml(name) }),
       parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [] },
     });
     if (edited) await scheduleMessagePurge(deps.db, row.chat_id, noticeId, Date.now() + PURGE_DELAY_MS);
   }
@@ -141,8 +144,37 @@ async function markTimeoutMessages(
       message_id: adminId,
       text: t(lang, "admin.notice.timeout", { name: escapeHtml(name) }),
       parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [] },
     });
     if (edited) await scheduleMessagePurge(deps.db, row.chat_id, adminId, Date.now() + PURGE_DELAY_MS);
+  }
+}
+
+/** 拒绝/封禁后把群里那两条消息改成结果，并去掉按钮，5 分钟后删除。 */
+async function markResultMessages(
+  deps: FinalizeDeps,
+  row: VerificationRow,
+  lang: Lang,
+  kind: "declined" | "banned",
+): Promise<void> {
+  const detail = parseDetail(row.detail);
+  const name = row.display_name ?? row.username ?? String(row.user_id);
+
+  const targets: Array<[unknown, string]> = [
+    [detail.notice_message_id, `group.notice.${kind}`],
+    [detail.admin_message_id, `admin.notice.${kind}`],
+  ];
+
+  for (const [id, key] of targets) {
+    if (typeof id !== "number") continue;
+    const edited = await deps.tg.editMessageText({
+      chat_id: row.chat_id,
+      message_id: id,
+      text: t(lang, key, { name: escapeHtml(name) }),
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [] },
+    });
+    if (edited) await scheduleMessagePurge(deps.db, row.chat_id, id, Date.now() + PURGE_DELAY_MS);
   }
 }
 
@@ -201,6 +233,8 @@ export async function rejectVerification(
 
   if (options.status === "timeout") {
     await markTimeoutMessages(deps, row, DEFAULT_LANG);
+  } else {
+    await markResultMessages(deps, row, DEFAULT_LANG, options.status === "banned" ? "banned" : "declined");
   }
 
   await appendAudit(deps.db, {
