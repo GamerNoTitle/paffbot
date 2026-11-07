@@ -449,7 +449,12 @@ async function renderCaptchaPanel(body) {
     return;
   }
 
-  if (req.widget) await loadScriptOnce(req.widget);
+  try {
+    if (req.widget) await loadScriptOnce(req.widget);
+  } catch (err) {
+    body.innerHTML = `<p class="md-typescale-body-medium captcha__err">${esc(err?.message ?? t("panel.captcha.failed"))}</p>`;
+    return;
+  }
 
   body.innerHTML = `
     <div class="panel__head panel__head--center">
@@ -461,6 +466,18 @@ async function renderCaptchaPanel(body) {
   const mount = body.querySelector(".captcha");
   const widget = document.createElement("cap-widget");
   widget.setAttribute("data-cap-api-endpoint", String(req.endpoint ?? ""));
+  // Cap 组件自带英文文案，用它的 i18n 属性改成中文
+  const capCopy = {
+    "data-cap-i18n-initial-state": "点击开始验证",
+    "data-cap-i18n-verifying-label": "正在计算…",
+    "data-cap-i18n-solved-label": "已完成",
+    "data-cap-i18n-error-label": "验证失败，重试一次",
+    "data-cap-i18n-verify-aria-label": "点击开始验证",
+    "data-cap-i18n-verifying-aria-label": "正在计算，请稍候",
+    "data-cap-i18n-verified-aria-label": "计算完成",
+    "data-cap-i18n-error-aria-label": "验证出错，请重试",
+  };
+  for (const [k, v] of Object.entries(capCopy)) widget.setAttribute(k, v);
   mount.appendChild(widget);
 
   // 组件自己会解题并调用代理，这里只等状态变化
@@ -480,8 +497,16 @@ function loadScriptOnce(src) {
   return new Promise((resolve, reject) => {
     const el = document.createElement("script");
     el.src = src;
-    el.onload = () => resolve();
-    el.onerror = () => reject(new Error("captcha script failed"));
+    el.async = true;
+    const timer = setTimeout(() => reject(new Error(`脚本加载超时：${src}`)), 12_000);
+    el.onload = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    el.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error(`脚本加载失败：${src}`));
+    };
     document.head.appendChild(el);
   });
 }

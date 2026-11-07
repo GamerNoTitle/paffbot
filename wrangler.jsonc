@@ -30,8 +30,9 @@
     // 人机验证：免签名通道，通过后仍需管理员放行
     // CAPTCHA_PROVIDER 二选一：cap（自建 Cap.js）或 turnstile（Cloudflare）
     "CAPTCHA_ENABLED": "true",
-    "CAPTCHA_PROVIDER": "turnstile",
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAF3ajT2nXbColdg9",
+    "CAPTCHA_PROVIDER": "cap",
+    // 切回 Cloudflare 时改成 turnstile，并保留下面的 site key
+    // "TURNSTILE_SITE_KEY": "0x4AAAAAAF3ajT2nXbColdg9",
     // 选 cap 时改成 CAPTCHA_PROVIDER=cap + 填写 CAPTCHA_URL
     "CAPTCHA_URL": "https://cap.bili33.top",
     // TURNSTILE_SECRET 用 wrangler secret put 写入，不落仓库
