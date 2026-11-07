@@ -373,6 +373,7 @@ async function renderCaptchaPanel(body) {
 
     window.turnstile?.render("#ts-slot", {
       sitekey: String(req.siteKey),
+      appearance: "always",
       theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
       callback: (token) => void submitTurnstile(token),
     });
