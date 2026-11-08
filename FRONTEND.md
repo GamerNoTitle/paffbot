@@ -1,377 +1,372 @@
 # 前端设计准则
 
-这份文档描述 Mini App 前端（`public/` + `ui/`）的做法与红线。目标是让另一个 Agent 在不读完全部代码的情况下，能写出风格一致、不返工的实现。
+一份可以独立阅读的实施规范：不看代码，只按这份文档就能做出同样风格的界面。
 
-**范围**：只讲前端。后端接口、Telegram 交互另见 `docs/DEPLOY.md`、`docs/VARIABLES.md`。
+适用对象：Telegram Mini App（手机端为主，WebView 渲染）。桌面浏览器能用，但**不是设计目标**。
 
 ---
 
 ## 0. 三条不可协商的前提
 
-1. **文案由人写，不由 Agent 写。**
-   Agent 的职责是把字符串抽成 key、保证中英两份、给出占位值；**不要**自行发挥营销腔、形容词、语气词。新写的文案必须在交付说明里列出来，供人改写。
+### 1. 文案归人，不归 Agent
 
-2. **不用位图做界面元素。**
-   图标是内联 SVG（`ICONS` 表），装饰是程序生成的形状（`public/shapes.js`），线稿是 SVG path。唯一的位图是应用图标（`icon-192.png` 等）。
+Agent 的职责是**把字符串抽成 key、保证多语言各一份、给出占位文案**，然后把 key 列表交出来让人改写。
 
-3. **不用浏览器原生控件。**
-   没有原生 `<select>`、`<input type="checkbox">`、原生按钮样式。要么用 Material Web（`md-filled-button` / `md-switch` / `md-outlined-text-field`），要么自绘（`.segmented`、`.dd`）。原因很实际：macOS 上原生下拉是这样的——
+不要自行发挥营销腔、形容词、感叹句、礼貌用语堆叠。写不出来就留一个能看的占位，并明确标注「待改写」。
 
-   > 用户原话：「macOS 上的原生下拉太丑了，不要用原生的」
+### 2. 界面元素不用位图
+
+- 图标：内联 SVG（`viewBox` + `fill="currentColor"`），跟着文字颜色走
+- 装饰：程序生成的几何形状（圆形、花瓣、多边形），不是 PNG
+- 应用图标是唯一的位图，只出现在 favicon 和页头
+
+位图的问题不是体积，是**改不了**：主题色一变、深色模式一开，位图就融不进去。
+
+### 3. 不用浏览器原生控件
+
+不用原生 `<select>`、`<input type="checkbox">`，也不用原生按钮样式。
+
+- 二选一/三选一 → 自绘分段按钮（`role="tab"` + `aria-selected`）
+- 布尔开关 → Material 的 switch 组件
+- 文本输入 → Material 的 outlined text field
+- 设置页例外，见「字段行」
+
+原生控件在各平台长得不一样，macOS 上尤其突兀，而且深色模式经常不跟随。
 
 ---
 
-## 1. 技术栈与构建
+## 1. 技术选型
 
-| 层 | 选择 | 说明 |
+| 层 | 做法 | 理由 |
 |---|---|---|
-| 组件 | `@material/web` 的子集 | 只 import 用到的，见 `ui/vendor.ts` |
-| 主题 | `@material/material-color-utilities` | 种子色 → 完整 MD3 调色板 |
-| 打包 | `esbuild` | `npm run build:ui` → `public/vendor/material.js` |
-| 页面 | 原生 ESM + 手写 DOM | 没有框架、没有虚拟 DOM、没有构建步骤 |
+| 组件 | Material Web（MD3）**按需引入** | 只 import 用到的，不要整包 |
+| 主题 | 从一个种子色生成整套调色板 | 换色只改一个值 |
+| 打包 | esbuild 把组件打成单文件放本地 | Telegram WebView 在部分网络下取不到外部 CDN |
+| 页面 | 原生 ESM + 手写 DOM | 没有框架，没有虚拟 DOM，没有 SSR |
 
-**为什么要自托管组件**：Telegram 内置浏览器在部分网络下取不到外部 CDN，所以组件打包进 `public/vendor/`，不引任何外部脚本。
+**新增组件的流程**：在组件入口加一行 import → 跑打包 → 看体积增量（单个组件通常 10–20 KiB）→ 确认可接受再留。
 
-**新增组件**：在 `ui/vendor.ts` 里加一行 import，跑 `npm run build:ui`，确认体积增长可接受（每个组件约 10–20 KiB）。
-
-**改静态资源必须改版本号**：
+**静态资源必须带版本号**：
 
 ```html
 <link rel="stylesheet" href="./styles.css?v=59" />
 <script type="module" src="./app.js?v=90"></script>
 ```
 
-Telegram WebView 缓存很顽固，不加 `?v=` 用户会拿着旧文件跑。改完 CSS/JS 都要 +1。
+Telegram 的 WebView 缓存非常顽固。改了 CSS/JS 不同步加 `?v=`，用户会拿着旧文件跑，然后你收到「我这边没变化」。
 
 ---
 
-## 2. 设计令牌与主题
+## 2. 颜色与形状
 
-所有颜色只用 CSS 变量，**不写死十六进制**：
+### 只用令牌，不写死颜色
 
 ```css
-var(--md-sys-color-primary)
-var(--md-sys-color-on-primary-container)
-var(--md-sys-color-surface-container-high)
+color: var(--md-sys-color-on-surface);
+background: var(--md-sys-color-surface-container-high);
+border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 22%, transparent);
 ```
 
-规则：
+- 文字用 `on-*` 配对色，容器用 `*-container`，分隔线用 outline 的低透明度混合
+- 需要更淡的层次时，用 `color-mix()` 调透明度，**不要再定义一层变量**
+- 禁止出现 `#fff` / `#000` / `rgba(0,0,0,.5)` 这类硬编码，深色模式会翻车
 
-- 文字用 `on-*` 配对色，容器用 `*-container`，分隔线用 `outline-variant` 的 22% 混合。
-- 需要「淡一点」时用 `color-mix(in srgb, <token> N%, transparent)`，不要再定义一层变量。
-- 圆角跟形状走：卡片 24px 起，按钮胶囊，输入框 12px，小控件 8px。
-- 字体族用 `var(--md-ref-typeface-plain)`，等宽场景 `var(--md-ref-typeface-mono)`。
+### 主题怎么算
 
-主题由 `paintTheme()` 统一落地：`applyTheme({ seed, dark })` 把整套 `--md-sys-color-*` 写到 `documentElement`，再换图标和 aria 文案。
+1. 取一个种子色（品牌色 / 用户客户端主题色 / URL 参数）
+2. 用 MD3 算法生成明暗两套完整调色板
+3. 一次性把 `--md-sys-color-*` 写到根元素
 
-- 种子色优先级：`?seed=` → Telegram 主题的 `button_color` → 品牌默认 `#5060B0`。
-- `theme-toggle` 只做「切 `dark` 布尔 → 存 localStorage → 重画」，不要在别处再算一遍色板。
-- 用户手动切过主题后，Telegram 的 `themeChanged` 事件不再覆盖（以本地存值为准）。
+切换深浅色 = 换一套变量 + 换图标 + 存 localStorage，**不要**在别处重算色板。用户手动切过之后，系统主题变化不再覆盖它。
 
-圆角走变量：`--shape-pill`（胶囊）、`--shape-hero`（大卡片）、输入框与列表行 12px。
+### 形状
+
+圆角走变量，不要在组件里各写各的：
+
+| 用途 | 半径 |
+|---|---|
+| 胶囊（按钮、标签） | 999px |
+| 大卡片、hero | 32–36px |
+| 普通卡片 | 20–24px |
+| 输入框、列表行 | 12px |
+| 小控件 | 8px |
 
 ---
 
 ## 3. 页面骨架
 
 ```
-.page
-├── .page-top            顶部：logo + .segmented 导航 + 主题/语言
-├── .hero                主视觉：eyebrow / 标题 / 副标题 / 形状装饰
-├── .panel               内容卡片（一个视图一张）
-└── footer               版权 + 语言选择
+顶部栏         logo / 分段导航 / 主题切换
+主视觉 hero    eyebrow、标题、副标题、（可选）倒计时 + 波浪进度
+主面板 panel   一张卡片，承载当前视图的全部内容
+页脚           版权 + 语言选择
 ```
 
-导航是**分段按钮**，不是 tab 条：
+### 分段导航
 
 ```html
-<div class="segmented" role="tablist" aria-label="...">
-  <button type="button" role="tab" data-view="verify" aria-selected="true" data-i18n="nav.verify"></button>
-  <button type="button" role="tab" data-view="audit" aria-selected="false" data-i18n="nav.audit"></button>
+<div class="segmented" role="tablist" aria-label="视图切换">
+  <button type="button" role="tab" data-view="verify" aria-selected="true">验证</button>
+  <button type="button" role="tab" data-view="audit" aria-selected="false">审计</button>
 </div>
 ```
 
-- 选中态靠 `aria-selected="true"`，样式写 `[aria-selected="true"]`，不要另加 class。
-- 可见性用 `.hidden`（`display: none !important`）在 `applyNavVisibility()` 里统一控制。
-- 视图切换只切 `.view` 的 `.hidden`，不重建 DOM。
+- 选中态只认 `aria-selected="true"`，样式写 `[aria-selected="true"]`，不要额外加 class
+- 视图用 `display: none` 切换，不重建 DOM，避免输入内容丢失
+- 权限不够的 tab 直接隐藏，不要显示后点击报错
 
-### 三种状态，一套壳
+### 三种状态
 
-`showState(name)` 只认 `loading` / `empty` / `pending`：
+任何异步页面都只有三态，统一实现：
 
-- **loading**：骨架或 spinner，占位高度要和最终内容接近，避免跳动。
-- **empty**：图标 + 标题 + 一句话说明 + 一个可操作按钮。
-- **pending**：hero 加倒计时 + 主面板。
+| 状态 | 内容 |
+|---|---|
+| loading | 骨架或 spinner，占位高度接近最终内容，避免跳动 |
+| empty | 图标 + 标题 + 一句说明 + 一个可操作按钮 |
+| pending | 主视觉带倒计时 + 主面板 |
 
-hero 的 `hero-progress` 是**波浪进度条**（`wavePath()` 生成 SVG，比视口宽一个波长，`translateX` 循环不露缝），只在 pending 状态出现。
+不要为了「优雅」加第四种（比如半透明遮罩），会把简单状态机搞乱。
+
+### 进度动画
+
+倒计时用**波浪进度条**：SVG path 画正弦波，宽度比容器宽一个波长，靠横向位移循环，视觉上无缝。
+
+关键点：path 要比视口宽出左右各一个波长，否则循环重启时会看到缺口。
 
 ---
 
-## 4. 组件清单与用法
+## 4. 组件对应表
 
 | 场景 | 用什么 | 不要用 |
 |---|---|---|
-| 主操作 | `md-filled-button` | 自绘蓝色矩形 |
-| 次操作 | `md-outlined-button` / `md-text-button` | `<button class="link">` |
-| 二选一/三选一 | `.segmented` + `aria-selected` | 原生 select |
-| 布尔项 | `md-switch` | 原生 checkbox |
-| 文本输入 | `md-outlined-text-field` | 原生 input（设置页除外，见下） |
-| 图标按钮 | `md-icon-button` + `md-icon` + 内联 SVG | 图标字体 |
-| 提示 | 面板内 `<p class="captcha__err">` | `alert()` |
+| 主操作 | filled button | 自绘色块 |
+| 次操作 | outlined / text button | 无样式 `<button>` |
+| 二选一 | 分段按钮 | 原生 select |
+| 布尔 | switch 组件 | 原生 checkbox |
+| 文本输入 | outlined text field | 原生 input（设置页除外） |
+| 图标按钮 | icon button + 内联 SVG | 图标字体、emoji |
+| 行内错误 | 面板内一行红字 | `alert()`、toast |
 
-### 设置页的特殊处理
+### 字段行（设置类页面）
 
-设置页字段多、结构固定，用自绘行而不是一套 `md-outlined-text-field`：
-
-```html
-<div class="settings__row">
-  <span class="settings__label">VERIFY_TTL_SECONDS</span>
-  <input class="settings__input" type="number" data-key="..." />
-  <p class="settings__hint">说明文字</p>
-</div>
-```
-
-- 标签就是**变量名本身**（等宽字体），不翻译。
-- 说明文字一律走 i18n key（`hintKey`），服务端只下发 key，不下发文案。
-- 密钥字段永远 `value=""` + `placeholder="已设置，重新输入以覆盖"`，只报「有没有值」。
-
-### 多值输入（`intList` / `list`）
-
-一行一个值，末尾 `+` 追加；**第二行起**在 `+` 右边多一个 `−`：
+字段多、结构固定时，用自绘行比堆组件更稳：
 
 ```
-┌──────────────┐ ┌─┐
-│ 1762053255   │ │+│
-└──────────────┘ └─┘
-┌──────────────┐ ┌─┐ ┌─┐
-│ 1234567890   │ │+│ │−│
-└──────────────┘ └─┘ └─┘
+┌─────────────────────────────────
+│ VARIABLE_NAME          ← 等宽字体，就是变量名，不翻译
+│ ┌─────────────────────┐
+│ │ 当前值               │   ← 输入框
+│ └─────────────────────┘
+│ 一句话说明：这项干嘛、怎么填   ← 走 i18n
+└─────────────────────────────────
 ```
 
-增删后**整段重画**（`renderIntList(list, values, focusIndex)`），不要在 DOM 上做手术——「第一行不能有减号」「最后一行必须有加号」这类约束重画一次就自洽了。
+- 标签是变量名本身，不做「友好化」改名
+- 说明文字永远只回答两件事：**这项是干什么的**、**我该怎么填**
+- 密钥字段永远不回显：`value` 为空，占位写「已设置，重新输入以覆盖」；旁边一个「清除」按钮才真的清空
+
+### 多值输入
+
+一行一个值，每行末尾一个 `+`，从第二行起 `+` 右边多一个 `−`：
+
+```
+[ 1762053255 ] [+]
+[ 1234567890 ] [+] [−]
+```
+
+- `+` 在当前行下方插入空行并聚焦
+- `−` 删除自己，只剩一行时不显示
+- 增删后**整段重画**，不要做局部 DOM 手术——「第一行不能有删除」这类规则重画一次就自洽
+- 提交时过滤空行，用逗号拼接
 
 ### 只读 + 复制
 
-由服务端推导的值（如 OAuth 回调地址）渲染成只读输入框 + 右侧复制按钮：
+由服务端推导、用户只需要抄走的值（回调地址之类），渲染成只读输入框 + 右侧圆形复制按钮：
 
-```html
-<div class="settings__readonly">
-  <input class="settings__input" readonly value="https://.../api/oauth/github/callback" />
-  <button type="button" class="settings__round" data-copy="...">⧉</button>
-</div>
-```
-
-点完按钮变 `✓`，1.2 秒后复原；复制失败时退回 `select() + execCommand('copy')`（Telegram WebView 里 clipboard API 不一定可用）。
+- 点击写剪贴板，按钮短暂变 `✓`，1.2 秒复原
+- 剪贴板 API 在 WebView 里可能被拒，退回：选中输入框 + `execCommand('copy')`
+- 复制完清掉选区，否则输入框会一直保持高亮
 
 ---
 
 ## 5. 交互规范
 
-### 按钮的三种状态
+### 按钮状态
 
 ```js
-button.setAttribute("disabled", "");        // 禁用要用属性，不是 property
-button.textContent = t("gate.admin.opening"); // 加载文案写在按钮上
-button.removeAttribute("disabled");          // 恢复
+button.setAttribute("disabled", "");        // 禁用：用属性
+button.textContent = "正在打开 Telegram";    // 加载文案写在按钮上
+button.removeAttribute("disabled");          // 恢复：用属性
 ```
 
-**不要**在按钮下方另起一行写「正在加载…」——用户原话：「点了按钮下面的提示改到按钮上，不要单独写在下面那一行」。
+两个要点：
 
-Material 组件有个坑：`el.disabled = true` 之后 `el.disabled = false` 有时属性还在，所以禁用/恢复都用 `setAttribute` / `removeAttribute`，必要时 `customElements.whenDefined()` 之后再操作。
+1. **加载提示写在按钮上**，不要在按钮下面另起一行。用户明确要求过这一点。
+2. Material 组件的 `disabled` 属性会残留：先 `el.disabled = true` 再 `el.disabled = false`，属性可能还在。统一用 `setAttribute` / `removeAttribute`，必要时等 `customElements.whenDefined()` 之后再操作。
 
-### 错误展示
+### 失败怎么显示
 
-- 就地展示：在触发它的面板内写一行红字，不弹模态。
-- 服务端如果给了 `errorKey`，前端优先翻译：`err.errorKey ? t(err.errorKey) : err.message`。
-- 只有「流程结束」才用 `showResultDialog()`（成功/失败共用同一个对话框）。
+- 就地显示：在触发它的面板内写一行红字，不弹窗
+- 服务端如果返回错误码，前端做一层翻译，不要直接把中文错误甩给英文用户
+- 只有「整个流程结束」才用模态对话框，成功和失败共用同一个组件
 
-### 空态与首屏
+### 空态
 
-首屏不闪白：先把 hero 和面板渲染成 loading 骨架，会话请求回来再替换。请求失败时把原因写进空态说明，不要只留一个转圈。
+首屏不要闪白：先把 hero 和面板按 loading 渲染出来，数据回来再替换。请求失败时把原因写进空态说明，不要只留一个转圈。
 
-### 浏览器门禁（非 Telegram 环境）
+### 门禁页
 
-不在 Telegram 里打开时，页面**只留一个入口**，不提供任何验证表单：
+不在目标环境（如非 Telegram）打开时，页面只留**一个入口**，不提供任何表单：
 
-- `/` → 「打开 Bot」按钮，跳 `https://t.me/<bot>`
-- `/admin` → 「验证身份」按钮 → 服务端发 nonce → 打开 `?start=admin_<nonce>` → Bot 回一次性链接
+- 普通首页 → 一个按钮，跳到正确的打开方式
+- 管理页 → 一个按钮，触发身份验证，验证结果由服务端推送带凭据的链接
 
-门禁状态下隐藏导航栏（`$("nav").classList.add("hidden")`），登录成功后再显示。
+门禁状态下隐藏导航栏，验证通过后再显示。
 
 ---
 
-## 6. 文案规则（最容易返工的地方）
+## 6. 文案规则
+
+这一节最容易返工，逐条照做。
 
 ### 面向使用者，不面向开发者
-
-设置项说明只回答两件事：**这项是干什么的**、**我该怎么填**。
 
 | ❌ 不要 | ✅ 要 |
 |---|---|
 | 启用后必须选一种，不做推断；关闭时这项不生效 | 启用后需要选择一种验证方式 |
 | 留空则按请求来源推导 | 留空则使用当前访问地址 |
+| 该值会写入 settings 表并覆盖环境变量 | 保存后立即生效 |
 
-用户原话：「你面向的对象是使用者，而不是需要知道你的逻辑的开发者」。
+界面上不出现「推断」「推导」「回退」「兜底」「内部逻辑」这类词。用户不关心系统怎么想，只关心现在是什么状态、他要做什么。
 
 ### 标点与格式
 
-- 冒号用**半角 + 空格**：`用法: /pass <uid>`，不是 `：`。
-- 按钮文案不加 emoji、不加句号、不加感叹号。
-- 一句话说明不写「为了……」「以便……」，直接说结果。
-- 数字与中文之间按排版习惯留空格；单位紧贴数字（`300 秒`、`24 小时`）。
+- 冒号用**半角 + 空格**：`用法: /pass <id>`
+- 按钮文案不加 emoji、不加句号、不加感叹号
+- 数字与中文之间按排版留空格；单位紧贴数字（`300 秒`、`24 小时`）
+- 长文案不写「为了……」「以便……」，直接说结果
 
 ### 不猜、不做隐式推断
 
-一个开关就是开/关，一个二选一就是明确选项。**任何「留空自动推断」的行为都是设计缺陷**——它会让用户无法预测当前状态。
+一个开关就是开/关，一个二选一就是明确选项。
 
-对应实现：`resolveCaptchaProvider()` 只认 `cap` / `turnstile` 两个字面值，其他一律视为未配置。
+任何「留空自动推断」的设计都是缺陷：用户无法预测当前状态，出了问题也说不清。
 
-### 长文案的位置
+正确做法：留空 = 未配置 = 功能关闭，并且**在保存时校验**——开了功能但没选方式，直接报错拦下来。
 
-- 标题 ≤ 14 字，说明 ≤ 40 字。
-- 超过两行的说明改用列表或拆成步骤（`.steps`）。
-- 不写「请」「您」等敬语，用「你」。
+### 长度
+
+- 标题 ≤ 14 字
+- 卡片说明 ≤ 40 字
+- 超过两行改成列表或步骤
+- 不写敬语，用「你」
 
 ---
 
-## 7. i18n 机制
+## 7. 多语言
 
-### 结构与约束
+### 结构
 
 ```
-public/i18n/zh-CN.js   ← 中文（人写，Agent 只做占位）
-public/i18n/en.js      ← 英文
-public/i18n/index.js   ← t / setLang / detectLang / applyStaticI18n
+i18n/
+├── index.js     t(key, vars) / 切换语言 / 静态文案扫描
+├── zh-CN.js     中文（人写）
+└── en.js        英文
 ```
 
-- **key 按字母序排列**，中英两份**键数必须一致**（有测试兜底）。
-- 命名空间：`nav.*` `hero.*` `panel.*` `settings.*` `gate.*` `audit.*` `dialog.*` `state.*` `foot.*`。
-- 带参数用 `{name}` 占位：`t("hero.remaining", { time: "04:59" })`。
+硬约束：
+
+- key 按**字母序**排列，两边键数必须一致（用测试或脚本卡住）
+- 命名空间前缀：`nav.*` `hero.*` `panel.*` `settings.*` `dialog.*` `state.*`
+- 带参数用占位符：`"剩余 {time}"` + `t("hero.remaining", { time: "04:59" })`
 
 ### 静态文案
 
-写在 HTML 上，由 `applyStaticI18n()` 扫描：
+HTML 上打标记，初始化时统一扫描替换：
 
 ```html
 <h2 data-i18n="settings.title"></h2>
-<input data-i18n-label="audit.tokenLabel" />
-<div data-i18n-aria="nav.theme"></div>
-<img data-i18n-alt="app.name" />
+<input data-i18n-label="field.label" />
+<button data-i18n-aria="nav.theme"></button>
 ```
+
+对应属性名要和扫描函数一致（`textContent` / `label` / `aria-label` / `alt`）。
 
 ### 动态文案
 
-JS 拼出来的 DOM 必须自己调 `t()`，并且**在语言切换时重渲染**：
+JS 拼出来的 DOM 必须自己调 `t()`，**并且在切语言时重渲染**。
 
-```js
-function retranslate() {
-  document.title = t("page.title");
-  applyStaticI18n();
-  renderFooter();                       // 页脚是模块加载时渲染的，必须重画
+这是最容易漏的地方：静态文案会跟着变，动态区块不会。典型表现是英文界面里某张卡片还是中文。
 
-  if (!$("view-settings").classList.contains("hidden")) {
-    if (settingsState.fields.length > 0) renderSettings();
-    return;
-  }
-  if (!$("view-audit").classList.contains("hidden")) {
-    loadAudit();
-    return;
-  }
-  renderHeroAndPanel();                 // 其余视图同理
-}
-```
+写法：切换语言时走一个 `retranslate()`，它做三件事：
 
-反例（真实踩过）：页脚在模块顶层渲染了一次，那时还没 `setLang`，于是英文界面页脚永远是中文——因为没人重画它。
+1. 重刷静态文案
+2. 重画动态区块（设置表单、审计列表、页脚……）
+3. 不重新发请求、不丢用户已填内容（先读取现值，重绘后写回）
 
 ### 服务端下发的文案
 
-服务端**不下发面向用户的自然语言**，只下发 key：
+服务端**不下发自然语言**，只下发 key：
 
-```ts
-{ key: "CAPTCHA_URL", hintKey: "settings.hint.CAPTCHA_CAPJS_URL", ... }
+```json
+{ "hintKey": "settings.hint.captchaProvider", "errorKey": "settings.error.needAdmin" }
 ```
 
-错误也一样：`{ error: "至少要保留一个超级管理员", errorKey: "settings.error.needAdmin" }`，前端优先用 `errorKey`。
+前端拿到 key 自己翻译，取不到再退回原文。这样服务端不需要知道用户用什么语言。
 
 ---
 
 ## 8. 可访问性
 
-- tab 用 `role="tablist"` / `role="tab"` + `aria-selected`。
-- 图标按钮必须有 `aria-label`（走 `data-i18n-aria`）。
-- 装饰性 SVG 加 `aria-hidden="true"`。
-- 焦点样式写 `:focus-visible`，不要给 `:focus` 画全局 outline（触屏会残留）。
-- 可点击区域的命中高度 ≥ 40px；圆形按钮 38–40px。
+- tab 用 `role="tablist"` / `role="tab"`，选中态 `aria-selected`
+- 图标按钮必须有 `aria-label`
+- 装饰性 SVG 加 `aria-hidden="true"`
+- 焦点样式写 `:focus-visible`，不要给 `:focus` 画全局 outline（触屏点完会留一圈）
+- 可点区域高度 ≥ 40px；圆形按钮 38–40px
 
 ---
 
-## 9. 验证方法
+## 9. 怎么验收
 
-改完不是「看起来对」就算完，按顺序做：
+改完不是「看起来对」就完事。
 
-1. **类型检查**：`npx tsc -p ui --noEmit`（`ui/` 有独立 tsconfig）。
-2. **构建**：`npm run build:ui`，确认 `material.js` 体积没有意外暴涨。
-3. **真实页面截图**：headless Chrome + CDP，注入 initData 后打开目标路由，截图看排版。
-   - 手机上跑的东西，**必须在 390–430px 宽度下看**，桌面宽度不算数。
-   - 浅色/深色各看一次。
-4. **中文/英文各看一次**：动态区块（设置页、审计页、页脚）最容易漏翻译。
-5. **交互回归**：按钮禁用→恢复、复制按钮、多值增删、语言切换后不丢已填内容。
+1. **手机宽度看**：390–430px。桌面宽度下好看不算数。
+2. **深浅色各看一次**：硬编码颜色只有切主题才暴露。
+3. **每种语言各看一次**：动态区块最容易漏翻译。
+4. **交互回归**：按钮禁用→恢复、复制、多值增删、切语言后已填内容还在。
+5. **首屏不闪白**：弱网下刷新几次，确认不是先白后黑。
 
-排版类问题优先看「盒子」而不是「文字」：`text-align: center` 只居中盒内内容，盒子本身还贴在左边——真实踩过，`max-width` 段落加 `margin: auto` 才真的居中。
+排版问题优先怀疑**盒子**，不是文字。`text-align: center` 只让盒内内容居中，盒子本身还贴在左边——加了 `max-width` 的段落必须同时 `margin-left/right: auto` 才是真居中。
 
 ---
 
-## 10. 反模式清单
+## 10. 反模式
 
-| 反模式 | 为什么不行 |
+| 反模式 | 后果 |
 |---|---|
-| 用位图做图标/插图 | 缩放糊、主题色改不了 |
-| 用原生 `<select>` / checkbox | 各平台样式不一致，macOS 尤其难看 |
-| 在 UI 里写实现细节（「不做推断」「按来源推导」） | 用户不关心你的逻辑 |
-| 文案硬编码在 JS/服务端 | 切语言切不掉 |
-| 只加中文不加英文 | 键数不一致，英文用户看到中文 |
-| 新文案自己发挥 | 文案归属人，Agent 只做占位 |
-| 加载提示另起一行 | 视觉噪音，按钮上写就够了 |
-| 用 `el.disabled = false` 解禁 Material 组件 | 属性可能残留，用 `removeAttribute` |
-| 静态资源不加 `?v=` | Telegram WebView 缓存旧文件 |
-| 只改 CSS 不看深色模式 | `--md-sys-color-*` 之外写死颜色必翻车 |
+| 用位图做图标/插图 | 缩放糊，主题色和深色模式都跟不上 |
+| 用原生 select / checkbox | 各平台样式不一致，macOS 尤其难看 |
+| UI 里写实现细节 | 用户看不懂，也不该看 |
+| 文案硬编码在 JS 或服务端 | 切语言切不掉 |
+| 只加一种语言 | 另一种语言的用户看到原文 |
+| Agent 自己发挥文案 | 风格漂移，返工 |
+| 加载提示另起一行 | 视觉噪音 |
+| `el.disabled = false` 解禁组件 | 属性残留，按钮一直是灰的 |
+| 静态资源不带版本号 | WebView 拿旧文件，改了等于没改 |
+| 只在浅色模式下验证 | 深色模式一片糊 |
 
 ---
 
-## 11. 提交前检查表
+## 11. 交付前自查
 
 - [ ] 没有新增位图
 - [ ] 没有原生 select / checkbox
-- [ ] 所有新字符串都是 i18n key，中英各一份，字母序
-- [ ] 按钮文案没加 emoji / 句号
+- [ ] 所有新字符串都是 i18n key，各语言一份，字母序，键数一致
+- [ ] 按钮文案没有 emoji / 句号 / 感叹号
 - [ ] 冒号是半角 `: `
-- [ ] 说明文字面向用户，不解释内部逻辑
+- [ ] 说明文字面向使用者，没有内部术语
 - [ ] 加载态写在按钮上
-- [ ] 语言切换后动态区块会重画
-- [ ] 430px 宽 + 深色模式截图确认
-- [ ] `app.js?v=` / `styles.css?v=` 已递增
-
----
-
-## 附：目录速查
-
-```
-public/
-├── index.html          页面骨架（静态文案挂 data-i18n）
-├── app.js              全部交互逻辑（单文件，约 2000 行）
-├── styles.css          设计令牌 + 组件样式
-├── shapes.js           Material Shapes 形状库（SVG path 生成）
-├── vendor/
-│   ├── material.js     打包好的 Material Web 子集
-│   └── telegram-web-app.js
-└── i18n/
-    ├── index.js        t / setLang / applyStaticI18n
-    ├── zh-CN.js
-    └── en.js
-
-ui/
-├── vendor.ts           组件入口（决定打哪些组件）
-└── theme.ts            种子色 → MD3 调色板
-
-scripts/build-ui.mjs    esbuild 打包 vendor.ts
-```
+- [ ] 切语言后动态区块会重画
+- [ ] 430px 宽 + 深色模式验过
+- [ ] 静态资源版本号已递增
+- [ ] 新文案列给作者改写
