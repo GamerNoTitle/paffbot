@@ -493,7 +493,8 @@ export function createApi(): Hono<AppBindings> {
     const fields = SETTINGS.map((spec) => {
       const raw = stored.get(spec.key) ?? "";
       const fallback = raw === "" ? String((auth.ctx.env as unknown as Record<string, unknown>)[spec.key] ?? "") : "";
-      const value = raw === "" ? fallback : raw;
+      // 只读项直接给推导值，用户在页面上复制去填 GitHub App
+      const value = spec.readOnly ? `${auth.ctx.origin}/api/oauth/github/callback` : raw === "" ? fallback : raw;
       return {
         key: spec.key,
         group: spec.group,
@@ -503,6 +504,7 @@ export function createApi(): Hono<AppBindings> {
         max: spec.max ?? null,
         options: spec.options ?? null,
         secret: Boolean(spec.secret),
+        readOnly: Boolean(spec.readOnly),
         // 密钥只回报「有没有值」，不回显内容
         value: spec.secret ? "" : value,
         hasValue: value !== "",
@@ -525,6 +527,7 @@ export function createApi(): Hono<AppBindings> {
     const changed: string[] = [];
 
     for (const spec of SETTINGS) {
+      if (spec.readOnly) continue;
       if (!(spec.key in input)) continue;
       const raw = input[spec.key];
       const next = typeof raw === "string" ? raw.trim() : String(raw ?? "").trim();

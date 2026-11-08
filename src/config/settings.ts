@@ -13,6 +13,8 @@ export interface SettingSpec {
   options?: readonly string[];
   /** 说明文案的 i18n key，文案放在 public/i18n 里 */
   hintKey?: string;
+  /** 只读：值由服务端推导，页面只展示和复制，不接受写入 */
+  readOnly?: boolean;
 }
 
 export const SETTINGS: readonly SettingSpec[] = [
@@ -28,7 +30,7 @@ export const SETTINGS: readonly SettingSpec[] = [
   { key: "GITHUB_TOKEN", group: "github", type: "string", secret: true, hintKey: "settings.hint.GITHUB_TOKEN" },
   { key: "GITHUB_OAUTH_CLIENT_ID", group: "github", type: "string", hintKey: "settings.hint.GITHUB_OAUTH_CLIENT_ID" },
   { key: "GITHUB_OAUTH_SECRET", group: "github", type: "string", secret: true, hintKey: "settings.hint.GITHUB_OAUTH_SECRET" },
-  { key: "GITHUB_OAUTH_REDIRECT", group: "github", type: "url", hintKey: "settings.hint.GITHUB_OAUTH_REDIRECT" },
+  { key: "GITHUB_OAUTH_REDIRECT", group: "github", type: "url", readOnly: true, hintKey: "settings.hint.GITHUB_OAUTH_REDIRECT" },
   { key: "CAPTCHA_ENABLED", group: "captcha", type: "bool", hintKey: "settings.hint.CAPTCHA_ENABLED" },
   { key: "CAPTCHA_PROVIDER", group: "captcha", type: "enum", options: ["cap", "turnstile"], hintKey: "settings.hint.CAPTCHA_PROVIDER" },
   { key: "CAPTCHA_URL", group: "captcha", type: "url", hintKey: "settings.hint.CAPTCHA_URL" },

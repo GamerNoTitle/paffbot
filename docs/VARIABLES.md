@@ -44,7 +44,7 @@
 | `GITHUB_TOKEN` | 空 | 文本（**加密存储**） | 查询账号年龄/组织用的 PAT，只读即可 |
 | `GITHUB_OAUTH_CLIENT_ID` | 空 | 文本 | GitHub OAuth App 的 client id；留空则小程序不显示 OAuth 方式 |
 | `GITHUB_OAUTH_SECRET` | 空 | 文本（**加密存储**） | 对应 client secret |
-| `GITHUB_OAUTH_REDIRECT` | 自动 | `http(s)://` 前缀 | 回调地址，留空按请求 origin 推导 |
+| `GITHUB_OAUTH_REDIRECT` | 自动 | 只读 | 回调地址由请求 origin 推导，设置页只展示并提供复制按钮，不接受手填 |
 
 ## C3. 人机验证（数据库 + 设置页）
 

@@ -1500,6 +1500,17 @@ function settingsFieldHtml(field) {
     </div>`;
   }
 
+  if (field.readOnly) {
+    return `<div class="settings__row">
+      <span class="settings__label">${key}</span>
+      <div class="settings__readonly">
+        <input class="settings__input" type="text" readonly value="${esc(field.value ?? "")}" data-key="${key}" />
+        <button type="button" class="settings__round" data-copy="${esc(field.value ?? "")}" title="${esc(t("settings.copy"))}">⧉</button>
+      </div>
+      ${hint}
+    </div>`;
+  }
+
   if (field.type === "intList") {
     const values = String(field.value || "").split(",").map((v) => v.trim()).filter(Boolean);
     const rows = (values.length > 0 ? values : [""]).map(intListRowHtml).join("");
@@ -1590,6 +1601,24 @@ function renderSettings() {
   }
   wireIntLists(form);
 
+  for (const button of form.querySelectorAll("[data-copy]")) {
+    button.addEventListener("click", async () => {
+      const text = button.dataset.copy ?? "";
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const input = button.closest(".settings__readonly")?.querySelector("input");
+        input?.select();
+        document.execCommand?.("copy");
+      }
+      window.getSelection?.()?.removeAllRanges();
+      button.textContent = "✓";
+      setTimeout(() => {
+        button.textContent = "⧉";
+      }, 1200);
+    });
+  }
+
   for (const button of form.querySelectorAll("[data-clear]")) {
     button.addEventListener("click", () => {
       const key = button.dataset.clear;
@@ -1608,6 +1637,7 @@ function renderSettings() {
 function collectSettings() {
   const values = {};
   for (const field of settingsState.fields) {
+    if (field.readOnly) continue;
     if (field.type === "bool") {
       const el = document.querySelector(`md-switch[data-key="${field.key}"]`);
       values[field.key] = el?.selected ? "true" : "false";
@@ -1618,6 +1648,17 @@ function collectSettings() {
       values[field.key] = active?.dataset.val ?? "";
       continue;
     }
+    if (field.readOnly) {
+      return `<div class="settings__row">
+      <span class="settings__label">${key}</span>
+      <div class="settings__readonly">
+        <input class="settings__input" type="text" readonly value="${esc(field.value ?? "")}" data-key="${key}" />
+        <button type="button" class="settings__round" data-copy="${esc(field.value ?? "")}" title="${esc(t("settings.copy"))}">⧉</button>
+      </div>
+      ${hint}
+    </div>`;
+    }
+
     if (field.type === "intList") {
       const list = document.querySelector(`.settings__list[data-key="${field.key}"]`);
       const ids = [...(list?.querySelectorAll("input[data-list-input]") ?? [])]
