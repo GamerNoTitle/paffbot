@@ -1510,3 +1510,7 @@ md-dialog {
 .panel__actions--center {
   justify-content: center;
 }
+
+.panel__head--center .muted {
+  text-align: center;
+}

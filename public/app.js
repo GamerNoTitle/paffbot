@@ -806,15 +806,14 @@ async function enterBrowserGate() {
   panel.innerHTML = adminPath
     ? `<div class="panel__head panel__head--center">
         <h2 class="md-typescale-headline-medium">${esc(t("gate.admin.title"))}</h2>
-        <p class="md-typescale-body-medium muted">${esc(t("gate.admin.text"))}</p>
+        <p class="md-typescale-body-medium muted" id="gate-desc">${esc(expired ? t("gate.admin.expired") : t("gate.admin.text"))}</p>
       </div>
       <div class="panel__actions panel__actions--center">
         <md-filled-button id="gate-login">${esc(t("gate.admin.button"))}</md-filled-button>
-      </div>
-      <p class="md-typescale-body-small muted settings__hint" id="gate-hint">${expired ? esc(t("gate.admin.expired")) : ""}</p>`
+      </div>`
     : `<div class="panel__head panel__head--center">
         <h2 class="md-typescale-headline-medium">${esc(t("gate.bot.title"))}</h2>
-        <p class="md-typescale-body-medium muted">${esc(t("gate.bot.text"))}</p>
+        <p class="md-typescale-body-medium muted" id="gate-desc">${esc(t("gate.bot.text"))}</p>
       </div>
       <div class="panel__actions panel__actions--center">
         <md-filled-button id="gate-bot">${esc(t("gate.bot.button"))}</md-filled-button>
@@ -831,22 +830,24 @@ async function enterBrowserGate() {
   if (!adminPath) {
     $("gate-bot").addEventListener("click", () => {
       if (bot) window.open(`https://t.me/${bot}`, "_blank", "noopener");
-      else $("method-panel").insertAdjacentHTML("beforeend", `<p class="captcha__err">${esc(t("gate.bot.missing"))}</p>`);
+      else $("gate-desc").textContent = t("gate.bot.missing");
     });
     return;
   }
 
   $("gate-login").addEventListener("click", async () => {
     const button = $("gate-login");
+    const label = button.textContent;
     button.setAttribute("disabled", "");
-    $("gate-hint").textContent = t("gate.admin.opening");
+    button.textContent = t("gate.admin.opening");
     try {
       const data = await api("/api/admin/login/start", { method: "POST", body: {} });
       if (!data.url) throw new Error(t("gate.bot.missing"));
       location.href = data.url;
     } catch (err) {
-      $("gate-hint").textContent = err.message;
+      $("gate-desc").textContent = err.message;
       button.removeAttribute("disabled");
+      button.textContent = label;
     }
   });
 }
