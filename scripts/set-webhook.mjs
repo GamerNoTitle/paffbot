@@ -148,6 +148,15 @@ await call("setMyCommands", {
   ],
 }).catch((err) => console.warn(`setMyCommands(管理员) 跳过: ${err.message}`));
 
+// 私聊输入框左边的菜单按钮直接打开 Mini App（群聊不支持 web_app 菜单，会自动退回命令列表）
+await call("setChatMenuButton", {
+  menu_button: {
+    type: "web_app",
+    text: "验证",
+    web_app: { url: `${base}/` },
+  },
+}).catch((err) => console.warn(`setChatMenuButton 跳过: ${err.message}`));
+
 const after = await call("getWebhookInfo");
 
 // 设完立刻回读：URL 不对或 Telegram 报错就直接失败，别等用户发现命令不回
