@@ -1713,7 +1713,7 @@ function checkSettings(values) {
       if (value !== undefined) return value.trim() === "";
       return !settingsState.fields.find((f) => f.key === key)?.hasValue;
     };
-    if (provider === "cap" && empty("CAPTCHA_URL")) return t("settings.error.captchaConfig");
+    if (provider === "cap" && empty("CAPTCHA_CAPJS_URL")) return t("settings.error.captchaConfig");
     if (provider === "turnstile" && (empty("TURNSTILE_SITE_KEY") || empty("TURNSTILE_SECRET"))) {
       return t("settings.error.captchaConfig");
     }

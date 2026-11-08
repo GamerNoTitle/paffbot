@@ -46,7 +46,7 @@ export const captchaProvider: VerifyProvider = {
       requirements: {
         provider: "cap",
         endpoint: `/api/captcha/${ctx.verification.id}/`,
-        widget: `${(ctx.config.captchaUrl ?? "").replace(/\/+$/, "")}/cap.min.js`,
+        widget: `${(ctx.config.capjsUrl ?? "").replace(/\/+$/, "")}/cap.min.js`,
         holdHours: ctx.config.captchaHoldHours,
       },
     };

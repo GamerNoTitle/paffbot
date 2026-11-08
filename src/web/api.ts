@@ -151,7 +151,7 @@ export function createApi(): Hono<AppBindings> {
    */
   const casProxy = async (c: Context<AppBindings>, path: "challenge" | "redeem") => {
     const ctx = c.get("ctx");
-    const base = ctx.config.captchaUrl;
+    const base = ctx.config.capjsUrl;
     if (!ctx.config.captchaEnabled || !base) return c.json({ success: false, error: "人机验证未启用" }, 404);
 
     const id = c.req.param("id") ?? "";
@@ -476,7 +476,7 @@ export function createApi(): Hono<AppBindings> {
     GITHUB_OAUTH_REDIRECT: config.oauthRedirect ?? "",
     CAPTCHA_ENABLED: config.captchaEnabled ? "true" : "false",
     CAPTCHA_PROVIDER: config.captchaProvider ?? "",
-    CAPTCHA_URL: config.captchaUrl ?? "",
+    CAPTCHA_URL: config.capjsUrl ?? "",
     CAPTCHA_HOLD_HOURS: String(config.captchaHoldHours),
     TURNSTILE_SITE_KEY: config.turnstileSiteKey ?? "",
     TURNSTILE_SECRET: config.turnstileSecret ?? "",
@@ -560,7 +560,7 @@ export function createApi(): Hono<AppBindings> {
       }
       const missing =
         provider === "cap"
-          ? next("CAPTCHA_URL") === ""
+          ? next("CAPTCHA_CAPJS_URL") === ""
           : next("TURNSTILE_SITE_KEY") === "" || next("TURNSTILE_SECRET") === "";
       if (missing) {
         return c.json(

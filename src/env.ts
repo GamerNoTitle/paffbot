@@ -40,6 +40,8 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
   TURNSTILE_VERIFY_URL?: string;
+  CAPTCHA_CAPJS_URL?: string;
+  /** 旧名字，保留兼容，新部署请用 CAPTCHA_CAPJS_URL */
   CAPTCHA_URL?: string;
   CAPTCHA_HOLD_HOURS?: string;
   ALLOWED_BOTS?: string;
@@ -68,7 +70,8 @@ export interface Config {
   captchaEnabled: boolean;
   /** 二选一：cap（自建 Cap.js）或 turnstile（Cloudflare） */
   captchaProvider: "cap" | "turnstile" | null;
-  captchaUrl: string | null;
+  /** 自建 Cap.js 的服务地址 */
+  capjsUrl: string | null;
   turnstileSiteKey: string | null;
   turnstileSecret: string | null;
   turnstileVerifyUrl: string;
@@ -178,7 +181,7 @@ export async function loadConfig(env: Env): Promise<Config> {
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
     captchaEnabled: ["1", "true", "yes"].includes((get("CAPTCHA_ENABLED") ?? "").toLowerCase()),
     captchaProvider: resolveCaptchaProvider(get("CAPTCHA_PROVIDER")),
-    captchaUrl: (get("CAPTCHA_URL") ?? "").trim() || null,
+    capjsUrl: (get("CAPTCHA_CAPJS_URL") || get("CAPTCHA_URL")).trim() || null,
     turnstileSiteKey: (get("TURNSTILE_SITE_KEY") ?? "").trim() || null,
     turnstileSecret: (get("TURNSTILE_SECRET") ?? "").trim() || null,
     turnstileVerifyUrl: get("TURNSTILE_VERIFY_URL", "https://challenges.cloudflare.com/turnstile/v0/siteverify"),

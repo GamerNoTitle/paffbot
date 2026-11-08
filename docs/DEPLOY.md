@@ -163,7 +163,7 @@ npx wrangler d1 export DB --remote --output backup.sql
 | 进不了设置页 / 没有「设置」tab | 不是超管 | 数据库 `settings` 里的 `ADMIN_IDS` 是唯一来源；确认里面有你的 id |
 | 密钥类配置突然变空 | 轮换过 `BOT_TOKEN` 且没配 `SETTINGS_KEY` | 重新在设置页填一次，或补一个固定的 `SETTINGS_KEY` |
 | Mini App 打不开 | 域名不是 HTTPS，或 webhook 域名与 Mini App 域名不一致 | 统一用同一个 HTTPS 域名，必要时填 `MINI_APP_URL` |
-| 人机验证组件不显示 | `CAPTCHA_ENABLED` 没开，或选了 `cap` 却没填 `CAPTCHA_URL` | 设置页补齐，保存后刷新小程序 |
+| 人机验证组件不显示 | `CAPTCHA_ENABLED` 没开，或选了 `cap` 却没填 `CAPTCHA_CAPJS_URL` | 设置页补齐，保存后刷新小程序 |
 | 群里的验证消息不自动改文案 | 机器人缺少删除/编辑消息权限 | 给 bot 群管理员权限，至少勾「删除消息」「封禁用户」 |
 
 ## 12. 权限清单

@@ -33,8 +33,8 @@
     "CAPTCHA_PROVIDER": "cap",
     // 切回 Cloudflare 时改成 turnstile，并保留下面的 site key
     // "TURNSTILE_SITE_KEY": "0x4AAAAAAF3ajT2nXbColdg9",
-    // 选 cap 时改成 CAPTCHA_PROVIDER=cap + 填写 CAPTCHA_URL
-    "CAPTCHA_URL": "https://cap.bili33.top",
+    // 选 cap 时改成 CAPTCHA_PROVIDER=cap + 填写 CAPTCHA_CAPJS_URL
+    "CAPTCHA_CAPJS_URL": "https://cap.bili33.top",
     // TURNSTILE_SECRET 用 wrangler secret put 写入，不落仓库
     "CAPTCHA_HOLD_HOURS": "24",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liilxKHXwLRrJG2T",
