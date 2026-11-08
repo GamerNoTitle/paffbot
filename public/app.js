@@ -16,6 +16,7 @@ const ICONS = {
   light:
     '<path d="M12 17q-2.075 0-3.537-1.463T7 12q0-2.075 1.463-3.537T12 7q2.075 0 3.537 1.463T17 12q0 2.075-1.463 3.537T12 17Zm0-2q1.25 0 2.125-.875T15 12q0-1.25-.875-2.125T12 9q-1.25 0-2.125.875T9 12q0 1.25.875 2.125T12 15Zm0-10v-2m0 18v-2M5 12H3m18 0h-2M6.4 6.4 5 5m14 14-1.4-1.4M6.4 17.6 5 19M19 5l-1.4 1.4"/>',
   check: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 14.6-4.6-4.6L7.6 10.6l3.2 3.2 6-6L18.2 9.2l-7.4 7.4Z"/>',
+  tick: '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z"/>',
   shield:
     '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.2V11c0 3.9-2.5 7.6-6 8.8-3.5-1.2-6-4.9-6-8.8V6.4l6-2.2Z"/>',
   list: '<path d="M4 6h2v2H4V6Zm4 0h12v2H8V6ZM4 11h2v2H4v-2Zm4 0h12v2H8v-2ZM4 16h2v2H4v-2Zm4 0h12v2H8v-2Z"/>',
@@ -291,11 +292,11 @@ function renderMethodPanel(panel, data) {
   if (state.verification?.captchaPassed) {
     panel.innerHTML = `
       <div class="state">
-        <div class="state__icon" id="empty-icon"></div>
+        <div class="state__icon" data-state-icon></div>
         <h2 class="md-typescale-headline-small">${esc(t("panel.captcha.waiting"))}</h2>
       </div>`;
-    const icon = $("empty-icon");
-    if (icon) icon.innerHTML = svgIcon("check", 30);
+    const icon = panel.querySelector("[data-state-icon]");
+    if (icon) icon.innerHTML = svgIcon("tick", 30);
     return;
   }
 
@@ -348,11 +349,11 @@ function stopCaptchaPolling() {
 async function renderCaptchaPanel(body) {
   if (state.verification?.captchaPassed) {
     body.innerHTML = `<div class="state">
-      <div class="state__icon" id="empty-icon"></div>
+      <div class="state__icon" data-state-icon></div>
       <h2 class="md-typescale-headline-small">${esc(t("panel.captcha.waiting"))}</h2>
     </div>`;
-    const icon = $("empty-icon");
-    if (icon) icon.innerHTML = svgIcon("check", 30);
+    const icon = body.querySelector("[data-state-icon]");
+    if (icon) icon.innerHTML = svgIcon("tick", 30);
     return;
   }
 
