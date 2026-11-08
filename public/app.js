@@ -1500,6 +1500,16 @@ function settingsFieldHtml(field) {
     </div>`;
   }
 
+  if (field.type === "intList") {
+    const values = String(field.value || "").split(",").map((v) => v.trim()).filter(Boolean);
+    const rows = (values.length > 0 ? values : [""]).map(intListRowHtml).join("");
+    return `<div class="settings__row">
+      <span class="settings__label">${key}</span>
+      <div class="settings__list" data-key="${key}" data-type="intList">${rows}</div>
+      ${hint}
+    </div>`;
+  }
+
   const inputType = field.type === "int" ? "number" : field.type === "url" ? "url" : "text";
   const range = field.type === "int" ? ` min="${field.min ?? ""}" max="${field.max ?? ""}"` : "";
   return `<div class="settings__row">
@@ -1509,6 +1519,53 @@ function settingsFieldHtml(field) {
       placeholder="${esc(field.value || !field.effective ? "" : t("settings.default", { value: field.effective }))}" />
     ${hint}
   </div>`;
+}
+
+/** intList 的一行：末尾加号追加，第二行起多一个减号删除自己。 */
+function intListRowHtml(value, index) {
+  return `<div class="settings__list-row">
+    <input class="settings__input" type="text" inputmode="numeric" data-list-input value="${esc(value ?? "")}" />
+    <button type="button" class="settings__round" data-add title="${esc(t("settings.add"))}">+</button>
+    ${index > 0 ? `<button type="button" class="settings__round settings__round--minus" data-del title="${esc(t("settings.remove"))}">−</button>` : ""}
+  </div>`;
+}
+
+/** 重画整个列表，保证「加号只多不少、减号只从第二行起」这些规则不用到处补。 */
+function renderIntList(list, values, focusIndex) {
+  list.querySelectorAll(".settings__list-row").forEach((row) => row.remove());
+  const rows = (values.length > 0 ? values : [""]).map(intListRowHtml).join("");
+  list.insertAdjacentHTML("beforeend", rows);
+  if (focusIndex !== undefined) {
+    const input = list.querySelectorAll("input[data-list-input]")[focusIndex];
+    input?.focus();
+    input?.setSelectionRange?.(input.value.length, input.value.length);
+  }
+}
+
+function wireIntLists(form) {
+  for (const list of form.querySelectorAll(".settings__list")) {
+    const read = () => [...list.querySelectorAll("input[data-list-input]")].map((el) => el.value.trim());
+
+    list.addEventListener("click", (event) => {
+      const add = event.target.closest("[data-add]");
+      const del = event.target.closest("[data-del]");
+      if (!add && !del) return;
+
+      const row = (add ?? del).closest(".settings__list-row");
+      const index = [...list.querySelectorAll(".settings__list-row")].indexOf(row);
+      const values = read();
+
+      if (add) {
+        values.splice(index + 1, 0, "");
+        renderIntList(list, values, index + 1);
+        return;
+      }
+
+      if (values.length <= 1) return;
+      values.splice(index, 1);
+      renderIntList(list, values, Math.max(0, index - 1));
+    });
+  }
 }
 
 function renderSettings() {
@@ -1531,6 +1588,8 @@ function renderSettings() {
       });
     }
   }
+  wireIntLists(form);
+
   for (const button of form.querySelectorAll("[data-clear]")) {
     button.addEventListener("click", () => {
       const key = button.dataset.clear;
@@ -1559,6 +1618,15 @@ function collectSettings() {
       values[field.key] = active?.dataset.val ?? "";
       continue;
     }
+    if (field.type === "intList") {
+      const list = document.querySelector(`.settings__list[data-key="${field.key}"]`);
+      const ids = [...(list?.querySelectorAll("input[data-list-input]") ?? [])]
+        .map((el) => el.value.trim())
+        .filter(Boolean);
+      values[field.key] = ids.join(",");
+      continue;
+    }
+
     const el = document.querySelector(`input[data-key="${field.key}"]`);
     const raw = (el?.value ?? "").trim();
     if (field.secret) {

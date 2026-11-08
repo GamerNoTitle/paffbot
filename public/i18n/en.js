@@ -143,6 +143,8 @@ export default {
   "reason.ok": "Passed",
   "reason.timeout": "Timed out",
   "settings.auto": "Auto",
+  "settings.add": "Add one",
+  "settings.remove": "Remove this",
   "settings.clear": "Clear",
   "settings.default": "Default {value}",
   "settings.desc": "Saving takes effect immediately, no redeploy needed",
