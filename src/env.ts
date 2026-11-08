@@ -130,13 +130,24 @@ function parseIntOr(raw: string | undefined, fallback: number, min: number, max:
   return Math.min(max, Math.max(min, parsed));
 }
 
+/** 兜底：base 必须是完整 URL，配错了就退回官方地址，别让所有 Telegram 调用静默失败。 */
+function safeBase(value: string, fallback: string, label: string): string {
+  const trimmed = value.replace(/\/+$/, "");
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed) console.error(`[config] ${label} 不是合法地址（${trimmed}），已回退到 ${fallback}`);
+  return fallback;
+}
+
 export async function loadConfig(env: Env): Promise<Config> {
   // 数据库里的配置优先，缺省回退到 Worker 的 env；读失败就当没配，不影响启动
   const stored = await readSettings(env).catch(() => new Map<string, string>());
-  const get = (name: keyof Env): string => {
+  // 空字符串一律当作「没配」，回退到下一层；这样 DB 里清空某项就等于恢复默认
+  const get = (name: keyof Env, fallback = ""): string => {
     const fromDb = stored.get(name as string);
-    if (fromDb !== undefined) return fromDb;
-    return (env[name] as string | undefined) ?? "";
+    if (fromDb !== undefined && fromDb !== "") return fromDb;
+    const fromEnv = env[name] as string | undefined;
+    if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
+    return fallback;
   };
 
   const botToken = get("BOT_TOKEN").trim();
@@ -158,9 +169,9 @@ export async function loadConfig(env: Env): Promise<Config> {
     ttlSeconds: parseIntOr(get("VERIFY_TTL_SECONDS"), 300, 60, 24 * 3600),
     dailyAttempts: parseIntOr(get("VERIFY_DAILY_LIMIT"), 3, 1, 50),
     miniAppUrl: (get("MINI_APP_URL") ?? "").trim() || null,
-    apiBase: (get("TELEGRAM_API_BASE") ?? "https://api.telegram.org").replace(/\/+$/, ""),
+    apiBase: safeBase(get("TELEGRAM_API_BASE"), "https://api.telegram.org", "TELEGRAM_API_BASE"),
     githubToken: (get("GITHUB_TOKEN") ?? "").trim() || null,
-    githubKeysBase: (get("GITHUB_KEYS_BASE") ?? "https://github.com").replace(/\/+$/, ""),
+    githubKeysBase: safeBase(get("GITHUB_KEYS_BASE"), "https://github.com", "GITHUB_KEYS_BASE"),
     oauthClientId: (get("GITHUB_OAUTH_CLIENT_ID") ?? "").trim() || null,
     oauthSecret: (get("GITHUB_OAUTH_SECRET") ?? "").trim() || null,
     oauthRedirect: (get("GITHUB_OAUTH_REDIRECT") ?? "").trim() || null,
@@ -178,8 +189,7 @@ export async function loadConfig(env: Env): Promise<Config> {
     captchaUrl: (get("CAPTCHA_URL") ?? "").trim() || null,
     turnstileSiteKey: (get("TURNSTILE_SITE_KEY") ?? "").trim() || null,
     turnstileSecret: (get("TURNSTILE_SECRET") ?? "").trim() || null,
-    turnstileVerifyUrl:
-      (get("TURNSTILE_VERIFY_URL") ?? "").trim() || "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    turnstileVerifyUrl: get("TURNSTILE_VERIFY_URL", "https://challenges.cloudflare.com/turnstile/v0/siteverify"),
     captchaHoldHours: parseIntOr(get("CAPTCHA_HOLD_HOURS"), 24, 1, 720),
     allowedBotIds: parseIntList(get("ALLOWED_BOTS")),
     environment: (get("ENVIRONMENT") ?? "production").trim(),
