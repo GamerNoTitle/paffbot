@@ -121,6 +121,7 @@ async function api(path, options = {}) {
   if (!res.ok || data.ok === false) {
     const error = new Error(data.error || `HTTP ${res.status}`);
     error.status = res.status;
+    error.errorKey = data.errorKey;
     throw error;
   }
   return data;
@@ -1463,7 +1464,7 @@ async function loadSettings() {
 
 function settingsFieldHtml(field) {
   const key = esc(field.key);
-  const hint = field.hint ? `<p class="settings__hint">${esc(field.hint)}</p>` : "";
+  const hint = field.hintKey ? `<p class="settings__hint">${esc(t(field.hintKey))}</p>` : "";
 
   if (field.type === "bool") {
     const on = (field.value || field.effective) === "true";
@@ -1505,7 +1506,7 @@ function settingsFieldHtml(field) {
     <span class="settings__label">${key}</span>
     <input class="settings__input" type="${inputType}"${range} data-key="${key}" data-type="${esc(field.type)}"
       value="${esc(field.value ?? "")}"
-      placeholder="${esc(field.value ? "" : (field.effective ? `默认 ${field.effective}` : ""))}" />
+      placeholder="${esc(field.value || !field.effective ? "" : t("settings.default", { value: field.effective }))}" />
     ${hint}
   </div>`;
 }
@@ -1612,7 +1613,7 @@ async function saveSettings() {
     $("settings-hint").textContent = t("settings.saved");
     await loadSettings();
   } catch (err) {
-    $("settings-hint").textContent = err.message;
+    $("settings-hint").textContent = err.errorKey ? t(err.errorKey) : err.message;
   } finally {
     settingsState.busy = false;
     $("settings-save").removeAttribute("disabled");
@@ -1770,6 +1771,11 @@ function retranslate() {
   document.title = t("page.title");
   applyStaticI18n();
   renderFooter();
+
+  if (!$("view-settings").classList.contains("hidden")) {
+    if (settingsState.fields.length > 0) renderSettings();
+    return;
+  }
 
   if (!$("view-audit").classList.contains("hidden")) {
     loadAudit();

@@ -11,30 +11,30 @@ export interface SettingSpec {
   min?: number;
   max?: number;
   options?: readonly string[];
-  /** 界面上的一句话说明 */
-  hint?: string;
+  /** 说明文案的 i18n key，文案放在 public/i18n 里 */
+  hintKey?: string;
 }
 
 export const SETTINGS: readonly SettingSpec[] = [
-  { key: "ADMIN_IDS", group: "basic", type: "intList", hint: "超级管理员 Telegram id，至少保留一个（Worker 上的 ADMIN_IDS 仍然有效，用作救急）" },
-  { key: "MINI_APP_URL", group: "basic", type: "url", hint: "留空则按请求来源自动推导" },
-  { key: "VERIFY_TTL_SECONDS", group: "verify", type: "int", min: 60, max: 86400, hint: "验证有效期，秒；申请模式不要超过 300" },
-  { key: "VERIFY_DAILY_LIMIT", group: "verify", type: "int", min: 1, max: 50, hint: "每个账号在每个群每天的次数" },
-  { key: "AUDIT_RETENTION_DAYS", group: "verify", type: "int", min: 1, max: 3650, hint: "审计记录保留天数" },
-  { key: "SCREEN_KEYWORDS", group: "verify", type: "csv", hint: "广告关键词，逗号分隔；留空用内置词表" },
-  { key: "ALLOWED_BOTS", group: "basic", type: "intList", hint: "全局放行的 bot id，其余 bot 发言会被删除并封禁" },
-  { key: "GITHUB_MIN_ACCOUNT_AGE_DAYS", group: "github", type: "int", min: 0, max: 3650, hint: "GitHub 账号最少注册天数，0 表示不限制" },
-  { key: "GITHUB_REQUIRED_ORG", group: "github", type: "string", hint: "要求加入的 GitHub 组织，留空不限制" },
-  { key: "GITHUB_TOKEN", group: "github", type: "string", secret: true, hint: "查询账号年龄/组织时用，可留空" },
-  { key: "GITHUB_OAUTH_CLIENT_ID", group: "github", type: "string", hint: "GitHub OAuth App 的 client id" },
-  { key: "GITHUB_OAUTH_SECRET", group: "github", type: "string", secret: true, hint: "GitHub OAuth App 的 client secret" },
-  { key: "GITHUB_OAUTH_REDIRECT", group: "github", type: "url", hint: "留空按请求来源推导" },
-  { key: "CAPTCHA_ENABLED", group: "captcha", type: "bool", hint: "开启后小程序里多一个「人机验证」通道" },
-  { key: "CAPTCHA_PROVIDER", group: "captcha", type: "enum", options: ["", "cap", "turnstile"], hint: "二选一，留空按已填字段推断" },
-  { key: "CAPTCHA_URL", group: "captcha", type: "url", hint: "自建 Cap.js 的地址" },
-  { key: "CAPTCHA_HOLD_HOURS", group: "captcha", type: "int", min: 1, max: 720, hint: "人机验证通过后保留的时长，小时" },
-  { key: "TURNSTILE_SITE_KEY", group: "captcha", type: "string", hint: "Cloudflare Turnstile 的 site key" },
-  { key: "TURNSTILE_SECRET", group: "captcha", type: "string", secret: true, hint: "Cloudflare Turnstile 的 secret" },
+  { key: "ADMIN_IDS", group: "basic", type: "intList", hintKey: "settings.hint.ADMIN_IDS" },
+  { key: "MINI_APP_URL", group: "basic", type: "url", hintKey: "settings.hint.MINI_APP_URL" },
+  { key: "VERIFY_TTL_SECONDS", group: "verify", type: "int", min: 60, max: 86400, hintKey: "settings.hint.VERIFY_TTL_SECONDS" },
+  { key: "VERIFY_DAILY_LIMIT", group: "verify", type: "int", min: 1, max: 50, hintKey: "settings.hint.VERIFY_DAILY_LIMIT" },
+  { key: "AUDIT_RETENTION_DAYS", group: "verify", type: "int", min: 1, max: 3650, hintKey: "settings.hint.AUDIT_RETENTION_DAYS" },
+  { key: "SCREEN_KEYWORDS", group: "verify", type: "csv", hintKey: "settings.hint.SCREEN_KEYWORDS" },
+  { key: "ALLOWED_BOTS", group: "basic", type: "intList", hintKey: "settings.hint.ALLOWED_BOTS" },
+  { key: "GITHUB_MIN_ACCOUNT_AGE_DAYS", group: "github", type: "int", min: 0, max: 3650, hintKey: "settings.hint.GITHUB_MIN_ACCOUNT_AGE_DAYS" },
+  { key: "GITHUB_REQUIRED_ORG", group: "github", type: "string", hintKey: "settings.hint.GITHUB_REQUIRED_ORG" },
+  { key: "GITHUB_TOKEN", group: "github", type: "string", secret: true, hintKey: "settings.hint.GITHUB_TOKEN" },
+  { key: "GITHUB_OAUTH_CLIENT_ID", group: "github", type: "string", hintKey: "settings.hint.GITHUB_OAUTH_CLIENT_ID" },
+  { key: "GITHUB_OAUTH_SECRET", group: "github", type: "string", secret: true, hintKey: "settings.hint.GITHUB_OAUTH_SECRET" },
+  { key: "GITHUB_OAUTH_REDIRECT", group: "github", type: "url", hintKey: "settings.hint.GITHUB_OAUTH_REDIRECT" },
+  { key: "CAPTCHA_ENABLED", group: "captcha", type: "bool", hintKey: "settings.hint.CAPTCHA_ENABLED" },
+  { key: "CAPTCHA_PROVIDER", group: "captcha", type: "enum", options: ["", "cap", "turnstile"], hintKey: "settings.hint.CAPTCHA_PROVIDER" },
+  { key: "CAPTCHA_URL", group: "captcha", type: "url", hintKey: "settings.hint.CAPTCHA_URL" },
+  { key: "CAPTCHA_HOLD_HOURS", group: "captcha", type: "int", min: 1, max: 720, hintKey: "settings.hint.CAPTCHA_HOLD_HOURS" },
+  { key: "TURNSTILE_SITE_KEY", group: "captcha", type: "string", hintKey: "settings.hint.TURNSTILE_SITE_KEY" },
+  { key: "TURNSTILE_SECRET", group: "captcha", type: "string", secret: true, hintKey: "settings.hint.TURNSTILE_SECRET" },
 ];
 
 export const SETTING_MAP = new Map(SETTINGS.map((s) => [s.key, s]));

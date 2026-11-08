@@ -164,7 +164,11 @@ export async function loadConfig(env: Env): Promise<Config> {
   return {
     botToken,
     webhookSecret,
-    adminIds: parseIntList(get("ADMIN_IDS")),
+    // 超管取并集：数据库里的人类配置 + Worker secret 里的救急账号，
+    // 这样即使库里的值被改坏，secret 那个仍然能进设置页修回来
+    adminIds: Array.from(
+      new Set([...parseIntList(stored.get("ADMIN_IDS") ?? ""), ...parseIntList(env.ADMIN_IDS)]),
+    ),
     adminToken: (get("ADMIN_TOKEN") ?? "").trim() || null,
     ttlSeconds: parseIntOr(get("VERIFY_TTL_SECONDS"), 300, 60, 24 * 3600),
     dailyAttempts: parseIntOr(get("VERIFY_DAILY_LIMIT"), 3, 1, 50),
