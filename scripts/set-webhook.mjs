@@ -152,7 +152,7 @@ await call("setMyCommands", {
 await call("setChatMenuButton", {
   menu_button: {
     type: "web_app",
-    text: "验证",
+    text: "Open App",
     web_app: { url: `${base}/` },
   },
 }).catch((err) => console.warn(`setChatMenuButton 跳过: ${err.message}`));
