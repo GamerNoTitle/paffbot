@@ -467,6 +467,7 @@ export function createApi(): Hono<AppBindings> {
     VERIFY_TTL_SECONDS: String(config.ttlSeconds),
     VERIFY_DAILY_LIMIT: String(config.dailyAttempts),
     AUDIT_RETENTION_DAYS: String(config.retentionDays),
+    SCREEN_ENABLED: config.screenEnabled ? "true" : "false",
     SCREEN_KEYWORDS: config.screenKeywords.join(","),
     GITHUB_MIN_ACCOUNT_AGE_DAYS: String(config.githubMinAccountAgeDays),
     GITHUB_REQUIRED_ORG: config.githubRequiredOrg ?? "",

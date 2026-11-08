@@ -153,15 +153,17 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     detail: { source: "join_request", username: user.username ?? null },
   });
 
-  const screening = screenProfile(
-    {
-      firstName: user.first_name,
-      lastName: user.last_name,
-      username: user.username,
-      bio: request.bio,
-    },
-    ctx.config.screenKeywords,
-  );
+  const screening = ctx.config.screenEnabled
+    ? screenProfile(
+        {
+          firstName: user.first_name,
+          lastName: user.last_name,
+          username: user.username,
+          bio: request.bio,
+        },
+        ctx.config.screenKeywords,
+      )
+    : { blocked: false as const, reason: undefined };
 
   if (screening.blocked) {
     await rejectVerification(ctx, verification, {
@@ -229,6 +231,27 @@ async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, up
   const approvedRecently = await findRecentlyApprovedForChat(ctx.db, update.chat.id, user.id, nowMs() - 10 * 60_000);
   if (approvedRecently) return;
 
+
+  // 直接入群模式：同一个人已经进来了，扫到广告词就直接移出，不再走验证
+  if (ctx.config.screenEnabled) {
+    const screening = screenProfile(
+      { firstName: user.first_name, lastName: user.last_name, username: user.username },
+      ctx.config.screenKeywords,
+    );
+    if (screening.blocked) {
+      await ctx.tg.banChatMember(update.chat.id, user.id);
+      await appendAudit(ctx.db, {
+        actorId: 0,
+        actorType: "system",
+        action: "verification.blocked",
+        chatId: update.chat.id,
+        targetUserId: user.id,
+        verificationId: null,
+        detail: { source: "group_join", reason: screening.reason ?? "profile", via: "profile" },
+      });
+      return;
+    }
+  }
 
   await startDirectJoinVerification(ctx, update.chat.id, update.chat.title ?? String(update.chat.id), user, updateId);
 }

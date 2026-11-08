@@ -34,6 +34,7 @@ export interface Env {
   GITHUB_REQUIRED_ORG?: string;
 
   AUDIT_RETENTION_DAYS?: string;
+  SCREEN_ENABLED?: string;
   SCREEN_KEYWORDS?: string;
   CAPTCHA_ENABLED?: string;
   CAPTCHA_PROVIDER?: string;
@@ -65,6 +66,8 @@ export interface Config {
   githubMinAccountAgeDays: number;
   githubRequiredOrg: string | null;
   retentionDays: number;
+  /** 入群时是否检查昵称/用户名/Bio 里的广告词 */
+  screenEnabled: boolean;
   screenKeywords: string[];
   /** 人机验证（Cap.js）：开启后作为「免签名」通道，通过后仍待管理员放行 */
   captchaEnabled: boolean;
@@ -178,6 +181,7 @@ export async function loadConfig(env: Env): Promise<Config> {
     githubMinAccountAgeDays: parseIntOr(get("GITHUB_MIN_ACCOUNT_AGE_DAYS"), 0, 0, 3650),
     githubRequiredOrg: (get("GITHUB_REQUIRED_ORG") ?? "").trim() || null,
     retentionDays: parseIntOr(get("AUDIT_RETENTION_DAYS"), 365, 1, 3650),
+    screenEnabled: !["0", "false", "no"].includes((get("SCREEN_ENABLED") || "true").toLowerCase()),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
     captchaEnabled: ["1", "true", "yes"].includes((get("CAPTCHA_ENABLED") ?? "").toLowerCase()),
     captchaProvider: resolveCaptchaProvider(get("CAPTCHA_PROVIDER")),

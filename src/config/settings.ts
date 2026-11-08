@@ -1,7 +1,7 @@
 import { decryptValue, encryptValue } from "./crypto";
 
 /** 允许进数据库的配置项。没列在这里的 env 不会被网页覆盖。 */
-export type SettingType = "int" | "intList" | "string" | "url" | "bool" | "enum" | "csv";
+export type SettingType = "int" | "intList" | "list" | "string" | "url" | "bool" | "enum" | "csv";
 
 export interface SettingSpec {
   key: string;
@@ -23,7 +23,8 @@ export const SETTINGS: readonly SettingSpec[] = [
   { key: "VERIFY_TTL_SECONDS", group: "verify", type: "int", min: 60, max: 86400, hintKey: "settings.hint.VERIFY_TTL_SECONDS" },
   { key: "VERIFY_DAILY_LIMIT", group: "verify", type: "int", min: 1, max: 50, hintKey: "settings.hint.VERIFY_DAILY_LIMIT" },
   { key: "AUDIT_RETENTION_DAYS", group: "verify", type: "int", min: 1, max: 3650, hintKey: "settings.hint.AUDIT_RETENTION_DAYS" },
-  { key: "SCREEN_KEYWORDS", group: "verify", type: "csv", hintKey: "settings.hint.SCREEN_KEYWORDS" },
+  { key: "SCREEN_ENABLED", group: "verify", type: "bool", hintKey: "settings.hint.SCREEN_ENABLED" },
+  { key: "SCREEN_KEYWORDS", group: "verify", type: "list", hintKey: "settings.hint.SCREEN_KEYWORDS" },
   { key: "ALLOWED_BOTS", group: "basic", type: "intList", hintKey: "settings.hint.ALLOWED_BOTS" },
   { key: "GITHUB_MIN_ACCOUNT_AGE_DAYS", group: "github", type: "int", min: 0, max: 3650, hintKey: "settings.hint.GITHUB_MIN_ACCOUNT_AGE_DAYS" },
   { key: "GITHUB_REQUIRED_ORG", group: "github", type: "string", hintKey: "settings.hint.GITHUB_REQUIRED_ORG" },

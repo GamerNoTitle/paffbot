@@ -1511,12 +1511,15 @@ function settingsFieldHtml(field) {
     </div>`;
   }
 
-  if (field.type === "intList") {
-    const values = String(field.value || "").split(",").map((v) => v.trim()).filter(Boolean);
-    const rows = (values.length > 0 ? values : [""]).map(intListRowHtml).join("");
+  if (field.type === "intList" || field.type === "list") {
+    const values = String(field.value || field.effective || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    const rows = (values.length > 0 ? values : [""]).map((v, i) => listRowHtml(v, i, field.type)).join("");
     return `<div class="settings__row">
       <span class="settings__label">${key}</span>
-      <div class="settings__list" data-key="${key}" data-type="intList">${rows}</div>
+      <div class="settings__list" data-key="${key}" data-type="${esc(field.type)}">${rows}</div>
       ${hint}
     </div>`;
   }
@@ -1533,9 +1536,10 @@ function settingsFieldHtml(field) {
 }
 
 /** intList 的一行：末尾加号追加，第二行起多一个减号删除自己。 */
-function intListRowHtml(value, index) {
+function listRowHtml(value, index, type) {
+  const mode = type === "intList" ? "numeric" : "text";
   return `<div class="settings__list-row">
-    <input class="settings__input" type="text" inputmode="numeric" data-list-input value="${esc(value ?? "")}" />
+    <input class="settings__input" type="text" inputmode="${mode}" data-list-input value="${esc(value ?? "")}" />
     <button type="button" class="settings__round" data-add title="${esc(t("settings.add"))}">+</button>
     ${index > 0 ? `<button type="button" class="settings__round settings__round--minus" data-del title="${esc(t("settings.remove"))}">−</button>` : ""}
   </div>`;
@@ -1544,7 +1548,8 @@ function intListRowHtml(value, index) {
 /** 重画整个列表，保证「加号只多不少、减号只从第二行起」这些规则不用到处补。 */
 function renderIntList(list, values, focusIndex) {
   list.querySelectorAll(".settings__list-row").forEach((row) => row.remove());
-  const rows = (values.length > 0 ? values : [""]).map(intListRowHtml).join("");
+  const type = list.dataset.type ?? "intList";
+  const rows = (values.length > 0 ? values : [""]).map((v, i) => listRowHtml(v, i, type)).join("");
   list.insertAdjacentHTML("beforeend", rows);
   if (focusIndex !== undefined) {
     const input = list.querySelectorAll("input[data-list-input]")[focusIndex];
@@ -1659,7 +1664,7 @@ function collectSettings() {
     </div>`;
     }
 
-    if (field.type === "intList") {
+    if (field.type === "intList" || field.type === "list") {
       const list = document.querySelector(`.settings__list[data-key="${field.key}"]`);
       const ids = [...(list?.querySelectorAll("input[data-list-input]") ?? [])]
         .map((el) => el.value.trim())

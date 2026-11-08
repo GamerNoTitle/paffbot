@@ -33,7 +33,8 @@
 | `VERIFY_TTL_SECONDS` | 300 | 60–86400 | 验证有效期（秒）。申请模式受 Telegram 5 分钟私聊窗口限制，不建议调高 |
 | `VERIFY_DAILY_LIMIT` | 3 | 1–50 | 每个账号在**每个群**每天的验证次数，按 UTC+8 自然日重置 |
 | `AUDIT_RETENTION_DAYS` | 365 | 1–3650 | 审计记录保留天数 |
-| `SCREEN_KEYWORDS` | 内置词表 | 逗号分隔 | 广告关键词。留空用代码内置的中英文词表 |
+| `SCREEN_ENABLED` | `true` | — | 入群资料检查开关，两种入群模式都生效 |
+| `SCREEN_KEYWORDS` | 内置词表 | 每行一个 | 命中任意一个就拒绝入群；留空用内置词表 |
 
 ## C2. GitHub（数据库 + 设置页）
 
