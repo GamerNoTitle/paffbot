@@ -1468,11 +1468,11 @@ function settingsFieldHtml(field) {
 
   if (field.type === "bool") {
     const on = (field.value || field.effective) === "true";
-    return `<label class="settings__row settings__row--switch">
+    return `<div class="settings__row settings__row--switch">
       <span class="settings__label">${key}</span>
-      <input type="checkbox" data-key="${key}" data-type="bool" ${on ? "checked" : ""} />
+      <md-switch data-key="${key}" data-type="bool" ${on ? "selected" : ""} aria-label="${key}"></md-switch>
       ${hint}
-    </label>`;
+    </div>`;
   }
 
   if (field.type === "enum") {
@@ -1550,8 +1550,8 @@ function collectSettings() {
   const values = {};
   for (const field of settingsState.fields) {
     if (field.type === "bool") {
-      const el = document.querySelector(`input[data-key="${field.key}"]`);
-      values[field.key] = el?.checked ? "true" : "false";
+      const el = document.querySelector(`md-switch[data-key="${field.key}"]`);
+      values[field.key] = el?.selected ? "true" : "false";
       continue;
     }
     if (field.type === "enum") {

@@ -233,6 +233,12 @@ body {
   border-bottom: 0;
 }
 
+.settings__row--switch md-switch {
+  --md-switch-selected-handle-color: var(--md-sys-color-on-primary);
+  --md-switch-selected-track-color: var(--md-sys-color-primary);
+  margin: 2px 0 2px;
+}
+
 .settings__label {
   flex: 0 0 100%;
   font: 500 12.5px/1.4 var(--md-ref-typeface-mono, monospace);
