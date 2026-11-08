@@ -70,7 +70,7 @@ export async function handleChatText(ctx: BotContext, message: TgMessage): Promi
 
   if (!row || row.expires_at <= Date.now()) {
     if (hasSignature) {
-      await say(ctx, from.id, "我不知道这段签名对应哪次申请。先点「通过聊天验证」，或者发 <code>/verify 用户名</code>。");
+      await say(ctx, from.id, t(lang, "chat.unknownSignature"));
     }
     return;
   }

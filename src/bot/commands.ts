@@ -9,6 +9,7 @@ import {
 } from "../db";
 import { appendAudit, listAudit } from "../db/audit";
 import { approveAdminNonce } from "../db";
+import { beginChatVerify } from "./chat-verify";
 import { randomToken } from "../lib/crypto";
 import { displayName, escapeHtml, truncate } from "../lib/html";
 import type { InlineKeyboardMarkup, TgMessage } from "../lib/telegram";
@@ -188,12 +189,8 @@ async function handleStart(env: CommandEnv): Promise<void> {
 
   if (pending) {
     if (wantsChat) {
-      await reply(
-        env,
-        t(env.lang, "cmd.start.pendingChat", {
-          chat: escapeHtml(pending.chat_title ?? String(pending.chat_id)),
-        }),
-      );
+      // 直接进聊天验证：问用户名，后面走签名
+      await beginChatVerify(env.ctx, env.userId, env.lang);
       return;
     }
 
