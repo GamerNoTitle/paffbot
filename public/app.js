@@ -1793,8 +1793,7 @@ function renderFooter() {
   const range = year > START_YEAR ? `${START_YEAR} - ${year}` : `${START_YEAR}`;
   $("foot").innerHTML =
     `©️ ${range} <a href="https://bili33.top" target="_blank" rel="noreferrer">GamerNoTitle</a>` +
-    ` · <a href="https://github.com/GamerNoTitle/Paffbot" target="_blank" rel="noreferrer">${esc(t("app.name"))}</a>` +
-    ` · <a href="https://github.com/GamerNoTitle/Paffbot" target="_blank" rel="noreferrer">${esc(t("foot.repo"))}</a>`;
+    ` · <a href="https://github.com/GamerNoTitle/Paffbot" target="_blank" rel="noreferrer">${esc(t("app.name"))}</a>`;
 }
 renderFooter();
 
