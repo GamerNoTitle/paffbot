@@ -64,11 +64,10 @@ export default {
   "cmd.pending.list": "<b>{count} pending</b>, showing the latest {shown}:\\n{list}",
   "cmd.audit.none": "No audit records yet.",
   "cmd.audit.list": "<b>Latest {count} records</b>\\n{list}\\n\\nOpen the web console for the full audit log.",
-  "cmd.selftest.denied": "Only a super admin can run a self test.",
-  "cmd.selftest.needChat": "In private chat you must name a group: <code>/selftest -1001234567890</code>\nSending /selftest inside the group is easier.",
-  "cmd.selftest.failed": "Could not create the self-test record. Try again later.",
-  "cmd.selftest.sent": "Sent the verification entry in private chat (self test, approving it will not touch the group).",
-  "cmd.selftest.dmFailed": "Could not send the DM: message the bot first, or check whether it is blocked.",
+
+
+
+
   "cmd.help": "/help: show this command list",
   "cmd.buttons": "Every join request comes with Approve / Reject / Ban buttons. One tap handles it",
   "actor.user": "user",

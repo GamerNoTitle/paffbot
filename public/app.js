@@ -1035,7 +1035,6 @@ function describeDetail(detail) {
   if (detail.reason) parts.push(REASON_KEYS[detail.reason] ? t(REASON_KEYS[detail.reason]) : detail.reason);
   if (detail.scope === "telegram") parts.push(t("detail.scopeJoin"));
   if (detail.mode === "group_join") parts.push(t("detail.modeDirect"));
-  if (detail.source === "admin" || detail.selftest) parts.push(t("detail.selftest"));
   if (typeof detail.error === "string") parts.push(humanError(detail.error));
   return parts.join(" · ");
 }

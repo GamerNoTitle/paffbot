@@ -40,7 +40,6 @@ export default {
   "audit.verifyTitle": "Verification records",
   "detail.modeDirect": "Joined directly",
   "detail.scopeJoin": "Join request",
-  "detail.selftest": "Test mode",
   "dialog.approved.text": "Verified. You are now in “{chat}”",
   "dialog.approved.title": "Verification passed",
   "dialog.checkOk": "Verified. Hello, {login}",

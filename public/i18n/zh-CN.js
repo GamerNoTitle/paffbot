@@ -40,7 +40,6 @@ export default {
   "audit.verifyTitle": "验证记录",
   "detail.modeDirect": "直接入群",
   "detail.scopeJoin": "入群申请",
-  "detail.selftest": "测试模式",
   "dialog.approved.text": "已通过验证并成功加入「{chat}」",
   "dialog.approved.title": "验证通过",
   "dialog.checkOk": "已通过验证，你好 {login}",

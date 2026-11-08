@@ -56,7 +56,7 @@ export default {
   "cmd.groupOnly": "只能在群里使用此命令",
   "cmd.pass.usage": "回复一条消息或者使用 /pass <用户id> 来放行入群验证",
   "cmd.pass.done": "已放行 <code>{target}</code>（记录 {id}）",
-  "cmd.pass.manual": "已跳过 Bot 并手动放行 <code>{target}</code>",
+  "cmd.pass.manual": "已手动放行 <code>{target}</code>",
   "cmd.ban.usage": "回复一条消息或者使用 /ban <用户id> 来封禁并移出用户",
   "cmd.ban.done": "已封禁 <code>{target}</code>。",
   "cmd.pending.none": "当前没有待验证的申请。",
@@ -64,11 +64,10 @@ export default {
   "cmd.pending.list": "<b>待验证 {count} 人</b>，已展示最近 {shown} 条: \n{list}",
   "cmd.audit.none": "还没有审计记录。",
   "cmd.audit.list": "<b>最近 {count} 条审计</b>\n{list}\n\n请前往网页端查看完整的审计记录",
-  "cmd.selftest.denied": "只有超管可以自测。",
-  "cmd.selftest.needChat": "私聊里用需要指定群 id：<code>/selftest -1001234567890</code>\n更推荐直接在目标群里发 /selftest。",
-  "cmd.selftest.failed": "创建自测记录失败，请稍后再试。",
-  "cmd.selftest.sent": "已私聊发送验证入口（自测记录，放行不会真的改动群成员）。",
-  "cmd.selftest.dmFailed": "私聊发送失败：请先给 bot 发过一条消息，或检查是否屏蔽了 bot。",
+
+
+
+
   "cmd.help": "/help: 显示这份命令列表",
   "cmd.buttons": "群里每条入群申请都带「通过 / 拒绝 / 封禁」按钮，点一下就能处理",
   "actor.user": "用户",

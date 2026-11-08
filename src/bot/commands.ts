@@ -130,9 +130,6 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
     case "audit":
       await handleAudit(env);
       return;
-    case "selftest":
-      await handleSelfTest(env);
-      return;
     default:
       if (isPrivate) await reply(env, t(env.lang, "cmd.unknown"));
   }
@@ -452,76 +449,3 @@ async function handleAudit(env: CommandEnv): Promise<void> {
   );
 }
 
-/**
- * 超管自测：生成一条真实的 pending 记录并把 Mini App 按钮私聊发给自己。
- * 这样不用小号也能把「填用户名 → 签名 → 验签 → 放行」整条链路走一遍。
- * 来源记为 admin，放行时不会改动群成员。
- */
-async function handleSelfTest(env: CommandEnv): Promise<void> {
-  if (!env.superAdmin) {
-    await reply(env, t(env.lang, "cmd.selftest.denied"));
-    return;
-  }
-
-  let chatId = env.chatId;
-  let chatTitle = env.message.chat.title ?? String(chatId);
-
-  if (env.isPrivate) {
-    const parsed = Number.parseInt(env.args[0] ?? "", 10);
-    if (!Number.isSafeInteger(parsed)) {
-      await reply(env, t(env.lang, "cmd.selftest.needChat"));
-      return;
-    }
-    chatId = parsed;
-    chatTitle = String(parsed);
-    try {
-      const chat = await env.ctx.tg.call<{ title?: string }>("getChat", { chat_id: chatId });
-      chatTitle = chat.title ?? chatTitle;
-    } catch {
-      // 标题拿不到不影响自测
-    }
-  }
-
-  const id = crypto.randomUUID();
-  const createdAt = Date.now();
-  await createVerification(env.ctx.db, {
-    id,
-    chatId,
-    chatTitle,
-    userId: env.userId,
-    username: env.message.from?.username ?? null,
-    displayName: displayName(env.message.from ?? { id: env.userId, first_name: "admin" }),
-    status: "pending",
-    source: "admin",
-    updateId: null,
-    nonce: randomToken(16),
-    createdAt,
-    // 自测没有 Telegram 的 5 分钟私聊窗口限制，给足时间跑签名命令
-    expiresAt: createdAt + 30 * 60 * 1000,
-    detail: { selftest: true },
-  });
-
-  const row = await getVerification(env.ctx.db, id);
-  if (!row) {
-    await reply(env, t(env.lang, "cmd.selftest.failed"));
-    return;
-  }
-
-  await appendAudit(env.ctx.db, {
-    actorId: env.userId,
-    actorType: "super_admin",
-    action: "verification.created",
-    chatId,
-    targetUserId: env.userId,
-    verificationId: id,
-    detail: { source: "admin", selftest: true },
-  });
-
-  const sent = env.message.from ? await sendVerificationPrompt(env.ctx, row, env.message.from) : false;
-  await reply(
-    env,
-    sent
-      ? t(env.lang, "cmd.selftest.sent")
-      : t(env.lang, "cmd.selftest.dmFailed"),
-  );
-}
