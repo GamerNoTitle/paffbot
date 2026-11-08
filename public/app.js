@@ -1882,6 +1882,8 @@ document.querySelectorAll(".dd__btn").forEach((btn) => {
 function initI18n() {
   const lang = setLang(detectLang(TG_LANG));
   applyStaticI18n();
+  // 页脚在模块加载时就渲染过一次，那时还是默认语言，这里按真实语言重画一遍
+  renderFooter();
   document.title = t("page.title");
 
   const select = $("lang");

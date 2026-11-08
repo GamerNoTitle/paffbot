@@ -362,16 +362,15 @@ async function handleMyChatMember(ctx: BotContext, update: TgChatMemberUpdated):
 
   const title = chatTitleOf(chat);
   const isAdmin = update.new_chat_member.status === "administrator";
+  const lang = normalizeLang(update.from.language_code);
   const lines = [
-    `已加入「<b>${title}</b>」。`,
-    `群 ID：<code>${chat.id}</code>`,
-    isAdmin
-      ? "我已是被管理员，请确认勾选了：Invite Users（批准申请）、Restrict Members（禁言/踢人）、Delete Messages。"
-      : "我现在还不是管理员，请在群设置里给我管理员权限，并勾选 Invite Users / Restrict Members。",
+    t(lang, "bot.added.head", { title }),
+    t(lang, "bot.added.chatId", { id: String(chat.id) }),
+    isAdmin ? t(lang, "bot.added.adminYes") : t(lang, "bot.added.adminNo"),
     "",
-    "验证入口：用户点「申请加入」后我会私聊发按钮；直接入群模式下请让用户先私聊我发 /start。",
-    "管理员命令：/pass /ban /pending /audit（在群里用）。",
-    "查看 id：群里发 /id。",
+    t(lang, "bot.added.howJoin"),
+    t(lang, "bot.added.commands"),
+    t(lang, "bot.added.howId"),
   ];
 
   await ctx.tg.trySendMessage({ chat_id: chat.id, text: lines.join("\n"), parse_mode: "HTML" });
@@ -525,46 +524,45 @@ async function handleChannelSender(ctx: BotContext, message: TgMessage): Promise
 }
 
 async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<void> {
+  const lang = normalizeLang(query.from.language_code);
   const data = query.data ?? "";
   const [action, verificationId] = data.split(":");
   if (!action || !verificationId) {
-    await ctx.tg.answerCallbackQuery(query.id, "无效的操作");
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.invalid"));
     return;
   }
 
   const verification = await getVerification(ctx.db, verificationId);
   if (!verification) {
-    await ctx.tg.answerCallbackQuery(query.id, "记录不存在或已过期", true);
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.missing"), true);
     return;
   }
 
   // 聊天验证按钮由申请人自己点，不走管理员校验
   if (action === "chat") {
     if (verification.user_id !== query.from.id) {
-      await ctx.tg.answerCallbackQuery(query.id, "这不是你的验证", true);
+      await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.notYours"), true);
       return;
     }
     if (verification.status !== "pending") {
-      await ctx.tg.answerCallbackQuery(query.id, "这条记录已经处理过了");
+      await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.done"));
       return;
     }
     await beginChatVerify(ctx, query.from.id, normalizeLang(query.from.language_code));
-    await ctx.tg.answerCallbackQuery(query.id, "把 GitHub 用户名发给我");
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.needUsername"));
     return;
   }
 
   const admin = await isGroupAdmin({ config: ctx.config, db: ctx.db, tg: ctx.tg }, verification.chat_id, query.from.id);
   if (!admin) {
-    await ctx.tg.answerCallbackQuery(query.id, "只有群管理员可以操作", true);
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.adminOnly"), true);
     return;
   }
 
   if (verification.status !== "pending") {
-    await ctx.tg.answerCallbackQuery(query.id, "这条记录已经处理过了");
+    await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.done"));
     return;
   }
-
-  const lang = normalizeLang(query.from.language_code);
 
   if (action === "ap") {
     await approveVerification({ db: ctx.db, tg: ctx.tg }, verification, {
@@ -600,5 +598,5 @@ async function handleCallback(ctx: BotContext, query: TgCallbackQuery): Promise<
     return;
   }
 
-  await ctx.tg.answerCallbackQuery(query.id, "未知操作");
+  await ctx.tg.answerCallbackQuery(query.id, t(lang, "cb.unknown"));
 }

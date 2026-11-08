@@ -101,7 +101,11 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
     case "id":
       await reply(
         env,
-        `会话 id：<code>${chat.id}</code>\n你的 id：<code>${from.id}</code>\n类型：${escapeHtml(chat.type)}`,
+        t(env.lang, "cmd.idInfo", {
+          chat: String(chat.id),
+          user: String(from.id),
+          type: escapeHtml(chat.type),
+        }),
       );
       return;
     case "pass":
@@ -129,7 +133,7 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       await handleSelfTest(env);
       return;
     default:
-      if (isPrivate) await reply(env, "未知命令，发送 /help 查看可用命令。");
+      if (isPrivate) await reply(env, t(env.lang, "cmd.unknown"));
   }
 }
 
@@ -139,7 +143,7 @@ async function handleStart(env: CommandEnv): Promise<void> {
   if (payload.startsWith("admin_")) {
     const nonce = payload.slice("admin_".length);
     if (!env.superAdmin) {
-      await reply(env, "这个链接只能给超级管理员用。");
+      await reply(env, t(env.lang, "cmd.admin.denied"));
       return;
     }
     const ticket = Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -147,7 +151,7 @@ async function handleStart(env: CommandEnv): Promise<void> {
       .join("");
     const approved = await approveAdminNonce(env.ctx.db, nonce, env.userId, ticket);
     if (!approved) {
-      await reply(env, "链接已经失效了，回到网页重新点一次「通过 Telegram 验证身份」。");
+      await reply(env, t(env.lang, "cmd.admin.expired"));
       return;
     }
     await appendAudit(env.ctx.db, {
@@ -161,8 +165,8 @@ async function handleStart(env: CommandEnv): Promise<void> {
     });
     await reply(
       env,
-      "身份确认了。点下面的按钮进后台，链接只能用一次，10 分钟内有效。",
-      { inline_keyboard: [[{ text: "打开后台", url: `${env.ctx.origin}/admin?t=${ticket}` }]] },
+      t(env.lang, "cmd.admin.issued"),
+      { inline_keyboard: [[{ text: t(env.lang, "cmd.admin.open"), url: `${env.ctx.origin}/admin?t=${ticket}` }]] },
     );
     return;
   }
@@ -171,9 +175,10 @@ async function handleStart(env: CommandEnv): Promise<void> {
     const username = await botUsername(env.ctx.tg);
     await reply(
       env,
-      "验证需要在<strong>私聊</strong>里完成（Telegram 只允许在私聊里放 Mini App 按钮）。\n" +
-        "点下面的按钮直接打开私聊；也可以发 /id 查看群 id 和你自己的 id。",
-      username ? { inline_keyboard: [[{ text: "私聊我完成验证", url: `https://t.me/${username}?start=verify` }]] } : undefined,
+      t(env.lang, "cmd.start.group"),
+      username
+        ? { inline_keyboard: [[{ text: t(env.lang, "cmd.start.dmButton"), url: `https://t.me/${username}?start=verify` }]] }
+        : undefined,
     );
     return;
   }
@@ -185,8 +190,9 @@ async function handleStart(env: CommandEnv): Promise<void> {
     if (wantsChat) {
       await reply(
         env,
-        `你还有一条待完成的验证：<b>${escapeHtml(pending.chat_title ?? String(pending.chat_id))}</b>\n` +
-          "发 <code>/verify 你的GitHub用户名</code>，我用聊天把签名流程走完。",
+        t(env.lang, "cmd.start.pendingChat", {
+          chat: escapeHtml(pending.chat_title ?? String(pending.chat_id)),
+        }),
       );
       return;
     }
@@ -194,9 +200,10 @@ async function handleStart(env: CommandEnv): Promise<void> {
     const url = `${miniAppUrl(env.ctx)}/?chat=${pending.chat_id}`;
     await reply(
       env,
-      `你还有一条待完成的验证：<b>${escapeHtml(pending.chat_title ?? String(pending.chat_id))}</b>\n` +
-        "点按钮用 Mini App 完成，或发 /verify 用户名 走聊天验证。",
-      miniAppKeyboard(url, "继续验证"),
+      t(env.lang, "cmd.start.pendingMini", {
+        chat: escapeHtml(pending.chat_title ?? String(pending.chat_id)),
+      }),
+      miniAppKeyboard(url, t(env.lang, "cmd.start.continue")),
     );
     return;
   }
@@ -205,15 +212,17 @@ async function handleStart(env: CommandEnv): Promise<void> {
     env,
     commandsHelp(
       env.superAdmin && !env.isPrivate,
-      `你好，我是群验证机器人。\n你的 Telegram ID：<code>${env.userId}</code>\n\n`,
+      t(env.lang, "cmd.start.hello", { id: String(env.userId) }),
       env.lang,
     ),
   );
 
   // 管理员额外给一个审计入口（普通用户看不到这个标签页）
   if (env.superAdmin) {
-    await reply(env, "你是超级管理员，可以在网页端查看审计。", {
-      inline_keyboard: [[{ text: "打开审计面板", web_app: { url: `${miniAppUrl(env.ctx)}/admin` } }]],
+    await reply(env, t(env.lang, "cmd.start.super"), {
+      inline_keyboard: [
+        [{ text: t(env.lang, "cmd.start.auditButton"), web_app: { url: `${miniAppUrl(env.ctx)}/admin` } }],
+      ],
     });
   }
 }
@@ -221,12 +230,12 @@ async function handleStart(env: CommandEnv): Promise<void> {
 async function handlePass(env: CommandEnv): Promise<void> {
   const auth = await requireAdmin(env);
   if (!auth) {
-    await reply(env, "请在目标群里使用该命令（需要 can_restrict_members 权限）。");
+    await reply(env, t(env.lang, "cmd.groupOnly"));
     return;
   }
   const target = targetUserId(env);
   if (!target) {
-    await reply(env, "用法：/pass <用户id>，或回复对方的消息。");
+    await reply(env, t(env.lang, "cmd.pass.usage"));
     return;
   }
 
@@ -237,7 +246,7 @@ async function handlePass(env: CommandEnv): Promise<void> {
       actorId: env.userId,
       actorType: auth.actorType,
     });
-    await reply(env, `已放行 <code>${target}</code>（记录 ${pending.id.slice(0, 8)}）。`);
+    await reply(env, t(env.lang, "cmd.pass.done", { target: String(target), id: pending.id.slice(0, 8) }));
     return;
   }
 
@@ -256,18 +265,18 @@ async function handlePass(env: CommandEnv): Promise<void> {
     verificationId: null,
     detail: { method: "admin_pass", note: "no pending row" },
   });
-  await reply(env, `已手动放行 <code>${target}</code>（无待验证记录，已直接调用 Telegram）。`);
+  await reply(env, t(env.lang, "cmd.pass.manual", { target: String(target) }));
 }
 
 async function handleBan(env: CommandEnv): Promise<void> {
   const auth = await requireAdmin(env);
   if (!auth) {
-    await reply(env, "请在目标群里使用该命令（需要 can_restrict_members 权限）。");
+    await reply(env, t(env.lang, "cmd.groupOnly"));
     return;
   }
   const target = targetUserId(env);
   if (!target) {
-    await reply(env, "用法：/ban <用户id>，或回复对方的消息。");
+    await reply(env, t(env.lang, "cmd.ban.usage"));
     return;
   }
 
@@ -280,7 +289,7 @@ async function handleBan(env: CommandEnv): Promise<void> {
       actorId: env.userId,
       actorType: auth.actorType,
     });
-    await reply(env, `已封禁 <code>${target}</code>。`);
+    await reply(env, t(env.lang, "cmd.ban.done", { target: String(target) }));
     return;
   }
 
@@ -294,7 +303,7 @@ async function handleBan(env: CommandEnv): Promise<void> {
     verificationId: null,
     detail: { method: "admin_ban", note: "no pending row" },
   });
-  await reply(env, `已封禁 <code>${target}</code>。`);
+  await reply(env, t(env.lang, "cmd.ban.done", { target: String(target) }));
 }
 
 /** /addallowedbot 与 /delallowedbot：回复消息取被回复者，否则用 @用户名 解析。 */
@@ -397,7 +406,7 @@ async function handleAllowedList(env: CommandEnv): Promise<void> {
 async function handlePending(env: CommandEnv): Promise<void> {
   const auth = await requireAdmin(env);
   if (!auth) {
-    await reply(env, "请在目标群里使用该命令（需要 can_restrict_members 权限）。");
+    await reply(env, t(env.lang, "cmd.groupOnly"));
     return;
   }
   const [count, list] = await Promise.all([
@@ -405,33 +414,45 @@ async function handlePending(env: CommandEnv): Promise<void> {
     listVerifications(env.ctx.db, { chatId: env.chatId, status: "pending", limit: 10 }),
   ]);
   if (count === 0) {
-    await reply(env, "当前没有待验证的申请。");
+    await reply(env, t(env.lang, "cmd.pending.none"));
     return;
   }
   const lines = list.rows.map(
     (row) =>
-      `• <code>${row.user_id}</code> ${escapeHtml(truncate(row.display_name ?? row.username ?? "未知", 24))} · ${formatDateTime(row.created_at)}`,
+      `• <code>${row.user_id}</code> ${escapeHtml(
+        truncate(row.display_name ?? row.username ?? t(env.lang, "cmd.pending.unknown"), 24),
+      )} · ${formatDateTime(row.created_at)}`,
   );
-  await reply(env, `<b>待验证 ${count} 人</b>（最近 ${list.rows.length} 条）\n${lines.join("\n")}`);
+  await reply(
+    env,
+    t(env.lang, "cmd.pending.list", {
+      count,
+      shown: list.rows.length,
+      list: lines.join("\n"),
+    }),
+  );
 }
 
 async function handleAudit(env: CommandEnv): Promise<void> {
   const auth = await requireAdmin(env);
   if (!auth) {
-    await reply(env, "请在目标群里使用该命令（需要 can_restrict_members 权限）。");
+    await reply(env, t(env.lang, "cmd.groupOnly"));
     return;
   }
   const requested = Number.parseInt(env.args[0] ?? "10", 10);
   const limit = Number.isFinite(requested) ? Math.min(50, Math.max(1, requested)) : 10;
   const { rows } = await listAudit(env.ctx.db, { chatId: env.chatId, limit });
   if (rows.length === 0) {
-    await reply(env, "还没有审计记录。");
+    await reply(env, t(env.lang, "cmd.audit.none"));
     return;
   }
   const lines = rows.map((row) =>
     auditLine(formatDateTime(row.ts), row.action, row.actor_type, row.actor_id, row.target_user_id, env.lang),
   );
-  await reply(env, `<b>最近 ${rows.length} 条审计</b>\n${lines.join("\n")}\n\n完整查询见 Mini App 的审计页。`);
+  await reply(
+    env,
+    t(env.lang, "cmd.audit.list", { count: rows.length, list: lines.join("\n") }),
+  );
 }
 
 /**
@@ -441,7 +462,7 @@ async function handleAudit(env: CommandEnv): Promise<void> {
  */
 async function handleSelfTest(env: CommandEnv): Promise<void> {
   if (!env.superAdmin) {
-    await reply(env, "只有超管可以自测。");
+    await reply(env, t(env.lang, "cmd.selftest.denied"));
     return;
   }
 
@@ -451,7 +472,7 @@ async function handleSelfTest(env: CommandEnv): Promise<void> {
   if (env.isPrivate) {
     const parsed = Number.parseInt(env.args[0] ?? "", 10);
     if (!Number.isSafeInteger(parsed)) {
-      await reply(env, "私聊里用需要指定群 id：<code>/selftest -1001234567890</code>\n更推荐直接在目标群里发 /selftest。");
+      await reply(env, t(env.lang, "cmd.selftest.needChat"));
       return;
     }
     chatId = parsed;
@@ -485,7 +506,7 @@ async function handleSelfTest(env: CommandEnv): Promise<void> {
 
   const row = await getVerification(env.ctx.db, id);
   if (!row) {
-    await reply(env, "创建自测记录失败，请稍后再试。");
+    await reply(env, t(env.lang, "cmd.selftest.failed"));
     return;
   }
 
@@ -503,7 +524,7 @@ async function handleSelfTest(env: CommandEnv): Promise<void> {
   await reply(
     env,
     sent
-      ? "已私聊发送验证入口（自测记录，放行不会真的改动群成员）。"
-      : "私聊发送失败：请先给 bot 发过一条消息，或检查是否屏蔽了 bot。",
+      ? t(env.lang, "cmd.selftest.sent")
+      : t(env.lang, "cmd.selftest.dmFailed"),
   );
 }
