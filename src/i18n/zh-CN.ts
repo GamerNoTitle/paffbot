@@ -123,9 +123,9 @@ export default {
 
   "bot.added.head": "已加入「<b>{title}</b>」。",
   "bot.added.chatId": "群 ID：<code>{id}</code>",
-  "bot.added.adminYes": "我已经是管理员了，请确认勾选了：Invite Users（批准申请）、Restrict Members（禁言/踢人）、Delete Messages。",
-  "bot.added.adminNo": "我现在还不是管理员，请在群设置里给我管理员权限，并勾选 Invite Users / Restrict Members。",
-  "bot.added.howJoin": "验证入口：用户点「申请加入」后我会私聊发按钮；直接入群模式下请让用户先私聊我发 /start。",
+  "bot.added.adminYes": "我已经是管理员了，请确认勾选了：Invite Users（批准申请）、Restrict Members（禁言/踢人）和 Delete Messages 权限",
+  "bot.added.adminNo": "我现在还不是管理员，请在群设置里给我管理员权限，并勾选 Invite Users / Restrict Members 权限",
+  "bot.added.howJoin": "验证入口：直接入群时群里会出现一条带按钮的提示，点一下就会打开机器人；申请入群模式由我私聊对方。",
   "bot.added.commands": "管理员命令：/pass /ban /pending /audit（在群里用）。",
   "bot.added.howId": "查看 id：群里发 /id。",
   "cb.invalid": "无效的操作",

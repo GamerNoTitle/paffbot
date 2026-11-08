@@ -125,7 +125,7 @@ export default {
   "bot.added.chatId": "Chat ID: <code>{id}</code>",
   "bot.added.adminYes": "I am already an admin. Please make sure Invite Users, Restrict Members and Delete Messages are ticked.",
   "bot.added.adminNo": "I am not an admin yet. Give me admin rights and tick Invite Users and Restrict Members.",
-  "bot.added.howJoin": "How people verify: after they tap Join Request I send the button in private. With direct join, ask them to message me /start first.",
+  "bot.added.howJoin": "How it works: on a direct join the group gets a notice with a button, and one tap opens the bot. With join requests I DM the person instead.",
   "bot.added.commands": "Admin commands: /pass /ban /pending /audit (use them in the group).",
   "bot.added.howId": "See ids: send /id in the group.",
   "cb.invalid": "Invalid action",
