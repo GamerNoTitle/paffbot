@@ -187,6 +187,41 @@ export interface RejectOptions {
   notify?: boolean;
 }
 
+/**
+ * 撤回入群申请。成功记一笔 detail，失败重试一次；
+ * `HIDE_REQUESTER_MISSING` 说明 Telegram 那边已经没有这条申请了（过期或被手动处理），按成功算。
+ */
+export async function declineJoinRequest(
+  deps: { db: D1Database; tg: TelegramApi },
+  chatId: number,
+  userId: number,
+): Promise<"done" | "gone" | "failed"> {
+  const attempt = async (): Promise<"done" | "gone"> => {
+    try {
+      await deps.tg.declineChatJoinRequest(chatId, userId);
+      return "done";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/HIDE_REQUESTER_MISSING|USER_NOT_FOUND|USER_ALREADY_PARTICIPANT/i.test(message)) return "gone";
+      throw err;
+    }
+  };
+
+  try {
+    return await attempt();
+  } catch {
+    try {
+      return await attempt();
+    } catch (err) {
+      console.warn(
+        `[finalize] 撤回申请失败 chat=${chatId} user=${userId}:`,
+        err instanceof Error ? err.message : err,
+      );
+      return "failed";
+    }
+  }
+}
+
 export async function rejectVerification(
   deps: FinalizeDeps,
   verification: VerificationRow,
@@ -205,7 +240,18 @@ export async function rejectVerification(
   // 申请模式必须先撤回申请；直接入群模式的"移出" = ban 再 unban（可再次申请）
   try {
     if (row.source === "join_request") {
-      await deps.tg.declineChatJoinRequest(row.chat_id, row.user_id);
+      const declined = await declineJoinRequest(deps, row.chat_id, row.user_id);
+      if (declined === "failed") {
+        await appendAudit(deps.db, {
+          actorId: 0,
+          actorType: "system",
+          action: "telegram.action_failed",
+          chatId: row.chat_id,
+          targetUserId: row.user_id,
+          verificationId: row.id,
+          detail: { phase: options.status, error: "decline failed after retry" },
+        });
+      }
       if (options.status === "banned" || options.status === "blocked") {
         await deps.tg.banChatMember(row.chat_id, row.user_id);
       }

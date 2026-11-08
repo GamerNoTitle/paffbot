@@ -2,11 +2,15 @@ import {
   deletePurge,
   listDuePurges,
   listExpiredPending,
+  listUndeclinedJoinRequests,
   pruneAdminTickets,
   pruneOldVerifications,
   pruneRateLimits,
 } from "./db";
 import { pruneChallenges } from "./lib/challenge";
+import { declineJoinRequest } from "./verify/finalize";
+import { updateVerificationDetail } from "./db";
+import { nowMs } from "./lib/time";
 import { verifyAuditChain } from "./db/audit";
 import { loadConfig, type Env } from "./env";
 import { TelegramApi } from "./lib/telegram";
@@ -48,7 +52,20 @@ export async function runScheduled(env: Env): Promise<void> {
   }
   if (due.length > 0) console.log(`[cron] 清理过期提示消息 ${due.length} 条`);
 
+  // 结案时撤回失败的入群申请：每 5 分钟补一次，成功后打标记，不再重复
   const now = new Date();
+  if (now.getUTCMinutes() % 5 === 0) {
+    const undeclined = await listUndeclinedJoinRequests(env.DB, nowMs() - 24 * 3600 * 1000, 10);
+    for (const row of undeclined) {
+      const result = await declineJoinRequest({ db: env.DB, tg }, row.chat_id, row.user_id);
+      if (result !== "failed") {
+        await updateVerificationDetail(env.DB, row.id, { join_declined: true });
+      }
+    }
+    if (undeclined.length > 0) console.log(`[cron] 补撤回入群申请 ${undeclined.length} 条`);
+  }
+
+
   if (now.getUTCHours() === 3 && now.getUTCMinutes() < 2) {
     const pruned = await pruneOldVerifications(env.DB, config.retentionDays);
     await pruneAdminTickets(env.DB);

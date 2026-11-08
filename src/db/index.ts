@@ -654,3 +654,26 @@ export async function consumeAdminTicket(db: D1Database, ticket: string): Promis
 export async function pruneAdminTickets(db: D1Database): Promise<void> {
   await db.prepare("DELETE FROM admin_tickets WHERE expires_at < ?").bind(nowMs() - 24 * 3600 * 1000).run();
 }
+
+/** 已经结案但没能确认撤回的入群申请：定时任务补一次撤回。 */
+export async function listUndeclinedJoinRequests(
+  db: D1Database,
+  sinceMs: number,
+  limit = 10,
+): Promise<Array<{ id: string; chat_id: number; user_id: number }>> {
+  const { results } = await db
+    .prepare(
+      `SELECT id, chat_id, user_id, detail FROM verifications
+       WHERE source = 'join_request'
+         AND status IN ('timeout', 'declined', 'banned', 'blocked')
+         AND created_at >= ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(sinceMs, limit)
+    .all<{ id: string; chat_id: number; user_id: number; detail: string | null }>();
+
+  return results
+    .filter((row) => parseDetail(row.detail).join_declined !== true)
+    .map(({ id, chat_id, user_id }) => ({ id, chat_id, user_id }));
+}
