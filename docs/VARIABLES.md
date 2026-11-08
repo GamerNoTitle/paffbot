@@ -51,7 +51,7 @@
 | 变量 | 默认 | 校验 | 说明 |
 |---|---|---|---|
 | `CAPTCHA_ENABLED` | false | `true`/`false` | 总开关。开启后小程序出现「人机验证」通道 |
-| `CAPTCHA_PROVIDER` | 自动推断 | `""` / `cap` / `turnstile` | 二选一。留空时按已填字段推断（有 Turnstile 密钥→turnstile，有 `CAPTCHA_URL`→cap） |
+| `CAPTCHA_PROVIDER` | 空 | `cap` / `turnstile` | 二选一，**不做推断**。`CAPTCHA_ENABLED=true` 时必须选一种，且该方式的必填项不能为空 |
 | `CAPTCHA_URL` | 空 | `http(s)://` 前缀 | 自建 Cap.js 地址，如 `https://cap.example.com` |
 | `CAPTCHA_HOLD_HOURS` | 24 | 1–720 | 人机验证通过后保留的时长（小时），期间不会被超时移除，但仍需管理员放行 |
 | `TURNSTILE_SITE_KEY` | 空 | 文本 | Cloudflare Turnstile 的 site key（公开值） |

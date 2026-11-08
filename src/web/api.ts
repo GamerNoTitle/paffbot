@@ -547,6 +547,26 @@ export function createApi(): Hono<AppBindings> {
       }
     }
 
+    // 人机验证：开了就必须选一种，且对应的必填项要在
+    const effective = effectiveSettings(auth.ctx.config);
+    const next = (key: string) => writes.find((w) => w.key === key)?.value ?? effective[key] ?? "";
+    if (next("CAPTCHA_ENABLED") === "true") {
+      const provider = next("CAPTCHA_PROVIDER");
+      if (!provider) {
+        return c.json({ ok: false, error: "启用后必须选择一种人机验证", errorKey: "settings.error.captchaProvider" }, 400);
+      }
+      const missing =
+        provider === "cap"
+          ? next("CAPTCHA_URL") === ""
+          : next("TURNSTILE_SITE_KEY") === "" || next("TURNSTILE_SECRET") === "";
+      if (missing) {
+        return c.json(
+          { ok: false, error: "选了这种方式但必填项为空", errorKey: "settings.error.captchaConfig" },
+          400,
+        );
+      }
+    }
+
     await writeSettings(auth.ctx.env, writes, auth.userId);
     await appendAudit(auth.ctx.db, {
       actorId: auth.userId,

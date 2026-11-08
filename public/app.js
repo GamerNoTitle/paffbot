@@ -1661,6 +1661,22 @@ function checkSettings(values) {
       return `${field.key}: ${t("settings.invalid")}`;
     }
   }
+
+  // 人机验证：开了必须有方式，且必填项不能空
+  const enabled = values.CAPTCHA_ENABLED ?? (settingsState.fields.find((f) => f.key === "CAPTCHA_ENABLED")?.effective ?? "false");
+  if (enabled === "true") {
+    const provider = values.CAPTCHA_PROVIDER ?? "";
+    if (!provider) return t("settings.error.captchaProvider");
+    const empty = (key) => {
+      const value = values[key];
+      if (value !== undefined) return value.trim() === "";
+      return !settingsState.fields.find((f) => f.key === key)?.hasValue;
+    };
+    if (provider === "cap" && empty("CAPTCHA_URL")) return t("settings.error.captchaConfig");
+    if (provider === "turnstile" && (empty("TURNSTILE_SITE_KEY") || empty("TURNSTILE_SECRET"))) {
+      return t("settings.error.captchaConfig");
+    }
+  }
   return "";
 }
 

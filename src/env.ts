@@ -79,18 +79,10 @@ export interface Config {
 }
 
 /** 二选一：显式配置优先，其次按已填的字段推断；都缺就当没开。 */
-function resolveCaptchaProvider(values: {
-  provider: string;
-  siteKey: string;
-  secret: string;
-  url: string;
-}): "cap" | "turnstile" | null {
-  const explicit = values.provider.trim().toLowerCase();
-  if (explicit === "cap") return "cap";
-  if (explicit === "turnstile") return "turnstile";
-  if (values.siteKey.trim() && values.secret.trim()) return "turnstile";
-  if (values.url.trim()) return "cap";
-  return null;
+/** 只认显式配置：填了就是填了，没填就是没开，不做任何推断。 */
+function resolveCaptchaProvider(provider: string): "cap" | "turnstile" | null {
+  const value = provider.trim().toLowerCase();
+  return value === "cap" || value === "turnstile" ? value : null;
 }
 
 const DEFAULT_SCREEN_KEYWORDS = [
@@ -185,12 +177,7 @@ export async function loadConfig(env: Env): Promise<Config> {
     retentionDays: parseIntOr(get("AUDIT_RETENTION_DAYS"), 365, 1, 3650),
     screenKeywords: keywords.length > 0 ? keywords : DEFAULT_SCREEN_KEYWORDS,
     captchaEnabled: ["1", "true", "yes"].includes((get("CAPTCHA_ENABLED") ?? "").toLowerCase()),
-    captchaProvider: resolveCaptchaProvider({
-      provider: get("CAPTCHA_PROVIDER"),
-      siteKey: get("TURNSTILE_SITE_KEY"),
-      secret: get("TURNSTILE_SECRET"),
-      url: get("CAPTCHA_URL"),
-    }),
+    captchaProvider: resolveCaptchaProvider(get("CAPTCHA_PROVIDER")),
     captchaUrl: (get("CAPTCHA_URL") ?? "").trim() || null,
     turnstileSiteKey: (get("TURNSTILE_SITE_KEY") ?? "").trim() || null,
     turnstileSecret: (get("TURNSTILE_SECRET") ?? "").trim() || null,

@@ -30,7 +30,7 @@ export const SETTINGS: readonly SettingSpec[] = [
   { key: "GITHUB_OAUTH_SECRET", group: "github", type: "string", secret: true, hintKey: "settings.hint.GITHUB_OAUTH_SECRET" },
   { key: "GITHUB_OAUTH_REDIRECT", group: "github", type: "url", hintKey: "settings.hint.GITHUB_OAUTH_REDIRECT" },
   { key: "CAPTCHA_ENABLED", group: "captcha", type: "bool", hintKey: "settings.hint.CAPTCHA_ENABLED" },
-  { key: "CAPTCHA_PROVIDER", group: "captcha", type: "enum", options: ["", "cap", "turnstile"], hintKey: "settings.hint.CAPTCHA_PROVIDER" },
+  { key: "CAPTCHA_PROVIDER", group: "captcha", type: "enum", options: ["cap", "turnstile"], hintKey: "settings.hint.CAPTCHA_PROVIDER" },
   { key: "CAPTCHA_URL", group: "captcha", type: "url", hintKey: "settings.hint.CAPTCHA_URL" },
   { key: "CAPTCHA_HOLD_HOURS", group: "captcha", type: "int", min: 1, max: 720, hintKey: "settings.hint.CAPTCHA_HOLD_HOURS" },
   { key: "TURNSTILE_SITE_KEY", group: "captcha", type: "string", hintKey: "settings.hint.TURNSTILE_SITE_KEY" },
