@@ -71,11 +71,11 @@ app.get("/admin", async (c) => {
     const userId = await consumeAdminTicket(ctx.db, ticket);
     if (userId === null) return c.redirect("/admin?expired=1", 302);
 
-    const session = await signSession(userId, 7 * 24 * 3600 * 1000, ctx.config.sessionKey);
+    const session = await signSession(userId, 24 * 3600 * 1000, ctx.config.sessionKey);
     const response = c.redirect("/admin", 302);
     response.headers.append(
       "Set-Cookie",
-      `${ADMIN_COOKIE}=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
+      `${ADMIN_COOKIE}=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`,
     );
     return response;
   }

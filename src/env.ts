@@ -2,7 +2,7 @@
  * 运行时配置。
  *
  * 设计原则：所有可变行为都能用 env 覆盖，代码里只保留安全的默认值。
- * 敏感值（BOT_TOKEN / WEBHOOK_SECRET / ADMIN_TOKEN）走 `wrangler secret` 或 .dev.vars，
+ * 敏感值（BOT_TOKEN / WEBHOOK_SECRET / SETTINGS_KEY）走 `wrangler secret` 或 .dev.vars，
  * 非敏感项（方法列表、TTL、题面阈值）放在 wrangler.jsonc 的 vars 里随代码走。
  */
 
@@ -17,7 +17,6 @@ export interface Env {
   /** 配置加密用的根密钥；不填则退回用 BOT_TOKEN 派生 */
   SETTINGS_KEY?: string;
   ADMIN_IDS?: string;
-  ADMIN_TOKEN?: string;
 
   VERIFY_TTL_SECONDS?: string;
   VERIFY_DAILY_LIMIT?: string;
@@ -55,7 +54,6 @@ export interface Config {
   sessionKey: string;
   webhookSecret: string;
   adminIds: number[];
-  adminToken: string | null;
   ttlSeconds: number;
   dailyAttempts: number;
   miniAppUrl: string | null;
@@ -171,7 +169,6 @@ export async function loadConfig(env: Env): Promise<Config> {
       const fromDb = parseIntList(stored.get("ADMIN_IDS") ?? "");
       return fromDb.length > 0 ? fromDb : parseIntList(env.ADMIN_IDS);
     })(),
-    adminToken: (get("ADMIN_TOKEN") ?? "").trim() || null,
     ttlSeconds: parseIntOr(get("VERIFY_TTL_SECONDS"), 300, 60, 24 * 3600),
     dailyAttempts: parseIntOr(get("VERIFY_DAILY_LIMIT"), 3, 1, 50),
     miniAppUrl: (get("MINI_APP_URL") ?? "").trim() || null,

@@ -4,8 +4,6 @@ BOT_TOKEN=123456:AA-your-bot-token
 WEBHOOK_SECRET=change-me-to-a-long-random-string
 # 超管 Telegram user id，逗号分隔
 ADMIN_IDS=123456789
-# 可选：浏览器直接看审计页时用的 Bearer token
-ADMIN_TOKEN=
 # 可选：Mini App 绝对地址；留空则用 webhook 请求的 origin 自动推导
 MINI_APP_URL=
 

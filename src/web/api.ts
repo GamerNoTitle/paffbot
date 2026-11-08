@@ -846,11 +846,6 @@ async function authorizeAudit(
   const chatIdRaw = c.req.query("chatId");
   const chatId = chatIdRaw ? Number.parseInt(chatIdRaw, 10) : null;
 
-  const authHeader = c.req.header("authorization") ?? "";
-  if (ctx.config.adminToken && authHeader === `Bearer ${ctx.config.adminToken}`) {
-    return { superAdmin: true, chatId: Number.isSafeInteger(chatId) ? chatId : null };
-  }
-
   const auth = await readInitUser(c);
   if (!auth.user) return { error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开`, status: 401 };
   const user = auth.user;
