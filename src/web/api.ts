@@ -477,7 +477,7 @@ export function createApi(): Hono<AppBindings> {
     GITHUB_OAUTH_REDIRECT: config.oauthRedirect ?? "",
     CAPTCHA_ENABLED: config.captchaEnabled ? "true" : "false",
     CAPTCHA_PROVIDER: config.captchaProvider ?? "",
-    CAPTCHA_URL: config.capjsUrl ?? "",
+    CAPTCHA_CAPJS_URL: config.capjsUrl ?? "",
     CAPTCHA_HOLD_HOURS: String(config.captchaHoldHours),
     TURNSTILE_SITE_KEY: config.turnstileSiteKey ?? "",
     TURNSTILE_SECRET: config.turnstileSecret ?? "",

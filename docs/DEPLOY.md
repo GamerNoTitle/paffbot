@@ -62,10 +62,19 @@ openssl rand -hex 32
 `WEBHOOK_SECRET` 推荐 32 字节随机值：它既是 webhook 路径的一部分，也是
 `X-Telegram-Bot-Api-Secret-Token` 头，两处必须一致，脚本会自动处理。
 
-可选：
+可选但建议：
 
 ```bash
 npx wrangler secret put SETTINGS_KEY     # 配置加密的根密钥；不填则用 BOT_TOKEN 派生
+```
+
+配了它之后，加密不再依赖 `BOT_TOKEN`，轮换 token 也不会让已存的密钥失效。
+
+**换掉 `SETTINGS_KEY` 会让已加密的配置解不开**，换完必须到「设置」里把每个密钥重新填一遍：
+
+```bash
+npx wrangler secret put SETTINGS_KEY     # 换成新值
+# 然后打开小程序「设置」，把带「已设置」痕迹的密钥项重新输入一次
 ```
 
 ## 4. 部署
