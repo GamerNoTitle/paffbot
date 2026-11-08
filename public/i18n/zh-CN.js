@@ -157,7 +157,7 @@ export default {
   "settings.group.captcha": "人机验证",
   "settings.group.github": "GitHub",
   "settings.group.verify": "验证",
-  "settings.hint.ADMIN_IDS": "超级管理员 Telegram id，至少保留一个",
+  "settings.hint.ADMIN_IDS": "超级管理员 Telegram id，至少保留一个；Worker 上的 ADMIN_IDS 只在首次初始化时使用",
   "settings.hint.ALLOWED_BOTS": "允许发言的 Bot 的 ID",
   "settings.hint.AUDIT_RETENTION_DAYS": "审计记录保留天数",
   "settings.hint.CAPTCHA_ENABLED": "开启后将允许通过「人机验证」入群",

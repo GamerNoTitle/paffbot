@@ -164,11 +164,12 @@ export async function loadConfig(env: Env): Promise<Config> {
   return {
     botToken,
     webhookSecret,
-    // 超管取并集：数据库里的人类配置 + Worker secret 里的救急账号，
-    // 这样即使库里的值被改坏，secret 那个仍然能进设置页修回来
-    adminIds: Array.from(
-      new Set([...parseIntList(stored.get("ADMIN_IDS") ?? ""), ...parseIntList(env.ADMIN_IDS)]),
-    ),
+    // 数据库是唯一来源；Worker 上的 ADMIN_IDS 只在数据库还没写过值时用于首次初始化。
+    // 页面本身禁止把超管删空，所以正常运行时 env 不再参与。
+    adminIds: (() => {
+      const fromDb = parseIntList(stored.get("ADMIN_IDS") ?? "");
+      return fromDb.length > 0 ? fromDb : parseIntList(env.ADMIN_IDS);
+    })(),
     adminToken: (get("ADMIN_TOKEN") ?? "").trim() || null,
     ttlSeconds: parseIntOr(get("VERIFY_TTL_SECONDS"), 300, 60, 24 * 3600),
     dailyAttempts: parseIntOr(get("VERIFY_DAILY_LIMIT"), 3, 1, 50),

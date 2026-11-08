@@ -138,7 +138,7 @@ npx wrangler d1 export DB --remote --output backup.sql
 | 改什么 | 怎么改 |
 |---|---|
 | 业务配置（TTL、限额、关键词、GitHub 门槛、人机验证、bot 白名单） | 小程序顶部「设置」tab（仅超管可见），保存即生效 |
-| `MINI_APP_URL`、`ADMIN_IDS` | 同上；`ADMIN_IDS` 在 Worker secret 里也有一份作为救急入口，两者取并集 |
+| `MINI_APP_URL`、`ADMIN_IDS` | 同上；数据库里的 `ADMIN_IDS` 是唯一来源，Worker secret 里那份只在首次初始化时参考 |
 | `BOT_TOKEN`、`WEBHOOK_SECRET`、`SETTINGS_KEY` | `npx wrangler secret put <名字>`，立即生效 |
 | 测试钩子（`TELEGRAM_API_BASE`、`GITHUB_KEYS_BASE`、`TURNSTILE_VERIFY_URL`） | `wrangler.jsonc` 的 vars + `npm run deploy` |
 
@@ -160,7 +160,7 @@ npx wrangler d1 export DB --remote --output backup.sql
 |---|---|---|
 | 所有命令没反应 | webhook URL 拼错（常见是多写了一层 `/tg`） | `npx wrangler secret put` 不变，重跑 `npm run webhook -- --url https://<域名>`；脚本会回读校验 |
 | 命令没反应且 `getWebhookInfo` 里 `last_error_message` 是 404 | 同上 | 同上 |
-| 进不了设置页 / 没有「设置」tab | 不是超管 | 检查 `ADMIN_IDS` secret；数据库里被改坏时以 secret 为准 |
+| 进不了设置页 / 没有「设置」tab | 不是超管 | 数据库 `settings` 里的 `ADMIN_IDS` 是唯一来源；确认里面有你的 id |
 | 密钥类配置突然变空 | 轮换过 `BOT_TOKEN` 且没配 `SETTINGS_KEY` | 重新在设置页填一次，或补一个固定的 `SETTINGS_KEY` |
 | Mini App 打不开 | 域名不是 HTTPS，或 webhook 域名与 Mini App 域名不一致 | 统一用同一个 HTTPS 域名，必要时填 `MINI_APP_URL` |
 | 人机验证组件不显示 | `CAPTCHA_ENABLED` 没开，或选了 `cap` 却没填 `CAPTCHA_URL` | 设置页补齐，保存后刷新小程序 |

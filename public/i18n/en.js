@@ -157,7 +157,7 @@ export default {
   "settings.group.captcha": "Captcha",
   "settings.group.github": "GitHub",
   "settings.group.verify": "Verification",
-  "settings.hint.ADMIN_IDS": "Super admin Telegram ids. Keep at least one. ADMIN_IDS on the Worker still works as a rescue entry",
+  "settings.hint.ADMIN_IDS": "Super admin Telegram ids. Keep at least one. ADMIN_IDS on the Worker is only used to seed the very first value",
   "settings.hint.ALLOWED_BOTS": "Bot ids allowed to speak. Every other bot gets its message deleted and gets banned",
   "settings.hint.AUDIT_RETENTION_DAYS": "How long audit records are kept",
   "settings.hint.CAPTCHA_ENABLED": "Adds a captcha option to the Mini App",
