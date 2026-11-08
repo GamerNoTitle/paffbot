@@ -8,3 +8,6 @@ coverage/
 .env
 
 .wrangler-home/
+
+# 私有测试（不进仓库）
+.private-tests/
