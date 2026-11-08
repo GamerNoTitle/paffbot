@@ -312,11 +312,24 @@ export function createApi(): Hono<AppBindings> {
     const login = normalizeGithubUsername(c.req.param("login"));
     if (!isValidGithubUsername(login)) return c.text("bad request", 400);
 
-    const res = await fetch(`https://github.com/${encodeURIComponent(login)}.png?size=160`, {
-      headers: { accept: "image/*", "user-agent": "paffbot" },
-      redirect: "follow",
-    });
-    if (!res.ok) return c.text("not found", 404);
+    // github.com/<login>.png 经常 504，优先走头像 CDN，再退回旧地址
+    const sources = [
+      `https://avatars.githubusercontent.com/${encodeURIComponent(login)}`,
+      `https://github.com/${encodeURIComponent(login)}.png?size=160`,
+    ];
+    let res: Response | null = null;
+    for (const url of sources) {
+      try {
+        const attempt = await fetch(url, { headers: { accept: "image/*", "user-agent": "paffbot" }, redirect: "follow" });
+        if (attempt.ok) {
+          res = attempt;
+          break;
+        }
+      } catch {
+        /* 换下一个来源 */
+      }
+    }
+    if (!res) return c.text("not found", 404);
 
     return new Response(res.body, {
       headers: {
