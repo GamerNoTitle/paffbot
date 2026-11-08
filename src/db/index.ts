@@ -677,3 +677,21 @@ export async function listUndeclinedJoinRequests(
     .filter((row) => parseDetail(row.detail).join_declined !== true)
     .map(({ id, chat_id, user_id }) => ({ id, chat_id, user_id }));
 }
+
+/** 同一群同一人，在这条记录之后有没有被放行过。用来兜住「放行和 chat_member 撞车」。 */
+export async function hasApprovalAfter(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  afterMs: number,
+): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT id FROM verifications
+       WHERE chat_id = ? AND user_id = ? AND status = 'approved' AND COALESCE(decided_at, created_at) > ?
+       LIMIT 1`,
+    )
+    .bind(chatId, userId, afterMs)
+    .first<{ id: string }>();
+  return Boolean(row);
+}

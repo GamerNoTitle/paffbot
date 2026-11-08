@@ -2,6 +2,7 @@ import {
   deletePurge,
   listDuePurges,
   listExpiredPending,
+  hasApprovalAfter,
   listUndeclinedJoinRequests,
   pruneAdminTickets,
   pruneOldVerifications,
@@ -9,6 +10,9 @@ import {
 } from "./db";
 import { pruneChallenges } from "./lib/challenge";
 import { declineJoinRequest } from "./verify/finalize";
+import { decideVerification } from "./db";
+import { parseDetail } from "./db";
+import { appendAudit } from "./db/audit";
 import { updateVerificationDetail } from "./db";
 import { nowMs } from "./lib/time";
 import { verifyAuditChain } from "./db/audit";
@@ -29,6 +33,25 @@ export async function runScheduled(env: Env): Promise<void> {
 
   const expired = await listExpiredPending(env.DB, 50);
   for (const row of expired) {
+    // 超时前再确认：这个人在这条记录之后已经被放行过，就别再按超时踢人
+    if (row.source === "group_join" && (await hasApprovalAfter(env.DB, row.chat_id, row.user_id, row.created_at))) {
+      await decideVerification(env.DB, row.id, {
+        status: "approved",
+        method: "admin_pass",
+        detail: { ...parseDetail(row.detail), via: "late_approval" },
+      });
+      await appendAudit(env.DB, {
+        actorId: 0,
+        actorType: "system",
+        action: "verification.approved",
+        chatId: row.chat_id,
+        targetUserId: row.user_id,
+        verificationId: row.id,
+        detail: { via: "late_approval" },
+      });
+      continue;
+    }
+
     await rejectVerification(
       { db: env.DB, tg },
       row,

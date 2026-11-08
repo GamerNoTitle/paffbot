@@ -264,6 +264,10 @@ async function startDirectJoinVerification(
   user: TgUser,
   updateId: number | null,
 ): Promise<void> {
+  // 放行和 chat_member 可能几乎同时到，进这里前再确认一次，避免把刚放行的人当成新入群
+  if (await findRecentlyApprovedForChat(ctx.db, chatId, user.id, nowMs() - 10 * 60_000)) return;
+  if (await findOpenVerificationForChat(ctx.db, chatId, user.id)) return;
+
   let remaining: number | undefined;
   if (!isSuperAdmin(ctx.config, user.id)) {
     const quota = await consumeDailyQuota(ctx.db, `tg:${chatId}:${user.id}`, ctx.config.dailyAttempts);
