@@ -23,6 +23,8 @@ export default {
   "admin.notice.timeout": "{name} asked to join (timed out, auto-declined)",
   "group.notice.button": "Verify",
 
+  "admin.skipApprove": "Skip verification and approve",
+  "admin.directReject": "Reject now",
   "admin.approve": "Approve",
   "admin.reject": "Reject",
   "admin.ban": "Ban",

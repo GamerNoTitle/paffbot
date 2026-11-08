@@ -23,6 +23,8 @@ export default {
   "admin.notice.timeout": "{name} 申请加入（验证超时，已自动拒绝）",
   "group.notice.button": "前往验证",
 
+  "admin.skipApprove": "跳过验证放行",
+  "admin.directReject": "直接拒绝",
   "admin.approve": "通过",
   "admin.reject": "拒绝",
   "admin.ban": "封禁",

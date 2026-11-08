@@ -50,6 +50,18 @@ export function groupJoinNotice(params: {
   return t(lang, "group.notice", { uid: params.userId, name: escapeHtml(params.userName) });
 }
 
+/** 申请刚进来、还没开始验证时的键盘：直接跳发放行或拒掉，不带封禁。 */
+export function requestNoticeKeyboard(verificationId: string, lang: Lang = DEFAULT_LANG): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: t(lang, "admin.skipApprove"), callback_data: `ap:${verificationId}` },
+        { text: t(lang, "admin.directReject"), callback_data: `rj:${verificationId}` },
+      ],
+    ],
+  };
+}
+
 /** 管理员在群里直接处理：通过 / 拒绝 / 封禁。 */
 export function adminKeyboard(verificationId: string, lang: Lang = DEFAULT_LANG): InlineKeyboardMarkup {
   return {

@@ -34,7 +34,14 @@ import { handleCommand } from "./commands";
 import { botUsername } from "./identity";
 import { normalizeLang, t } from "../i18n";
 import type { BotContext } from "./context";
-import { adminKeyboard, adminNotice, dmRateLimited, groupJoinNotice, groupNoticeKeyboard } from "./messages";
+import {
+  adminKeyboard,
+  adminNotice,
+  dmRateLimited,
+  groupJoinNotice,
+  groupNoticeKeyboard,
+  requestNoticeKeyboard,
+} from "./messages";
 import { beginChatVerify, handleChatText } from "./chat-verify";
 import { sendVerificationPrompt } from "./prompt";
 
@@ -185,7 +192,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
     chat_id: request.chat.id,
     text: notice.text,
     parse_mode: "HTML",
-    reply_markup: adminKeyboard(verification.id, lang),
+    reply_markup: requestNoticeKeyboard(verification.id, lang),
   });
   if (adminMsg) {
     await updateVerificationDetail(ctx.db, verification.id, { admin_message_id: adminMsg.message_id });
