@@ -10,7 +10,81 @@
 
 ## 预览
 
-| ![](./img/Snapzy_2026-11-08_10-30-31_981.png) |      |      |      |      |
-| :-------------------------------------------: | ---- | ---- | ---- | ---- |
-|                 私聊认证信息                  |      |      |      |      |
+| ![](./img/Snapzy_2026-11-08_10-44-34_944.png) | ![](./img/Snapzy_2026-11-08_10-44-53_517.png) | ![](./img/Snapzy_2026-11-08_10-47-25_202.png) |
+| :-------------------------------------------: | :-------------------------------------------: | :-------------------------------------------: |
+|                 私聊认证信息                  |                 通过聊天验证                  |                 入群记录审计                  |
+| ![](./img/Snapzy_2026-11-08_10-43-21_190.png) | ![](./img/Snapzy_2026-11-08_10-43-26_534.png) | ![](./img/Snapzy_2026-11-08_10-43-30_339.png) |
+|                   SSH 签名                    |                 Github OAuth                  |                   人机验证                    |
+
+## 快速开始
+
+在部署之前，请确认你具有
+
+- Cloudflare 账号
+- Github 账号
+- 找 @BotFather 获取 Bot 的 token
+- （建议）拥有一个域名
+
+首先，你需要安装一下 wrangler 并完成登录
+
+```bash
+npm install
+npm wrangler login
+```
+
+登录完成后，需要在 Cloudflare D1 上新建一个数据库
+
+```bash
+npx wrangler d1 create paffbot
+```
+
+这里的 `paffbot` 可以是任意名字，主要用于区分，这里运行完毕后会输出数据库的 id，将其填入 `wrangler.jsonc` 中
+
+```json
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "<YOUR_NAME_HERE>",
+      "database_id": "<YOUR_DATABASE_ID_HERE>",
+      "migrations_dir": "migrations"
+    }
+  ],
+```
+
+填入完毕后，我们要进行数据库的初始化，这里直接运行下面的命令即可
+
+```bash
+npx wrangler d1 migrations apply DB --remote
+```
+
+完成后，我们进入环境配置。虽然大部分设置都在网页中进行，但是有少部分必须通过环境变量进行
+
+```bash
+npx wrangler secret put BOT_TOKEN        # BotFather 给的 token
+npx wrangler secret put WEBHOOK_SECRET   # 至少 16 位，URL 路径段，同时也用于 WEBHOOK 的认证
+npx wrangler secret put ADMIN_IDS        # 你的 Telegram 数字 id
+npx wrangler secret put SETTINGS_KEY		 # （可选）用于设置凭据加密的密钥，虽然不填会使用 BOT_TOKEN，但是考虑到使用中可能会在 BotFather 那里进行 Token 轮换，所以强烈建议配置一下，以免出现解不开数据库的问题
+```
+
+你可以使用以下命令生成随机字符串
+
+```bash
+openssl rand -hex 32
+```
+
+完成后，我们进行部署
+
+```bash
+npm run deploy
+```
+
+部署完毕后，可以通过 `/health` 路由确定服务存活状态
+
+最后我们设置一下 webhook，通过以下命令进行
+
+```bash
+npm run webhook -- --url https://<YOUR_DOMAIN>
+```
+
+如果你在 Worker 上绑定了自定义域名，那就用自定义域名即可，否则使用 `.workers.dev` 可能会出现国内无法访问的问题
 
