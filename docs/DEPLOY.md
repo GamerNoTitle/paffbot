@@ -144,6 +144,23 @@ npx wrangler d1 export DB --remote --output backup.sql
 
 配置优先级：**数据库 > Worker env > 代码默认值**。数据库里的空值表示回退上一级。
 
+## 9.5 从 env 迁到数据库（已有实例）
+
+老版本把配置写在 `wrangler.jsonc` 的 `vars` 里。迁到数据库之后步骤是：
+
+1. 打开小程序「设置」，把当前生效的配置逐项填一遍并保存（值会写进 `settings` 表）
+2. 确认保存后 `/api/session` 的 `methods` 与之前一致
+3. 再把 `wrangler.jsonc` 里已经入库的 `vars` 删掉，`npm run deploy`
+
+删除顺序不能反：先入库、后删 env，否则中间会出现一段配置为空。
+
+密钥类（`GITHUB_OAUTH_SECRET`、`TURNSTILE_SECRET`、`GITHUB_TOKEN`）保存时会加密入库，
+Worker 上那份可以留着做兜底，也可以在确认设置页显示「已设置」后删掉：
+
+```bash
+npx wrangler secret delete TURNSTILE_SECRET
+```
+
 ## 10. 第一次进设置页
 
 1. 用超管账号私聊机器人，发 `/start`
