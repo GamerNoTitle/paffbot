@@ -599,3 +599,58 @@ export async function pruneOldVerifications(db: D1Database, retentionDays: numbe
     .run();
   return result.meta.changes ?? 0;
 }
+
+/* ---------------------------------------------------------------- 后台登录票据 */
+
+export interface AdminTicketRow {
+  nonce: string;
+  status: string;
+  ticket: string | null;
+  user_id: number | null;
+  created_at: number;
+  expires_at: number;
+  used_at: number | null;
+}
+
+/** 网页点「通过 Telegram 验证」时种一个 nonce，等 Bot 那边确认超管身份。 */
+export async function createAdminNonce(db: D1Database, nonce: string, ttlMs: number): Promise<void> {
+  const now = nowMs();
+  await db
+    .prepare("INSERT INTO admin_tickets (nonce, status, created_at, expires_at) VALUES (?, 'waiting', ?, ?)")
+    .bind(nonce, now, now + ttlMs)
+    .run();
+}
+
+/** Bot 校验通过后写入一次性 ticket，只在这之后才可能登录。 */
+export async function approveAdminNonce(
+  db: D1Database,
+  nonce: string,
+  userId: number,
+  ticket: string,
+): Promise<boolean> {
+  const row = await db
+    .prepare("SELECT nonce, status, expires_at FROM admin_tickets WHERE nonce = ?")
+    .bind(nonce)
+    .first<{ status: string; expires_at: number }>();
+  if (!row || row.status !== "waiting" || row.expires_at < nowMs()) return false;
+  await db
+    .prepare("UPDATE admin_tickets SET status = 'approved', ticket = ?, user_id = ? WHERE nonce = ?")
+    .bind(ticket, userId, nonce)
+    .run();
+  return true;
+}
+
+/** 用掉 ticket：只能用一次，换完立刻标记。 */
+export async function consumeAdminTicket(db: D1Database, ticket: string): Promise<number | null> {
+  const row = await db
+    .prepare("SELECT nonce, user_id, expires_at, used_at FROM admin_tickets WHERE ticket = ?")
+    .bind(ticket)
+    .first<{ nonce: string; user_id: number; expires_at: number; used_at: number | null }>();
+  if (!row || row.used_at !== null || row.expires_at < nowMs()) return null;
+  await db.prepare("UPDATE admin_tickets SET used_at = ? WHERE nonce = ?").bind(nowMs(), row.nonce).run();
+  return row.user_id;
+}
+
+export async function pruneAdminTickets(db: D1Database): Promise<void> {
+  await db.prepare("DELETE FROM admin_tickets WHERE expires_at < ?").bind(nowMs() - 24 * 3600 * 1000).run();
+}

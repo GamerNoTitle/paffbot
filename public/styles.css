@@ -1506,3 +1506,7 @@ md-dialog {
     transform: translateY(-2px) scale(1.01);
   }
 }
+
+.panel__actions--center {
+  justify-content: center;
+}

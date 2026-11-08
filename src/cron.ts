@@ -2,6 +2,7 @@ import {
   deletePurge,
   listDuePurges,
   listExpiredPending,
+  pruneAdminTickets,
   pruneOldVerifications,
   pruneRateLimits,
 } from "./db";
@@ -50,6 +51,7 @@ export async function runScheduled(env: Env): Promise<void> {
   const now = new Date();
   if (now.getUTCHours() === 3 && now.getUTCMinutes() < 2) {
     const pruned = await pruneOldVerifications(env.DB, config.retentionDays);
+    await pruneAdminTickets(env.DB);
     const challenges = await pruneChallenges(env.DB);
     const quotas = await pruneRateLimits(env.DB);
     const chain = await verifyAuditChain(env.DB, 2000);

@@ -8,6 +8,7 @@ import {
   type VerificationRow,
 } from "../db";
 import { appendAudit, listAudit } from "../db/audit";
+import { approveAdminNonce } from "../db";
 import { randomToken } from "../lib/crypto";
 import { displayName, escapeHtml, truncate } from "../lib/html";
 import type { InlineKeyboardMarkup, TgMessage } from "../lib/telegram";
@@ -133,6 +134,39 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
 }
 
 async function handleStart(env: CommandEnv): Promise<void> {
+  // 网页后台登录：/start admin_<nonce>
+  const payload = env.args[0] ?? "";
+  if (payload.startsWith("admin_")) {
+    const nonce = payload.slice("admin_".length);
+    if (!env.superAdmin) {
+      await reply(env, "这个链接只能给超级管理员用。");
+      return;
+    }
+    const ticket = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const approved = await approveAdminNonce(env.ctx.db, nonce, env.userId, ticket);
+    if (!approved) {
+      await reply(env, "链接已经失效了，回到网页重新点一次「通过 Telegram 验证身份」。");
+      return;
+    }
+    await appendAudit(env.ctx.db, {
+      actorId: env.userId,
+      actorType: "user",
+      action: "admin.login_issued",
+      chatId: null,
+      targetUserId: env.userId,
+      verificationId: null,
+      detail: { via: "browser" },
+    });
+    await reply(
+      env,
+      "身份确认了。点下面的按钮进后台，链接只能用一次，10 分钟内有效。",
+      { inline_keyboard: [[{ text: "打开后台", url: `${env.ctx.origin}/admin?t=${ticket}` }]] },
+    );
+    return;
+  }
+
   if (!env.isPrivate) {
     const username = await botUsername(env.ctx.tg);
     await reply(

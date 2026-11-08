@@ -5,6 +5,8 @@ import { constantTimeEqual, utf8 } from "./lib/crypto";
 import type { Env } from "./env";
 import type { TgUpdate } from "./lib/telegram";
 import { buildContext, createApi, type AppBindings } from "./web/api";
+import { consumeAdminTicket } from "./db";
+import { ADMIN_COOKIE, signSession } from "./lib/session";
 
 const app = new Hono<AppBindings>();
 
@@ -59,9 +61,27 @@ app.route("/", createApi());
 
 // 其余请求交给 Static Assets（Mini App 的 index.html / app.js / style.css）
 // /admin 直接给同一份 SPA，前端按路径打开审计视图
-app.get("/admin", (c) => {
+app.get("/admin", async (c) => {
   const url = new URL(c.req.url);
+  const ticket = url.searchParams.get("t");
+
+  // Bot 发来的一次性链接：换 Cookie 后把地址栏里的票据抹掉
+  if (ticket) {
+    const ctx = await buildContext(c.env, url.origin);
+    const userId = await consumeAdminTicket(ctx.db, ticket);
+    if (userId === null) return c.redirect("/admin?expired=1", 302);
+
+    const session = await signSession(userId, 7 * 24 * 3600 * 1000, ctx.config.sessionKey);
+    const response = c.redirect("/admin", 302);
+    response.headers.append(
+      "Set-Cookie",
+      `${ADMIN_COOKIE}=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
+    );
+    return response;
+  }
+
   url.pathname = "/";
+  url.search = "";
   return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw));
 });
 

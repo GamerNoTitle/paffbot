@@ -39,6 +39,8 @@ import {
   oauthEnabled,
 } from "../lib/github-oauth";
 import { botUsername } from "../bot/identity";
+import { ADMIN_COOKIE, readCookie, signSession, verifySession } from "../lib/session";
+import { consumeAdminTicket, createAdminNonce } from "../db";
 import { validateInitData, type InitDataUser } from "./initdata";
 
 export type AppBindings = { Bindings: Env; Variables: { ctx: BotContext } };
@@ -111,8 +113,18 @@ function publicVerification(row: VerificationRow) {
 async function readInitUser(c: Context<AppBindings>): Promise<{ user: InitDataUser | null; reason: string }> {
   const initData = c.req.header("x-telegram-init-data") ?? "";
   const ctx = c.get("ctx");
-  const result = await validateInitData(initData, ctx.config.botToken);
-  return result.ok ? { user: result.user, reason: "" } : { user: null, reason: result.reason };
+  if (initData) {
+    const result = await validateInitData(initData, ctx.config.botToken);
+    return result.ok ? { user: result.user, reason: "" } : { user: null, reason: result.reason };
+  }
+
+  // 浏览器后台：Cookie 里是 Bot 发的一次性票据换来的会话
+  const raw = readCookie(c.req.header("cookie") ?? null, ADMIN_COOKIE);
+  if (raw) {
+    const userId = await verifySession(raw, ctx.config.sessionKey);
+    if (userId !== null) return { user: { id: userId, first_name: "" } as InitDataUser, reason: "" };
+  }
+  return { user: null, reason: "missing" };
 }
 
 export function createApi(): Hono<AppBindings> {
@@ -121,6 +133,34 @@ export function createApi(): Hono<AppBindings> {
   api.use("*", async (c, next) => {
     c.set("ctx", await buildContext(c.env, new URL(c.req.url).origin));
     await next();
+  });
+
+  /** 公开信息：网页要拼 Bot 深链，不需要登录。 */
+  api.get("/api/meta", async (c) => {
+    const ctx = c.get("ctx");
+    const username = await botUsername(ctx.tg);
+    const raw = readCookie(c.req.header("cookie") ?? null, ADMIN_COOKIE);
+    const userId = raw ? await verifySession(raw, ctx.config.sessionKey) : null;
+    return c.json({
+      ok: true,
+      botUsername: username,
+      admin: userId !== null && isSuperAdmin(ctx.config, userId),
+    });
+  });
+
+  /** 浏览器点「通过 Telegram 验证身份」：种 nonce，等 Bot 确认。 */
+  api.post("/api/admin/login/start", async (c) => {
+    const ctx = c.get("ctx");
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await createAdminNonce(ctx.db, nonce, 10 * 60_000);
+    const username = await botUsername(ctx.tg);
+    return c.json({
+      ok: true,
+      nonce,
+      url: username ? `https://t.me/${username}?start=admin_${nonce}` : null,
+    });
   });
 
   api.get("/api/session", async (c) => {
@@ -393,55 +433,6 @@ export function createApi(): Hono<AppBindings> {
     return c.json({
       ok: true,
       bound: account ? { login: account.github_login, githubId: account.github_id, at: account.bound_at } : null,
-    });
-  });
-
-  // ------------------------------------------------ 浏览器独立校验（无 Telegram）
-
-  /** 签发一次性挑战，供浏览器直接跑 GitHub 签名校验（不会放行任何群）。 */
-  api.get("/api/github/challenge", async (c) => {
-    const ctx = c.get("ctx");
-    const quota = await consumeDailyQuota(ctx.db, `ip:${clientIp(c)}`, ctx.config.dailyAttempts);
-    if (!quota.allowed) {
-      return c.json(
-        { ok: false, error: "今天尝试的太多了，明天再来吧！", remaining: 0 },
-        429,
-      );
-    }
-    const issued = await issueChallenge(ctx.config, ctx.db, clientIp(c));
-    return c.json({ ok: true, ...issued, remaining: quota.limit - quota.used });
-  });
-
-  api.post("/api/github/check", async (c) => {
-    const ctx = c.get("ctx");
-    const body = (await safeJson(c.req.raw)) as Record<string, unknown>;
-
-    const username = normalizeGithubUsername(typeof body.username === "string" ? body.username : "");
-    const signature = typeof body.signature === "string" ? body.signature.trim() : "";
-    const token = typeof body.token === "string" ? body.token : "";
-
-    if (!isValidGithubUsername(username)) return c.json({ ok: false, error: "GitHub 用户名格式不正确" }, 400);
-    if (!signature) return c.json({ ok: false, error: "请粘贴签名结果" }, 400);
-    if (!signature.includes("BEGIN SSH SIGNATURE")) {
-      return c.json({ ok: false, error: "这不是 SSHSIG 签名（缺少 BEGIN SSH SIGNATURE 标记）" }, 400);
-    }
-    if (signature.length > 20_000) return c.json({ ok: false, error: "签名内容过长" }, 400);
-
-    const claim = await readChallenge(ctx.config, token);
-    if (!claim) return c.json({ ok: false, error: "校验已失效，刷新页面重新来" }, 400);
-    if (!(await consumeChallenge(ctx.db, claim.nonce))) {
-      return c.json({ ok: false, error: "这次校验已经用过了，刷新页面重新来" }, 409);
-    }
-
-    const result = await verifyGithubOwnership(ctx.config, username, signature, claim.challenge);
-    if (!result.ok) return c.json({ ok: false, error: result.error ?? "校验失败" }, 400);
-
-    return c.json({
-      ok: true,
-      githubUsername: username,
-      fingerprint: result.fingerprint,
-      keyType: result.keyType,
-      namespace: result.namespace,
     });
   });
 

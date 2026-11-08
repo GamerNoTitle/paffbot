@@ -13,7 +13,6 @@
   },
   "d1_databases": [
     {
-      // 代码里统一用 env.DB，binding 必须叫 DB
       "binding": "DB",
       "database_name": "paffbot",
       "database_id": "6ed0080d-7496-432f-95e2-a500ddd2be1e",
@@ -21,12 +20,9 @@
     }
   ],
   "triggers": {
-    // 每分钟扫一次超时的 pending 记录
     "crons": ["* * * * *"]
   },
   "vars": {
-    // 业务配置都放数据库（网页「设置」里改），这里只留初始化用的东西。
-    // 全新部署时先用 env 填一次，之后就以数据库为准。
     "ENVIRONMENT": "production"
   }
 }

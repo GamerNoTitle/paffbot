@@ -185,6 +185,10 @@ async function loadSession() {
     state.captchaEnabled = (data.methods ?? []).some((m) => m.id === "captcha");
     state.githubLogin = data.github?.login || "";
 
+    // 浏览器后台：登录成功后才切到审计
+    $("nav")?.classList.remove("hidden");
+    if (location.pathname === "/admin") switchTab("audit");
+
     if (!data.verification) {
       const name = data.user?.name?.split(" ")[0];
       setHero({
@@ -213,7 +217,7 @@ async function loadSession() {
     await loadPanel();
   } catch (err) {
     if (err.status === 401 && !tg?.initData) {
-      await enterStandalone();
+      await enterBrowserGate();
     } else {
       showState("empty");
       $("empty-title").textContent = t("state.loadFail");
@@ -629,8 +633,8 @@ function githubCommand(shell) {
     : `echo "${state.challenge}" | ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n file -`;
 }
 
-function renderGithubPanel(panel, data, mode = "verify") {
-  const standalone = mode === "standalone";
+function renderGithubPanel(panel, data) {
+  const standalone = false;
   const requirements = data.requirements || {};
   const notes = [];
   if (requirements.minAccountAgeDays > 0) {
@@ -744,23 +748,9 @@ function renderGithubPanel(panel, data, mode = "verify") {
 
   submit.addEventListener("click", async () => {
     submit.disabled = true;
-    submit.textContent = standalone ? t("panel.checkSubmitting") : t("panel.submitting");
+    submit.textContent = t("panel.submitting");
     $("gh-error").classList.add("hidden");
     try {
-      if (standalone) {
-        const result = await api("/api/github/check", {
-          method: "POST",
-          body: JSON.stringify({
-            token: state.checkToken,
-            username: username.value.trim(),
-            signature: signature.value.trim(),
-          }),
-        });
-        onStandaloneResult(result);
-        submit.disabled = false;
-        submit.textContent = t("panel.check.submit");
-        return;
-      }
       const result = await api("/api/verify/submit", {
         method: "POST",
         body: JSON.stringify({
@@ -776,70 +766,89 @@ function renderGithubPanel(panel, data, mode = "verify") {
       $("gh-error").classList.remove("hidden");
       showResultDialog({ title: t("dialog.error.title"), text: err.message, tone: "error" });
       submit.disabled = false;
-      submit.textContent = standalone ? t("panel.check.submit") : t("panel.ssh.submit");
-      if (standalone && (err.status === 409 || err.status === 400)) {
-        await loadStandalonePanel();
-      }
+      submit.textContent = t("panel.ssh.submit");
     }
   });
 }
 
-/* ---------------------------------------------------------------- 独立校验（无 Telegram） */
+/* ---------------------------------------------------------------- 浏览器门禁（无 Telegram） */
 
-async function enterStandalone() {
+/**
+ * 不在 Telegram 里打开时，页面只留一个入口：
+ * 普通首页指向 Bot，/admin 指向「用 Bot 验证身份」。
+ */
+async function enterBrowserGate() {
   state.standalone = true;
+  state.gate = true;
+  $("nav")?.classList.add("hidden");
   showState("pending");
+
+  const adminPath = location.pathname === "/admin";
+  const expired = new URLSearchParams(location.search).get("expired") === "1";
+
+  let bot = "";
+  let loggedIn = false;
+  try {
+    const meta = await api("/api/meta");
+    bot = meta.botUsername ?? "";
+    loggedIn = Boolean(meta.admin);
+  } catch {
+    /* 拿不到就先显示按钮，点了会报错 */
+  }
+
+  // Cookie 有效但 /api/session 仍失败：刷新一次让它带上会话
+  if (loggedIn && !expired) {
+    location.replace("/admin");
+    return;
+  }
+
+  const panel = $("method-panel");
+  panel.innerHTML = adminPath
+    ? `<div class="panel__head panel__head--center">
+        <h2 class="md-typescale-headline-medium">${esc(t("gate.admin.title"))}</h2>
+        <p class="md-typescale-body-medium muted">${esc(t("gate.admin.text"))}</p>
+      </div>
+      <div class="panel__actions panel__actions--center">
+        <md-filled-button id="gate-login">${esc(t("gate.admin.button"))}</md-filled-button>
+      </div>
+      <p class="md-typescale-body-small muted settings__hint" id="gate-hint">${expired ? esc(t("gate.admin.expired")) : ""}</p>`
+    : `<div class="panel__head panel__head--center">
+        <h2 class="md-typescale-headline-medium">${esc(t("gate.bot.title"))}</h2>
+        <p class="md-typescale-body-medium muted">${esc(t("gate.bot.text"))}</p>
+      </div>
+      <div class="panel__actions panel__actions--center">
+        <md-filled-button id="gate-bot">${esc(t("gate.bot.button"))}</md-filled-button>
+      </div>`;
+
   setHero({
     eyebrow: t("app.name"),
-    title: t("hero.verifyTitle"),
-    sub: t("panel.ssh.desc"),
+    title: adminPath ? t("gate.admin.hero") : t("gate.bot.hero"),
+    sub: "",
     chips: [],
   });
-  await loadStandalonePanel();
-}
+  $("hero-progress").classList.add("hidden");
 
-async function loadStandalonePanel() {
-  const panel = $("method-panel");
-  panel.innerHTML = `<p class="md-typescale-body-medium muted">${esc(t("panel.preparing"))}</p>`;
-  try {
-    const data = await api("/api/github/challenge");
-    state.checkToken = data.token;
-    state.challenge = data.challenge;
-    setHero({
-      eyebrow: t("app.name"),
-      title: t("hero.verifyTitle"),
-      sub: t("panel.ssh.desc"),
-      chips: [
-        ...(typeof data.remaining === "number" ? [{ text: t("hero.attemptsLeft", { count: data.remaining }) }] : []),
-        { text: t("hero.remaining", { time: "05:00" }), id: "hero-countdown", strong: true },
-      ],
+  if (!adminPath) {
+    $("gate-bot").addEventListener("click", () => {
+      if (bot) window.open(`https://t.me/${bot}`, "_blank", "noopener");
+      else $("method-panel").insertAdjacentHTML("beforeend", `<p class="captcha__err">${esc(t("gate.bot.missing"))}</p>`);
     });
-    startCountdown(data.expiresAt);
-    state.standaloneData = data;
-    state.standaloneRemaining = typeof data.remaining === "number" ? data.remaining : null;
-    renderGithubPanel(panel, { challenge: data.challenge, requirements: {} }, "standalone");
-  } catch (err) {
-    // 没有可用挑战：hero 里的进度条和按钮都不该再显示
-    clearInterval(state.timer);
-    $("hero-progress").classList.add("hidden");
-    setHero({ chips: [] });
-
-    panel.innerHTML = `
-      <div class="state">
-        <div class="state__icon">${svgIcon("clock", 30)}</div>
-        <h2 class="md-typescale-headline-small">${esc(t("state.rateLimited.title"))}</h2>
-        <p class="md-typescale-body-medium muted">${esc(err.message)}</p>
-      </div>`;
+    return;
   }
-}
 
-function onStandaloneResult(result) {
-  $("dialog-title").textContent = t("panel.standaloneDone");
-  $("dialog-icon").innerHTML = svgIcon("check", 30);
-  $("dialog-text").innerHTML =
-    esc(t("dialog.checkOk", { login: result.githubUsername })) +
-    `<br><span class="mono md-typescale-body-small">${esc(result.fingerprint ?? "")}</span>`;
-  $("success-dialog").show();
+  $("gate-login").addEventListener("click", async () => {
+    const button = $("gate-login");
+    button.setAttribute("disabled", "");
+    $("gate-hint").textContent = t("gate.admin.opening");
+    try {
+      const data = await api("/api/admin/login/start", { method: "POST", body: {} });
+      if (!data.url) throw new Error(t("gate.bot.missing"));
+      location.href = data.url;
+    } catch (err) {
+      $("gate-hint").textContent = err.message;
+      button.removeAttribute("disabled");
+    }
+  });
 }
 
 /* ---------------------------------------------------------------- 状态 */
@@ -883,15 +892,8 @@ function startCountdown(expiresAt) {
     }
     if (left === 0) {
       clearInterval(state.timer);
-      if (state.standalone) {
-        $("method-panel").innerHTML = `
-          <p class="md-typescale-body-medium muted">${esc(t("panel.expiredStandalone"))}</p>
-          <div class="panel__actions"><md-filled-tonal-button id="btn-new-challenge">${esc(t("panel.newChallenge"))}</md-filled-tonal-button></div>`;
-        $("btn-new-challenge").addEventListener("click", () => loadStandalonePanel());
-      } else {
-        $("method-panel").innerHTML =
-          `<p class="md-typescale-body-medium muted">${esc(t("panel.expiredVerify"))}</p>`;
-      }
+      $("method-panel").innerHTML =
+        `<p class="md-typescale-body-medium muted">${esc(t("panel.expiredVerify"))}</p>`;
     }
   };
   tick();
@@ -962,10 +964,10 @@ async function loadAudit() {
       logs: data.auditTotal,
     });
     renderAudit(data);
-    $("token-card").classList.add("hidden");
+
   } catch (err) {
     $("audit-hint").textContent = t("audit.loadFail", { error: err.message });
-    if (err.status === 401) $("token-card").classList.remove("hidden");
+
   }
 }
 
@@ -1761,7 +1763,7 @@ function applyNavVisibility() {
   if (auditButton) auditButton.classList.toggle("hidden", !isAdmin);
   const settingsButton = $("nav").querySelector('button[data-view="settings"]');
   if (settingsButton) settingsButton.classList.toggle("hidden", !state.superAdmin);
-  if (isAdmin && location.pathname === "/admin") switchTab("audit");
+
 }
 
 function switchTab(name) {
@@ -1773,7 +1775,7 @@ function switchTab(name) {
     button.setAttribute("aria-selected", String(button.dataset.view === name));
   }
   if (name === "audit") {
-    if (!tg?.initData && !state.token) $("token-card").classList.remove("hidden");
+
     if (!state.auditLoaded) {
       state.auditLoaded = true;
       loadAudit();
@@ -1868,12 +1870,7 @@ $("audit-group").addEventListener("change", () => {
   loadAudit();
 });
 $("btn-audit-csv").addEventListener("click", downloadCsv);
-$("btn-token").addEventListener("click", () => {
-  state.token = $("admin-token").value.trim();
-  localStorage.setItem("paffbot.token", state.token);
-  $("token-card").classList.add("hidden");
-  loadAudit();
-});
+
 
 /* ---------------------------------------------------------------- i18n */
 
@@ -1909,32 +1906,6 @@ function retranslate() {
 
   if (!$("view-audit").classList.contains("hidden")) {
     loadAudit();
-    return;
-  }
-
-  if (state.standalone && !$("pending").classList.contains("hidden")) {
-    if (state.standaloneData) {
-      const typed = {
-        username: $("gh-username")?.value ?? "",
-        signature: $("gh-signature")?.value ?? "",
-      };
-      setHero({
-        eyebrow: t("app.name"),
-        title: t("hero.verifyTitle"),
-        sub: t("panel.ssh.desc"),
-        chips: [
-          ...(state.standaloneRemaining !== null
-            ? [{ text: t("hero.attemptsLeft", { count: state.standaloneRemaining }) }]
-            : []),
-          { text: t("hero.remaining", { time: state.countdownText || "05:00" }), id: "hero-countdown", strong: true },
-        ],
-      });
-      renderGithubPanel($("method-panel"), { challenge: state.standaloneData.challenge, requirements: {} }, "standalone");
-      if ($("gh-username")) $("gh-username").value = typed.username;
-      if ($("gh-signature")) $("gh-signature").value = typed.signature;
-      const submit = $("gh-submit");
-      if (submit && typed.username && typed.signature) submit.disabled = false;
-    }
     return;
   }
 

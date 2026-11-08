@@ -170,6 +170,19 @@ Worker 上那份可以留着做兜底，也可以在确认设置页显示「已�
 npx wrangler secret delete TURNSTILE_SECRET
 ```
 
+## 9.6 浏览器访问后台
+
+后台不在网页上验证身份，走 Telegram：
+
+1. 浏览器打开 `https://<你的域名>/admin`
+2. 点「验证身份」，页面跳到 `https://t.me/<你的 bot>?start=admin_<nonce>`
+3. Bot 收到后确认你是超管，回一条带「打开后台」按钮的消息
+4. 点按钮，票据换成 Cookie（HttpOnly，7 天），之后浏览器直接访问 `/admin` 即可
+
+票据一次有效，10 分钟内没用就作废；换到的 Cookie 只存在浏览器里，退出登录删掉
+`paff_admin` 这个 Cookie 即可。网页首页在非 Telegram 环境下只提供「打开 Bot」按钮，
+不提供任何签名验证入口。
+
 ## 10. 第一次进设置页
 
 1. 用超管账号私聊机器人，发 `/start`

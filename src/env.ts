@@ -51,6 +51,8 @@ export interface Env {
 
 export interface Config {
   botToken: string;
+  /** 浏览器会话 cookie 的签名材料：SETTINGS_KEY 优先，回退 BOT_TOKEN */
+  sessionKey: string;
   webhookSecret: string;
   adminIds: number[];
   adminToken: string | null;
@@ -161,6 +163,7 @@ export async function loadConfig(env: Env): Promise<Config> {
 
   return {
     botToken,
+    sessionKey: (env.SETTINGS_KEY ?? "").trim() || botToken,
     webhookSecret,
     // 数据库是唯一来源；Worker 上的 ADMIN_IDS 只在数据库还没写过值时用于首次初始化。
     // 页面本身禁止把超管删空，所以正常运行时 env 不再参与。
