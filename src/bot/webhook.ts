@@ -184,7 +184,7 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
   const adminMsg = await ctx.tg.trySendMessage({
     chat_id: request.chat.id,
     text: notice.text,
-    entities: notice.entities,
+    parse_mode: "HTML",
     reply_markup: adminKeyboard(verification.id, lang),
   });
   if (adminMsg) {

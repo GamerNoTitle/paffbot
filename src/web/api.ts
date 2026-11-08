@@ -80,10 +80,11 @@ async function markCaptchaPassed(ctx: BotContext, verification: VerificationRow)
     detail: { method: "captcha", holdHours: ctx.config.captchaHoldHours },
   });
 
-  const name = verification.display_name ?? verification.username ?? String(verification.user_id);
+  const rawName = verification.display_name ?? verification.username ?? String(verification.user_id);
+  const name = `<a href="tg://user?id=${verification.user_id}">${escapeHtml(rawName)}</a>`;
   const sent = await ctx.tg.trySendMessage({
     chat_id: verification.chat_id,
-    text: t(DEFAULT_LANG, "group.notice.captcha", { name: escapeHtml(name) }),
+    text: t(DEFAULT_LANG, "group.notice.captcha", { name }),
     parse_mode: "HTML",
     reply_markup: adminKeyboard(verification.id, DEFAULT_LANG),
   });

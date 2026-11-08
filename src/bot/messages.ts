@@ -84,15 +84,10 @@ export function adminNotice(params: {
   lang?: Lang;
 }): { text: string; entities: TgEntity[] } {
   const lang = params.lang ?? DEFAULT_LANG;
-  const name = params.userName;
-  const text = t(lang, "admin.notice", { name });
-  const offset = text.indexOf(name);
-  return {
-    text,
-    entities: [
-      { type: "text_mention", offset: Math.max(0, offset), length: name.length, user: { id: params.userId, first_name: name } },
-    ],
-  };
+  // 用 tg://user 链接而不是 text_mention 实体：客户端渲染更稳，长名字也不会串位
+  const link = `<a href="tg://user?id=${params.userId}">${escapeHtml(params.userName)}</a>`;
+  const text = t(lang, "admin.notice", { name: link });
+  return { text, entities: [] };
 }
 
 const METHOD_KEYS: Record<string, string> = {
