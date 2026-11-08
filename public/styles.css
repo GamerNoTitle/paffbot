@@ -1513,4 +1513,7 @@ md-dialog {
 
 .panel__head--center .muted {
   text-align: center;
+  /* .panel__head p 限了 58ch，不居中盒子的话文字会贴着左侧 */
+  margin-left: auto;
+  margin-right: auto;
 }
