@@ -1477,10 +1477,6 @@ md-dialog {
     transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.25, 1);
   }
 
-  .card:hover {
-    transform: translateY(-2px);
-  }
-
   /* 按下时形状轻微变化，呼应 M3 的 shape morph */
   md-filled-button {
     transition:
@@ -1522,14 +1518,20 @@ md-dialog {
 .bind-card {
   display: flex;
   flex-direction: column;
-  padding: 6px 4px;
+  padding: 4px 0;
 }
 
 .bind {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "top top"
+    "sub method"
+    "group group"
+    "gh gh";
+  align-items: center;
+  gap: 6px 12px;
+  padding: 16px 18px;
   border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 18%, transparent);
 }
 
@@ -1537,45 +1539,72 @@ md-dialog {
   border-bottom: 0;
 }
 
-.bind__who {
+.bind--head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  font-weight: 500;
+  justify-content: space-between;
+  padding: 12px 18px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--md-sys-color-on-surface-variant);
+  border-bottom: 0;
 }
 
-.bind__who a {
+.bind__top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bind__name {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--md-sys-color-primary);
   text-decoration: none;
-}
-
-.bind__chat {
-  font-size: 12.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.bind__sub {
+  grid-area: sub;
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.bind__group {
+  grid-area: group;
+  font-size: 13px;
+  color: var(--md-sys-color-outline);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bind__github {
+  grid-area: gh;
+  margin-top: 2px;
+}
+
 .bind__method {
-  align-self: flex-start;
-  justify-self: start;
+  grid-area: method;
+  justify-self: end;
   padding: 4px 12px;
   border-radius: var(--shape-pill);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
   font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .bind__method.is-captcha {
   background: var(--md-sys-color-tertiary-container);
   color: var(--md-sys-color-on-tertiary-container);
-}
-
-.bind__github {
-  grid-column: 1 / -1;
 }
 
 .bind__gh {
@@ -1587,44 +1616,25 @@ md-dialog {
 }
 
 .bind__avatar {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--md-sys-color-surface-container-high);
 }
 
-.bind__meta {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
+.bind__gh-name {
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.bind__meta .muted {
-  font-size: 12px;
+.bind__gh-id {
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 720px) {
-  .bind {
-    display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto minmax(0, 1.2fr);
-    gap: 4px 14px;
-    align-items: center;
-  }
-
-  .bind__github {
-    grid-column: auto;
-  }
-
-  .bind__method {
-    justify-self: center;
-  }
-}
-
-/* 导航有四个 tab 时，窄屏要收一收，别把主题按钮挤出去 */
-@media (max-width: 460px) {
-  .segmented button {
-    padding-inline: 10px;
-    font-size: 12.5px;
-  }
+.bind__gh-empty {
+  font-size: 13px;
+  color: var(--md-sys-color-outline);
 }

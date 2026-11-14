@@ -38,6 +38,8 @@ export default {
   "audit.title": "Audit",
   "audit.tokenLabel": "Admin password",
   "audit.verifyTitle": "Verification records",
+  "bindings.col.method": "Method",
+  "bindings.col.user": "Username",
   "bindings.count": "{count} approved users",
   "bindings.empty": "Nobody has passed yet",
   "bindings.githubId": "ID {id}",

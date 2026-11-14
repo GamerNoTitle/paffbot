@@ -1485,26 +1485,28 @@ function renderBindings(data) {
     const gh = row.github
       ? `<a class="bind__gh" href="https://github.com/${encodeURIComponent(row.github.login)}" target="_blank" rel="noreferrer">
            <img class="bind__avatar" src="/api/github/avatar/${encodeURIComponent(row.github.login)}" alt="" loading="lazy" onerror="this.remove()" />
-           <span class="bind__meta">
-             <b>${esc(row.github.login)}</b>
-             <span class="muted">${esc(t("bindings.githubId", { id: row.github.id ?? "-" }))}</span>
-           </span>
+           <span class="bind__gh-name">${esc(row.github.login)}</span>
+           <span class="bind__gh-id">${esc(row.github.id ?? "-")}</span>
          </a>`
-      : `<span class="muted">${esc(t("bindings.notBound"))}</span>`;
+      : `<span class="bind__gh-empty">${esc(t("bindings.notBound"))}</span>`;
 
     return `<div class="bind">
-      <div class="bind__who">
-        <a href="tg://user?id=${row.userId}">${esc(row.displayName)}</a>
-        ${row.username ? `<span class="muted">@${esc(row.username)}</span>` : ""}
-        <span class="muted">${esc(String(row.userId))}</span>
+      <div class="bind__top">
+        <a class="bind__name" href="tg://user?id=${row.userId}">${esc(row.displayName)}</a>
+        <span class="bind__method ${row.viaCaptcha ? "is-captcha" : ""}">${esc(t(methodKey))}</span>
       </div>
-      <div class="bind__chat muted">${esc(row.chatTitle ?? String(row.chatId))}</div>
-      <div class="bind__method ${row.viaCaptcha ? "is-captcha" : ""}">${esc(t(methodKey))}</div>
+      <div class="bind__sub">${row.username ? `@${esc(row.username)}` : `#${row.userId}`}</div>
+      <div class="bind__group">${esc(row.chatTitle ?? String(row.chatId))}</div>
       <div class="bind__github">${gh}</div>
     </div>`;
   });
 
-  body.innerHTML = `<div class="card bind-card">${items.join("")}</div>`;
+  const header = `<div class="bind bind--head">
+      <span>${esc(t("bindings.col.user"))}</span>
+      <span>${esc(t("bindings.col.method"))}</span>
+    </div>`;
+
+  body.innerHTML = `<div class="card bind-card">${header}${items.join("")}</div>`;
 }
 
 /* ---------------------------------------------------------------- 运行配置 */
