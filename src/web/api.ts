@@ -39,6 +39,7 @@ import {
   oauthEnabled,
 } from "../lib/github-oauth";
 import { botUsername } from "../bot/identity";
+import { listBindings } from "../db";
 import { ADMIN_COOKIE, readCookie, signSession, verifySession } from "../lib/session";
 import { consumeAdminTicket, createAdminNonce } from "../db";
 import { validateInitData, type InitDataUser } from "./initdata";
@@ -662,6 +663,47 @@ export function createApi(): Hono<AppBindings> {
   });
 
   /** 审计日志：分页 + 动作筛选 + 关键字搜索。 */
+  /** 用户绑定：通过的人都列出来，标出是不是靠验证码过的。 */
+  api.get("/api/admin/bindings", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await authorizeAudit(c, ctx);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const chatIdRaw = c.req.query("chatId");
+    const chatId = chatIdRaw ? Number.parseInt(chatIdRaw, 10) : null;
+    if (chatId !== null && !Number.isSafeInteger(chatId)) {
+      return c.json({ ok: false, error: "chatId 不合法" }, 400);
+    }
+    // 非超管只能看自己管的群
+    const scope = auth.superAdmin ? chatId : auth.chatId;
+
+    const limit = Number.parseInt(c.req.query("limit") ?? "50", 10);
+    const offset = Number.parseInt(c.req.query("offset") ?? "0", 10);
+    const { rows, total } = await listBindings(ctx.db, {
+      chatId: scope,
+      limit: Number.isFinite(limit) ? limit : 50,
+      offset: Number.isFinite(offset) ? offset : 0,
+    });
+
+    return c.json({
+      ok: true,
+      total,
+      rows: rows.map((row) => ({
+        userId: row.user_id,
+        displayName: row.display_name ?? row.username ?? String(row.user_id),
+        username: row.username,
+        chatId: row.chat_id,
+        chatTitle: row.chat_title,
+        method: row.method,
+        viaCaptcha: row.via_captcha === 1,
+        decidedAt: row.decided_at,
+        github: row.github_login
+          ? { login: row.github_login, id: row.github_id, boundAt: row.bound_at }
+          : null,
+      })),
+    });
+  });
+
   api.get("/api/audit/log", async (c) => {
     const ctx = c.get("ctx");
     const auth = await authorizeAudit(c, ctx);
@@ -725,6 +767,47 @@ export function createApi(): Hono<AppBindings> {
         detail: parseDetail(row.detail),
       })),
       verificationsTotal: verifications.total,
+    });
+  });
+
+  /** 用户绑定：通过的人都列出来，标出是不是靠验证码过的。 */
+  api.get("/api/admin/bindings", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await authorizeAudit(c, ctx);
+    if ("error" in auth) return c.json({ ok: false, error: auth.error }, auth.status);
+
+    const chatIdRaw = c.req.query("chatId");
+    const chatId = chatIdRaw ? Number.parseInt(chatIdRaw, 10) : null;
+    if (chatId !== null && !Number.isSafeInteger(chatId)) {
+      return c.json({ ok: false, error: "chatId 不合法" }, 400);
+    }
+    // 非超管只能看自己管的群
+    const scope = auth.superAdmin ? chatId : auth.chatId;
+
+    const limit = Number.parseInt(c.req.query("limit") ?? "50", 10);
+    const offset = Number.parseInt(c.req.query("offset") ?? "0", 10);
+    const { rows, total } = await listBindings(ctx.db, {
+      chatId: scope,
+      limit: Number.isFinite(limit) ? limit : 50,
+      offset: Number.isFinite(offset) ? offset : 0,
+    });
+
+    return c.json({
+      ok: true,
+      total,
+      rows: rows.map((row) => ({
+        userId: row.user_id,
+        displayName: row.display_name ?? row.username ?? String(row.user_id),
+        username: row.username,
+        chatId: row.chat_id,
+        chatTitle: row.chat_title,
+        method: row.method,
+        viaCaptcha: row.via_captcha === 1,
+        decidedAt: row.decided_at,
+        github: row.github_login
+          ? { login: row.github_login, id: row.github_id, boundAt: row.bound_at }
+          : null,
+      })),
     });
   });
 

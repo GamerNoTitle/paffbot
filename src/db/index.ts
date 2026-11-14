@@ -695,3 +695,63 @@ export async function hasApprovalAfter(
     .first<{ id: string }>();
   return Boolean(row);
 }
+
+/* ---------------------------------------------------------------- 用户绑定 */
+
+export interface BindingRow {
+  user_id: number;
+  display_name: string | null;
+  username: string | null;
+  chat_id: number;
+  chat_title: string | null;
+  method: string | null;
+  decided_at: number | null;
+  via_captcha: number;
+  github_login: string | null;
+  github_id: number | null;
+  bound_at: number | null;
+}
+
+/** 每个用户最近一次通过的记录 + 其 GitHub 绑定，用来在后台展示绑定情况。 */
+export async function listBindings(
+  db: D1Database,
+  options: { chatId?: number | null; limit?: number; offset?: number } = {},
+): Promise<{ rows: BindingRow[]; total: number }> {
+  const limit = Math.min(200, Math.max(1, options.limit ?? 50));
+  const offset = Math.max(0, options.offset ?? 0);
+  const chatId = options.chatId ?? null;
+
+  const filter = chatId === null ? "" : "AND v.chat_id = ?";
+  const bind = chatId === null ? [] : [chatId];
+
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM (
+         SELECT v.user_id, v.display_name, v.username, v.chat_id, v.chat_title, v.method, v.decided_at,
+                CASE
+                  WHEN v.method IN ('github', 'github_oauth') THEN 0
+                  WHEN v.detail LIKE '%"captcha_passed":true%' THEN 1
+                  WHEN v.method = 'captcha' THEN 1
+                  ELSE 0
+                END AS via_captcha,
+                g.github_login, g.github_id, g.bound_at,
+                ROW_NUMBER() OVER (PARTITION BY v.user_id ORDER BY COALESCE(v.decided_at, v.created_at) DESC) AS rn
+         FROM verifications v
+         LEFT JOIN github_accounts g ON g.telegram_user_id = v.user_id
+         WHERE v.status = 'approved' ${filter}
+       ) WHERE rn = 1
+       ORDER BY COALESCE(decided_at, 0) DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .bind(...bind, limit, offset)
+    .all<BindingRow>();
+
+  const counted = await db
+    .prepare(
+      `SELECT COUNT(DISTINCT user_id) AS n FROM verifications WHERE status = 'approved' ${filter}`,
+    )
+    .bind(...bind)
+    .first<{ n: number }>();
+
+  return { rows: results ?? [], total: counted?.n ?? 0 };
+}

@@ -1446,6 +1446,67 @@ async function downloadCsv() {
 }
 
 
+/* ---------------------------------------------------------------- 用户绑定 */
+
+const METHOD_LABEL = {
+  captcha: "bindings.method.captcha",
+  github: "bindings.method.github",
+  github_oauth: "bindings.method.github",
+  admin_pass: "bindings.method.admin",
+  profile: "bindings.method.profile",
+  timeout: "bindings.method.timeout",
+};
+
+async function loadBindings() {
+  const body = $("bindings-body");
+  body.innerHTML = `<p class="md-typescale-body-medium muted">${esc(t("bindings.loading"))}</p>`;
+  try {
+    const data = await api("/api/admin/bindings?limit=200");
+    renderBindings(data);
+  } catch (err) {
+    body.innerHTML = `<div class="card"><p class="captcha__err">${esc(err.message)}</p></div>`;
+  }
+}
+
+function renderBindings(data) {
+  const body = $("bindings-body");
+  const rows = data.rows ?? [];
+  $("bindings-hint").textContent = t("bindings.count", { count: data.total ?? rows.length });
+
+  if (rows.length === 0) {
+    body.innerHTML = `<div class="card"><p class="md-typescale-body-medium muted">${esc(t("bindings.empty"))}</p></div>`;
+    return;
+  }
+
+  const items = rows.map((row) => {
+    const methodKey = row.viaCaptcha
+      ? "bindings.method.captcha"
+      : (METHOD_LABEL[row.method ?? ""] ?? "bindings.method.other");
+    const gh = row.github
+      ? `<a class="bind__gh" href="https://github.com/${encodeURIComponent(row.github.login)}" target="_blank" rel="noreferrer">
+           <img class="bind__avatar" src="/api/github/avatar/${encodeURIComponent(row.github.login)}" alt="" loading="lazy" onerror="this.remove()" />
+           <span class="bind__meta">
+             <b>${esc(row.github.login)}</b>
+             <span class="muted">${esc(t("bindings.githubId", { id: row.github.id ?? "-" }))}</span>
+           </span>
+         </a>`
+      : `<span class="muted">${esc(t("bindings.notBound"))}</span>`;
+
+    return `<div class="bind">
+      <div class="bind__who">
+        <a href="tg://user?id=${row.userId}">${esc(row.displayName)}</a>
+        ${row.username ? `<span class="muted">@${esc(row.username)}</span>` : ""}
+        <span class="muted">${esc(String(row.userId))}</span>
+      </div>
+      <div class="bind__chat muted">${esc(row.chatTitle ?? String(row.chatId))}</div>
+      <div class="bind__method ${row.viaCaptcha ? "is-captcha" : ""}">${esc(t(methodKey))}</div>
+      <div class="bind__github">${gh}</div>
+    </div>`;
+  });
+
+  body.innerHTML = `<div class="card bind-card">${items.join("")}</div>`;
+}
+
 /* ---------------------------------------------------------------- 运行配置 */
 
 const settingsState = { fields: [], cleared: new Set(), busy: false };
@@ -1762,6 +1823,8 @@ function applyNavVisibility() {
   const isAdmin = state.superAdmin || location.pathname === "/admin" || params.get("admin") === "1";
   const auditButton = $("nav").querySelector('button[data-view="audit"]');
   if (auditButton) auditButton.classList.toggle("hidden", !isAdmin);
+  const bindingsButton = $("nav").querySelector('button[data-view="bindings"]');
+  if (bindingsButton) bindingsButton.classList.toggle("hidden", !isAdmin);
   const settingsButton = $("nav").querySelector('button[data-view="settings"]');
   if (settingsButton) settingsButton.classList.toggle("hidden", !state.superAdmin);
 
@@ -1770,7 +1833,9 @@ function applyNavVisibility() {
 function switchTab(name) {
   $("view-verify").classList.toggle("hidden", name !== "verify");
   $("view-audit").classList.toggle("hidden", name !== "audit");
+  $("view-bindings").classList.toggle("hidden", name !== "bindings");
   $("view-settings").classList.toggle("hidden", name !== "settings");
+  if (name === "bindings") void loadBindings();
   if (name === "settings" && settingsState.fields.length === 0) void loadSettings();
   for (const button of $("nav").querySelectorAll("button")) {
     button.setAttribute("aria-selected", String(button.dataset.view === name));
