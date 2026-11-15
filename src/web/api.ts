@@ -16,7 +16,7 @@ import {
   verificationStats,
   type VerificationRow,
 } from "../db";
-import { appendAudit, listAudit, verifyAuditChain } from "../db/audit";
+import { appendAudit, listAudit } from "../db/audit";
 import { adminKeyboard } from "../bot/messages";
 import { DEFAULT_LANG, t } from "../i18n";
 import { escapeHtml } from "../lib/html";
@@ -739,9 +739,8 @@ export function createApi(): Hono<AppBindings> {
       .prepare("SELECT chat_id, title FROM groups ORDER BY updated_at DESC LIMIT 200")
       .all<{ chat_id: number; title: string | null }>();
 
-    const [stats, chain, recent, verifications] = await Promise.all([
+    const [stats, recent, verifications] = await Promise.all([
       verificationStats(ctx.db, chatId ?? undefined),
-      verifyAuditChain(ctx.db),
       listAudit(ctx.db, { chatId: chatId ?? undefined, limit: 20 }),
       listVerifications(ctx.db, { chatId: chatId ?? undefined, limit: 20 }),
     ]);
@@ -751,7 +750,6 @@ export function createApi(): Hono<AppBindings> {
       chatId: chatId ?? null,
       superAdmin: auth.superAdmin,
       stats,
-      chain,
       groups: (groups.results ?? []).map((g) => ({ chatId: g.chat_id, title: g.title })),
       audit: recent.rows.map(serializeAudit),
       auditTotal: recent.total,

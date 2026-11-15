@@ -19,8 +19,7 @@ export default {
   "actor.system": "System",
   "actor.user": "User",
   "app.name": "PaffBot",
-  "audit.chainBad": "Record {index} failed the check",
-  "audit.chainOk": "Records verified · {count}",
+
   "audit.csvStarted": "CSV download started",
   "audit.export": "Export CSV",
   "audit.exportFail": "Export failed: {error}",

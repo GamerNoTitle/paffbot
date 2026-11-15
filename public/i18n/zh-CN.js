@@ -19,8 +19,7 @@ export default {
   "actor.system": "系统",
   "actor.user": "用户",
   "app.name": "芙 Bot",
-  "audit.chainBad": "第 {index} 条记录校验失败",
-  "audit.chainOk": "记录校验通过 · {count}",
+
   "audit.csvStarted": "已开始下载 CSV",
   "audit.export": "导出 CSV",
   "audit.exportFail": "导出失败: {error}",

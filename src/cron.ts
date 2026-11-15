@@ -15,7 +15,6 @@ import { parseDetail } from "./db";
 import { appendAudit } from "./db/audit";
 import { updateVerificationDetail } from "./db";
 import { nowMs } from "./lib/time";
-import { verifyAuditChain } from "./db/audit";
 import { loadConfig, type Env } from "./env";
 import { TelegramApi } from "./lib/telegram";
 import { rejectVerification } from "./verify/finalize";
@@ -94,9 +93,6 @@ export async function runScheduled(env: Env): Promise<void> {
     await pruneAdminTickets(env.DB);
     const challenges = await pruneChallenges(env.DB);
     const quotas = await pruneRateLimits(env.DB);
-    const chain = await verifyAuditChain(env.DB);
-    console.log(
-      `[cron] 清理验证记录 ${pruned} 条、挑战 ${challenges} 条、配额 ${quotas} 条；审计链 ${chain.ok ? "完整" : `在 #${chain.brokenAtId} 断开`}`,
-    );
+    console.log(`[cron] 清理验证记录 ${pruned} 条、挑战 ${challenges} 条、配额 ${quotas} 条`);
   }
 }

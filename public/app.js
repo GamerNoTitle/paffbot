@@ -1319,10 +1319,6 @@ function bindPager(prefix, key, reload) {
 
 function renderAudit(data) {
   const stats = data.stats || {};
-  const chain = data.chain || { ok: true, checked: 0 };
-  const chainBadge = chain.ok
-    ? `<span class="badge ok">${esc(t("audit.chainOk", { count: chain.checked }))}</span>`
-    : `<span class="badge bad">${esc(t("audit.chainBad", { index: chain.brokenAtId }))}</span>`;
 
   auditView.chatId = String(data.chatId ?? "");
 
@@ -1345,7 +1341,6 @@ function renderAudit(data) {
         <div class="stat tone-secondary">${svgIcon("clock", 18)}<b>${Number(stats.pending || 0)}</b><span>${esc(t("stats.pending"))}</span></div>
         <div class="stat tone-tertiary">${svgIcon("stack", 18)}<b>${Number(stats.timeout || 0) + Number(stats.declined || 0)}</b><span>${esc(t("stats.failed"))}</span></div>
       </div>
-      <p class="chain">${chainBadge}</p>
     </div>`;
 
   $("audit-body").innerHTML = `
