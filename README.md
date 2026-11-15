@@ -12,6 +12,8 @@
 
 ## 预览
 
+如果要进行功能预览，请尝试加入 [@DohnaNyan](https://t.me/DohnaNyan)
+
 | <img src="./img/Snapzy_2026-11-08_10-44-34_944.png" width="200"> | <img src="./img/Snapzy_2026-11-08_10-44-53_517.png" width="200"> | <img src="./img/Snapzy_2026-11-08_10-47-25_202.png" width="200"> |
 | :---: | :---: | :---: |
 | 私聊认证信息 | 通过聊天验证 | 入群记录审计 |
