@@ -741,7 +741,7 @@ export function createApi(): Hono<AppBindings> {
 
     const [stats, chain, recent, verifications] = await Promise.all([
       verificationStats(ctx.db, chatId ?? undefined),
-      verifyAuditChain(ctx.db, 2000),
+      verifyAuditChain(ctx.db),
       listAudit(ctx.db, { chatId: chatId ?? undefined, limit: 20 }),
       listVerifications(ctx.db, { chatId: chatId ?? undefined, limit: 20 }),
     ]);

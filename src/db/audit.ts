@@ -158,34 +158,125 @@ export interface ChainVerification {
   brokenAtId: number | null;
 }
 
-/** 逐条校验哈希链，审计页的「完整性」徽标用它。 */
-export async function verifyAuditChain(db: D1Database, limit = 5000): Promise<ChainVerification> {
-  const { results } = await db
-    .prepare("SELECT * FROM audit_log ORDER BY id ASC LIMIT ?")
-    .bind(limit)
-    .all<AuditRow>();
-  let prevHash = GENESIS_HASH;
-  let checked = 0;
-  for (const row of results ?? []) {
-    const expected = await sha256Hex(
-      prevHash +
-        "\n" +
-        canonical({
-          ts: row.ts,
-          actorId: row.actor_id,
-          actorType: row.actor_type,
-          action: row.action,
-          chatId: row.chat_id,
-          targetUserId: row.target_user_id,
-          verificationId: row.verification_id,
-          detail: row.detail,
-        }),
-    );
-    checked += 1;
-    if (row.prev_hash !== prevHash || row.hash !== expected) {
-      return { ok: false, checked, brokenAtId: row.id };
-    }
-    prevHash = row.hash;
+/**
+ * 链校验的检查点：记住「校验到哪一行、那一行的 hash」。
+ *
+ * 重点是别每次都从第一行重算——每一行要一次 SHA-256，2000 行就是 2000 次
+ * 加密调用，在免费套餐 10ms CPU 预算下必然超限。存了检查点之后，
+ * 常态只校验自上次以来的新增行（通常 0～几条）。
+ */
+const CHAIN_CACHE_TTL_MS = 60_000;
+let chainCache: { at: number; result: ChainVerification } | null = null;
+
+async function readCheckpoint(db: D1Database): Promise<{ throughId: number; hash: string } | null> {
+  try {
+    const row = await db
+      .prepare("SELECT through_id, hash FROM audit_chain WHERE id = 1")
+      .first<{ through_id: number; hash: string }>();
+    return row ? { throughId: row.through_id, hash: row.hash } : null;
+  } catch {
+    // 表还没建（老库）：当作没有检查点，走全量
+    return null;
   }
+}
+
+async function writeCheckpoint(db: D1Database, throughId: number, hash: string): Promise<void> {
+  try {
+    await db
+      .prepare(
+        `INSERT INTO audit_chain (id, through_id, hash, updated_at) VALUES (1, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET through_id = excluded.through_id, hash = excluded.hash, updated_at = excluded.updated_at`,
+      )
+      .bind(throughId, hash, Date.now())
+      .run();
+  } catch {
+    /* 检查点写不进去不影响校验本身 */
+  }
+}
+
+async function clearCheckpoint(db: D1Database): Promise<void> {
+  try {
+    await db.prepare("DELETE FROM audit_chain WHERE id = 1").run();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 从某个 hash 开始，按 id 升序校验，边校验边推进检查点。 */
+async function walk(
+  db: D1Database,
+  fromId: number,
+  fromHash: string,
+  batchSize: number,
+  persist: boolean,
+): Promise<ChainVerification> {
+  let prevId = fromId;
+  let prevHash = fromHash;
+  let checked = 0;
+
+  for (;;) {
+    const { results } = await db
+      .prepare("SELECT * FROM audit_log WHERE id > ? ORDER BY id ASC LIMIT ?")
+      .bind(prevId, batchSize)
+      .all<AuditRow>();
+
+    const rows = results ?? [];
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const expected = await sha256Hex(
+        prevHash +
+          "\n" +
+          canonical({
+            ts: row.ts,
+            actorId: row.actor_id,
+            actorType: row.actor_type,
+            action: row.action,
+            chatId: row.chat_id,
+            targetUserId: row.target_user_id,
+            verificationId: row.verification_id,
+            detail: row.detail,
+          }),
+      );
+      checked += 1;
+      if (row.prev_hash !== prevHash || row.hash !== expected) {
+        return { ok: false, checked, brokenAtId: row.id };
+      }
+      prevHash = row.hash;
+      prevId = row.id;
+    }
+
+    if (persist) await writeCheckpoint(db, prevId, prevHash);
+    if (rows.length < batchSize) break;
+  }
+
   return { ok: true, checked, brokenAtId: null };
+}
+
+/** 逐条校验哈希链。有检查点时只校验新增行，否则从头来一遍并落检查点。 */
+export async function verifyAuditChain(db: D1Database, batchSize = 200): Promise<ChainVerification> {
+  // 单批最多 200 行：一批就是 200 次 SHA-256，再多容易撞免费套餐的 CPU 上限
+  batchSize = Math.min(200, Math.max(20, batchSize));
+  if (chainCache && Date.now() - chainCache.at < CHAIN_CACHE_TTL_MS) return chainCache.result;
+
+  const checkpoint = await readCheckpoint(db);
+
+  // 检查点那行还在、hash 没变，就从它之后继续
+  if (checkpoint) {
+    const still = await db
+      .prepare("SELECT hash FROM audit_log WHERE id = ?")
+      .bind(checkpoint.throughId)
+      .first<{ hash: string }>();
+    if (still && still.hash === checkpoint.hash) {
+      const result = await walk(db, checkpoint.throughId, checkpoint.hash, batchSize, true);
+      chainCache = { at: Date.now(), result };
+      return result;
+    }
+    // 历史被改写（例如手动清理过记录）：丢掉检查点重新全量校验
+    await clearCheckpoint(db);
+  }
+
+  const result = await walk(db, 0, GENESIS_HASH, batchSize, true);
+  chainCache = { at: Date.now(), result };
+  return result;
 }
