@@ -8,6 +8,8 @@
 - Github OAuth：直接进行 Github 登录的方式进行验证
 - 人机验证：这个是针对于没有 Github 的用户，通过 Cloudflare Turnstile 或者自建 [capjs](https://github.com/tiagozip/cap) 实例进行验证，人机验证通过后仍需要管理员在群内找到对应的消息手动通过
 
+考虑到部分用户可能无法正常打开 Telegram Miniapp，所以仍然在聊天过程中提供且仅提供 Github SSH 签名验证方式
+
 ## 预览
 
 | <img src="./img/Snapzy_2026-11-08_10-44-34_944.png" width="200"> | <img src="./img/Snapzy_2026-11-08_10-44-53_517.png" width="200"> | <img src="./img/Snapzy_2026-11-08_10-47-25_202.png" width="200"> |
@@ -87,4 +89,12 @@ npm run webhook -- --url https://<YOUR_DOMAIN>
 ```
 
 如果你在 Worker 上绑定了自定义域名，那就用自定义域名即可，否则使用 `.workers.dev` 可能会出现国内无法访问的问题
+
+剩余设置都可以在对应的设置页面完成，通过你上面使用的数字 ID 对应的 Telegram 账户，在左下角找到 `Open App` 进入设置即可，也可以直接在浏览器访问对应的网页使用 Telegram 进行认证
+
+## 安全提醒
+
+在设计上，本 Bot 未考虑多管理多群的使用情景，所以尽量不要将你的芙 Bot 实例共享给他人使用，只在自己管理的群组范围内进行使用
+
+
 
