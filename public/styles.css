@@ -93,12 +93,22 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
+  /* 顶栏本身不换行：右侧按钮永远有位置 */
+  min-width: 0;
+}
+
+/* 主题按钮不参与压缩 */
+.page-top > md-icon-button {
+  flex: 0 0 auto;
 }
 
 .page-top__left {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* 关键：允许被压缩，否则 segmented 撑不开就顶掉右侧按钮 */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .logo {
@@ -118,6 +128,22 @@ body {
   padding: 4px;
   border-radius: var(--shape-pill);
   background: var(--md-sys-color-surface-container-high);
+  /* 宽度跟着可用空间走，装不下就横向拖动 */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.segmented::-webkit-scrollbar {
+  display: none;
+}
+
+.segmented button {
+  flex: 0 0 auto;
 }
 
 .segmented button {
@@ -1637,4 +1663,36 @@ md-dialog {
 .bind__gh-empty {
   font-size: 13px;
   color: var(--md-sys-color-outline);
+}
+
+/* 窄屏：给 segmented 让出更多横向空间，主题按钮始终可见 */
+@media (max-width: 480px) {
+  .page-top {
+    gap: 8px;
+  }
+
+  .page-top__left {
+    gap: 8px;
+  }
+
+  .page-top__left .logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .segmented {
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .segmented button {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 360px) {
+  .page-top__left .logo {
+    display: none;
+  }
 }

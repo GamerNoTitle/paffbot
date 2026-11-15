@@ -1842,6 +1842,9 @@ function switchTab(name) {
   for (const button of $("nav").querySelectorAll("button")) {
     button.setAttribute("aria-selected", String(button.dataset.view === name));
   }
+  // 窄屏下 segmented 是横向滚动的，切页后把当前 tab 滚进可视区
+  const active = $("nav").querySelector('button[aria-selected="true"]');
+  active?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   if (name === "audit") {
 
     if (!state.auditLoaded) {
