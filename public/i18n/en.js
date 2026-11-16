@@ -10,7 +10,6 @@ export default {
   "action.declined": "Rejected",
   "action.dmFailed": "Message not delivered",
   "action.failed": "Check failed",
-  "action.groupSettings": "Group settings changed",
   "action.rateLimited": "Daily limit reached",
   "action.telegramFailed": "Telegram call failed",
   "action.timeout": "Timed out",
@@ -19,7 +18,6 @@ export default {
   "actor.system": "System",
   "actor.user": "User",
   "app.name": "PaffBot",
-
   "audit.csvStarted": "CSV download started",
   "audit.export": "Export CSV",
   "audit.exportFail": "Export failed: {error}",
@@ -41,6 +39,7 @@ export default {
   "bindings.col.user": "Username",
   "bindings.count": "{count} approved users",
   "bindings.empty": "Nobody has passed yet",
+  "bindings.export": "Export CSV",
   "bindings.githubId": "ID {id}",
   "bindings.loading": "Loading…",
   "bindings.method.admin": "Admin approval",
@@ -232,5 +231,5 @@ export default {
   "table.status": "Result",
   "table.target": "user {id}",
   "table.time": "Time",
-  "table.user": "User",
+  "table.user": "User"
 };

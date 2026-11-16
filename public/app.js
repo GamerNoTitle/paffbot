@@ -984,7 +984,6 @@ const ACTION_KEYS = {
   "verification.failed": "action.failed",
   "verification.dm_failed": "action.dmFailed",
   "telegram.action_failed": "action.telegramFailed",
-  "group.settings": "action.groupSettings",
   "telegram.channel_banned": "action.channelBanned",
   "telegram.bot_banned": "action.botBanned",
   "verification.captcha_passed": "action.captchaPassed",
@@ -1416,27 +1415,40 @@ function bindSearch(id, apply, reload) {
   });
 }
 
+/** 拉 CSV 并触发下载；audit 和 bindings 共用。 */
+async function fetchCsv(path, filename, query = "") {
+  const headers = tg?.initData ? { "X-Telegram-Init-Data": tg.initData } : {};
+  const res = await fetch(`${path}${query}`, { headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function downloadCsv() {
   const chatId = ddValue("audit-group");
   try {
-    const headers = tg?.initData
-      ? { "X-Telegram-Init-Data": tg.initData }
-      : state.token
-        ? { Authorization: `Bearer ${state.token}` }
-        : {};
-    const query = chatId ? `?chatId=${encodeURIComponent(chatId)}` : "";
-    const res = await fetch(`/api/audit/export.csv${query}`, { headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `paffbot-${chatId}.csv`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await fetchCsv("/api/audit/export.csv", `paffbot-${chatId || "all"}.csv`, chatId ? `?chatId=${encodeURIComponent(chatId)}` : "");
     toast(t("audit.csvStarted"));
   } catch (err) {
     $("audit-hint").textContent = t("audit.exportFail", { error: err.message });
+  }
+}
+
+async function downloadBindingsCsv() {
+  const button = $("btn-bindings-csv");
+  if (button) button.setAttribute("disabled", "");
+  try {
+    await fetchCsv("/api/admin/bindings.csv", `paffbot-bindings-${new Date().toISOString().slice(0, 10)}.csv`);
+    toast(t("audit.csvStarted"));
+  } catch (err) {
+    $("bindings-hint").textContent = t("audit.exportFail", { error: err.message });
+  } finally {
+    if (button) button.removeAttribute("disabled");
   }
 }
 
@@ -1935,6 +1947,7 @@ $("audit-group").addEventListener("change", () => {
   loadAudit();
 });
 $("btn-audit-csv").addEventListener("click", downloadCsv);
+$("btn-bindings-csv").addEventListener("click", downloadBindingsCsv);
 
 
 /* ---------------------------------------------------------------- i18n */

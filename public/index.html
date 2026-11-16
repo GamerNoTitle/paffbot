@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title></title>
-    <link rel="stylesheet" href="./styles.css?v=65" />
+    <link rel="stylesheet" href="./styles.css?v=66" />
     <script src="./vendor/telegram-web-app.js"></script>
   </head>
   <body>
@@ -78,7 +78,12 @@
           <p class="md-typescale-body-medium muted" data-i18n="bindings.sub"></p>
         </header>
         <div class="card">
-          <p class="md-typescale-body-small muted" id="bindings-hint"></p>
+          <div class="filter-row filter-row--inline">
+            <p class="md-typescale-body-small muted" id="bindings-hint"></p>
+            <div class="filter-actions">
+              <md-outlined-button id="btn-bindings-csv" data-i18n="bindings.export"></md-outlined-button>
+            </div>
+          </div>
         </div>
         <div id="bindings-body"></div>
       </section>
@@ -149,6 +154,6 @@
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="module" src="./app.js?v=98"></script>
+    <script type="module" src="./app.js?v=100"></script>
   </body>
 </html>

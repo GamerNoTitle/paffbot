@@ -532,7 +532,7 @@ export async function upsertGroup(db: D1Database, chatId: number, title: string 
   const now = nowMs();
   await db
     .prepare(
-      `INSERT INTO groups (chat_id, title, mode, created_at, updated_at) VALUES (?, ?, 'auto', ?, ?)
+      `INSERT INTO groups (chat_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(chat_id) DO UPDATE SET title = COALESCE(excluded.title, groups.title), updated_at = excluded.updated_at`,
     )
     .bind(chatId, title, now, now)
@@ -754,4 +754,74 @@ export async function listBindings(
     .first<{ n: number }>();
 
   return { rows: results ?? [], total: counted?.n ?? 0 };
+}
+
+/* ---------------------------------------------------------------- 黑名单 */
+
+export interface BlacklistRow {
+  chat_id: number;
+  user_id: number;
+  username: string | null;
+  reason: string | null;
+  created_by: number;
+  created_at: number;
+}
+
+/** 这个人在这个群的黑名单里吗；id 或 @用户名任一命中即可。 */
+export async function isBlacklisted(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  username?: string | null,
+): Promise<boolean> {
+  try {
+    const row = await db
+      .prepare(
+        `SELECT user_id FROM blacklist
+         WHERE chat_id = ? AND (user_id = ? OR (? IS NOT NULL AND username IS NOT NULL AND lower(username) = lower(?)))
+         LIMIT 1`,
+      )
+      .bind(chatId, userId, username ?? null, username ?? null)
+      .first<{ user_id: number }>();
+    return Boolean(row);
+  } catch {
+    // 表还没建（迁移未应用时的部署窗口）：当作没命中，别让入群流程挂掉
+    return false;
+  }
+}
+
+export async function addBlacklist(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  username: string | null,
+  reason: string | null,
+  createdBy: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO blacklist (chat_id, user_id, username, reason, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(chat_id, user_id) DO UPDATE SET
+         username = COALESCE(excluded.username, blacklist.username),
+         reason = COALESCE(excluded.reason, blacklist.reason)`,
+    )
+    .bind(chatId, userId, username, reason, createdBy, nowMs())
+    .run();
+}
+
+export async function removeBlacklist(db: D1Database, chatId: number, userId: number): Promise<boolean> {
+  const result = await db
+    .prepare("DELETE FROM blacklist WHERE chat_id = ? AND user_id = ?")
+    .bind(chatId, userId)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
+export async function listBlacklist(db: D1Database, chatId: number, limit = 30): Promise<BlacklistRow[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM blacklist WHERE chat_id = ? ORDER BY created_at DESC LIMIT ?")
+    .bind(chatId, limit)
+    .all<BlacklistRow>();
+  return results ?? [];
 }

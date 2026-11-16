@@ -10,7 +10,6 @@ export default {
   "action.declined": "拒绝",
   "action.dmFailed": "无法验证消息",
   "action.failed": "校验失败",
-  "action.groupSettings": "修改群设置",
   "action.rateLimited": "超出每日限额",
   "action.telegramFailed": "Telegram 调用失败",
   "action.timeout": "超时",
@@ -19,7 +18,6 @@ export default {
   "actor.system": "系统",
   "actor.user": "用户",
   "app.name": "芙 Bot",
-
   "audit.csvStarted": "已开始下载 CSV",
   "audit.export": "导出 CSV",
   "audit.exportFail": "导出失败: {error}",
@@ -41,6 +39,7 @@ export default {
   "bindings.col.user": "Username",
   "bindings.count": "共 {count} 位通过的用户",
   "bindings.empty": "还没有通过验证的用户",
+  "bindings.export": "导出 CSV",
   "bindings.githubId": "ID {id}",
   "bindings.loading": "加载中",
   "bindings.method.admin": "管理员放行",
@@ -232,5 +231,5 @@ export default {
   "table.status": "结果",
   "table.target": "用户 {id}",
   "table.time": "时间",
-  "table.user": "用户",
+  "table.user": "用户"
 };

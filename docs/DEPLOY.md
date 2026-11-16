@@ -214,3 +214,26 @@ npx wrangler secret delete TURNSTILE_SECRET
 - 邀请用户（申请模式放行需要）
 
 「入群申请」模式下还需要在群设置里开启「管理员批准入群」。
+
+## 13. 管理员命令
+
+在群里发（需要 `can_restrict_members`）：
+
+| 命令 | 作用 |
+|---|---|
+| `/pass <uid>` | 放行（也可回复对方消息） |
+| `/ban <uid>` | 封禁并移出 |
+| `/unban <uid>` | 解封，同时移出黑名单 |
+| `/pending` | 待验证人数 |
+| `/audit [n]` | 最近 n 条审计 |
+| `/blacklist` | 本群黑名单 |
+| `/addblacklist <uid\|@user>` | 加入黑名单，以后申请直接拒绝并封禁 |
+| `/delblacklist <uid>` | 移出黑名单 |
+| `/allowedbots` | 本群 bot 白名单 |
+| `/addallowedbot` / `/delallowedbot` | 增删 bot 白名单 |
+
+自动化说明：
+
+- 「/ban」是一次性踢人；「/addblacklist」是永久拒绝，命中后不建验证记录、不占每日配额、不私聊
+- 被 `/addblacklist` 的人如果已经在群里，会同时被封禁
+- `/unban` 把封禁和黑名单一起清掉

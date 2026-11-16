@@ -20,7 +20,15 @@ import { miniAppUrl, type BotContext } from "./context";
 import { botUsername } from "./identity";
 import { aboutText, auditLine, commandsHelp, miniAppKeyboard } from "./messages";
 import { t } from "../i18n";
-import { addAllowedBot, listAllowedBots, removeAllowedBot, type AllowedBotRow } from "../db";
+import {
+  addAllowedBot,
+  addBlacklist,
+  listAllowedBots,
+  listBlacklist,
+  removeAllowedBot,
+  removeBlacklist,
+  type AllowedBotRow,
+} from "../db";
 import { sendVerificationPrompt } from "./prompt";
 import { normalizeLang, type Lang } from "../i18n";
 
@@ -126,6 +134,18 @@ export async function handleCommand(ctx: BotContext, message: TgMessage, _update
       return;
     case "pending":
       await handlePending(env);
+      return;
+    case "unban":
+      await handleUnban(env);
+      return;
+    case "blacklist":
+      await handleBlacklistList(env);
+      return;
+    case "addblacklist":
+      await handleBlacklist(env, true);
+      return;
+    case "delblacklist":
+      await handleBlacklist(env, false);
       return;
     case "audit":
       await handleAudit(env);
@@ -395,6 +415,137 @@ async function handleAllowedList(env: CommandEnv): Promise<void> {
     }),
   );
   await reply(env, t(env.lang, "allowed.list", { count: bots.length, list: lines.join("\n") }));
+}
+
+async function handleUnban(env: CommandEnv): Promise<void> {
+  const auth = await requireAdmin(env);
+  if (!auth) {
+    await reply(env, t(env.lang, "cmd.groupOnly"));
+    return;
+  }
+  const target = targetUserId(env);
+  if (!target) {
+    await reply(env, t(env.lang, "cmd.unban.usage"));
+    return;
+  }
+
+  await env.ctx.tg.unbanChatMember(env.chatId, target).catch(() => undefined);
+  const removed = await removeBlacklist(env.ctx.db, env.chatId, target);
+
+  await appendAudit(env.ctx.db, {
+    actorId: env.userId,
+    actorType: auth.actorType,
+    action: "telegram.unbanned",
+    chatId: env.chatId,
+    targetUserId: target,
+    verificationId: null,
+    detail: { fromBlacklist: removed },
+  });
+  await reply(env, t(env.lang, removed ? "cmd.unban.doneBoth" : "cmd.unban.done", { target: String(target) }));
+}
+
+/** /addblacklist 与 /delblacklist：回复消息取被回复者，否则用 @用户名 或数字 id。 */
+async function handleBlacklist(env: CommandEnv, adding: boolean): Promise<void> {
+  const auth = await requireAdmin(env);
+  if (!auth) {
+    await reply(env, t(env.lang, "cmd.groupOnly"));
+    return;
+  }
+
+  const replied = env.message.reply_to_message?.from;
+  let target: number | null = null;
+  let username: string | null = null;
+
+  if (replied && !replied.is_bot) {
+    target = replied.id;
+    username = replied.username ?? null;
+  } else {
+    const raw = (env.args[0] ?? "").replace(/^@/, "").trim();
+    if (!raw) {
+      await reply(env, t(env.lang, adding ? "cmd.blacklist.usage" : "cmd.unblacklist.usage"));
+      return;
+    }
+    const asId = Number.parseInt(raw, 10);
+    if (Number.isSafeInteger(asId) && asId > 0) {
+      target = asId;
+    } else {
+      username = raw;
+      // 试着把 @用户名 解析成 id，解不出来就按用户名登记
+      try {
+        const chat = await env.ctx.tg.getChat(`@${raw}`);
+        if (chat && typeof chat.id === "number" && chat.id !== 0) target = chat.id;
+      } catch {
+        /* 解析不到就只存用户名 */
+      }
+    }
+  }
+
+  if (target === null && !username) {
+    await reply(env, t(env.lang, adding ? "cmd.blacklist.usage" : "cmd.unblacklist.usage"));
+    return;
+  }
+
+  const label = username ? `@${username}` : String(target);
+
+  if (!adding) {
+    if (target === null) {
+      await reply(env, t(env.lang, "cmd.blacklist.needId"));
+      return;
+    }
+    const removed = await removeBlacklist(env.ctx.db, env.chatId, target);
+    if (!removed) {
+      await reply(env, t(env.lang, "cmd.blacklist.notFound", { name: escapeHtml(label) }));
+      return;
+    }
+    await appendAudit(env.ctx.db, {
+      actorId: env.userId,
+      actorType: auth.actorType,
+      action: "telegram.blacklist_removed",
+      chatId: env.chatId,
+      targetUserId: target,
+      verificationId: null,
+      detail: { username },
+    });
+    await reply(env, t(env.lang, "cmd.blacklist.removed", { name: escapeHtml(label), id: target }));
+    return;
+  }
+
+  await addBlacklist(env.ctx.db, env.chatId, target ?? 0, username, "manual", env.userId);
+  // 已经在群里的，顺手踢掉；不在群里会报错，忽略即可
+  if (target !== null) {
+    await env.ctx.tg.banChatMember(env.chatId, target).catch(() => undefined);
+  }
+  await appendAudit(env.ctx.db, {
+    actorId: env.userId,
+    actorType: auth.actorType,
+    action: "telegram.blacklisted",
+    chatId: env.chatId,
+    targetUserId: target ?? 0,
+    verificationId: null,
+    detail: { username },
+  });
+  await reply(env, t(env.lang, "cmd.blacklist.added", { name: escapeHtml(label), id: target ?? 0 }));
+}
+
+async function handleBlacklistList(env: CommandEnv): Promise<void> {
+  const auth = await requireAdmin(env);
+  if (!auth) {
+    await reply(env, t(env.lang, "cmd.groupOnly"));
+    return;
+  }
+  const rows = await listBlacklist(env.ctx.db, env.chatId);
+  if (rows.length === 0) {
+    await reply(env, t(env.lang, "cmd.blacklist.empty"));
+    return;
+  }
+  const lines = rows.map((row) =>
+    t(env.lang, "cmd.blacklist.item", {
+      name: escapeHtml(row.username ? `@${row.username}` : String(row.user_id)),
+      id: row.user_id,
+      time: formatDateTime(row.created_at),
+    }),
+  );
+  await reply(env, t(env.lang, "cmd.blacklist.list", { count: rows.length, list: lines.join("\n") }));
 }
 
 async function handlePending(env: CommandEnv): Promise<void> {

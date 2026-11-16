@@ -704,6 +704,68 @@ export function createApi(): Hono<AppBindings> {
     });
   });
 
+  /** 绑定列表导出：给运营拿去做对账。 */
+  api.get("/api/admin/bindings.csv", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = await authorizeAudit(c, ctx);
+    if ("error" in auth) {
+      return c.json({ ok: false, error: auth.error, errorKey: (auth as { errorKey?: string }).errorKey }, auth.status);
+    }
+    const chatIdRaw = c.req.query("chatId");
+    const parsed = chatIdRaw ? Number.parseInt(chatIdRaw, 10) : null;
+    const scope = auth.superAdmin ? (Number.isSafeInteger(parsed ?? NaN) ? parsed : null) : auth.chatId;
+
+    const rows: Awaited<ReturnType<typeof listBindings>>["rows"] = [];
+    const pageSize = 200;
+    for (let offset = 0; offset < 10000; offset += pageSize) {
+      const page = await listBindings(ctx.db, { chatId: scope, limit: pageSize, offset });
+      rows.push(...page.rows);
+      if (page.rows.length < pageSize || rows.length >= page.total) break;
+    }
+
+    const header = [
+      "telegram_user_id",
+      "display_name",
+      "username",
+      "chat_id",
+      "chat_title",
+      "method",
+      "via_captcha",
+      "decided_at",
+      "github_login",
+      "github_id",
+      "github_bound_at",
+    ];
+    const lines = [header.join(",")];
+    for (const row of rows) {
+      lines.push(
+        [
+          row.user_id,
+          row.display_name ?? "",
+          row.username ?? "",
+          row.chat_id,
+          row.chat_title ?? "",
+          row.method ?? "",
+          row.via_captcha === 1 ? "true" : "false",
+          row.decided_at ? new Date(row.decided_at).toISOString() : "",
+          row.github_login ?? "",
+          row.github_id ?? "",
+          row.bound_at ? new Date(row.bound_at).toISOString() : "",
+        ]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+
+    return new Response("\ufeff" + lines.join("\n"), {
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="paffbot-bindings-${new Date().toISOString().slice(0, 10)}.csv"`,
+        "cache-control": "no-store",
+      },
+    });
+  });
+
   api.get("/api/audit/log", async (c) => {
     const ctx = c.get("ctx");
     const auth = await authorizeAudit(c, ctx);

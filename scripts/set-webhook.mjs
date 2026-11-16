@@ -140,11 +140,15 @@ await call("setMyCommands", {
   commands: [
     { command: "pass", description: "管理员: 放行某个用户" },
     { command: "ban", description: "管理员: 封禁某个用户" },
+    { command: "unban", description: "管理员: 解封并移出黑名单" },
     { command: "pending", description: "管理员: 待验证人数" },
     { command: "audit", description: "管理员: 最近审计记录" },
     { command: "allowedbots", description: "管理员: 本群 bot 白名单" },
     { command: "addallowedbot", description: "管理员: 把 bot 加入白名单" },
     { command: "delallowedbot", description: "管理员: 从白名单移除 bot" },
+    { command: "blacklist", description: "管理员: 查看本群黑名单" },
+    { command: "addblacklist", description: "管理员: 加入黑名单并封禁" },
+    { command: "delblacklist", description: "管理员: 移出黑名单" },
   ],
 }).catch((err) => console.warn(`setMyCommands(管理员) 跳过: ${err.message}`));
 

@@ -147,11 +147,15 @@ export function commandsHelp(isAdmin: boolean, prefix = "", lang: Lang = DEFAULT
     lines.push(
       t(lang, "cmd.pass"),
       t(lang, "cmd.ban"),
+      t(lang, "cmd.unban"),
       t(lang, "cmd.pending"),
       t(lang, "cmd.audit"),
       t(lang, "cmd.allowedBots"),
       t(lang, "cmd.addAllowedBot"),
       t(lang, "cmd.delAllowedBot"),
+      t(lang, "cmd.blacklist"),
+      t(lang, "cmd.addBlacklist"),
+      t(lang, "cmd.delBlacklist"),
     );
     lines.push("", t(lang, "cmd.buttons"));
   }
@@ -169,11 +173,13 @@ const ACTION_KEYS: Record<string, string> = {
   "verification.failed": "failed",
   "verification.dm_failed": "dmFailed",
   "telegram.action_failed": "telegramFailed",
-  "group.settings": "groupSettings",
   "telegram.channel_banned": "channelBanned",
   "telegram.bot_banned": "botBanned",
   "telegram.bot_allowed": "botAllowed",
   "telegram.bot_kicked": "botKicked",
+  "telegram.unbanned": "unbanned",
+  "telegram.blacklisted": "blacklisted",
+  "telegram.blacklist_removed": "blacklistRemoved",
 };
 
 const ACTOR_KEYS: Record<string, string> = {

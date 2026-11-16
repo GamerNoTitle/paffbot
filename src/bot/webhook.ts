@@ -12,7 +12,7 @@ import {
   type VerificationRow,
 } from "../db";
 import { appendAudit } from "../db/audit";
-import { addAllowedBot, matchAllowedBot } from "../db";
+import { addAllowedBot, isBlacklisted, matchAllowedBot } from "../db";
 import { randomToken } from "../lib/crypto";
 import { displayName } from "../lib/html";
 import { screenProfile } from "../lib/screen";
@@ -82,6 +82,22 @@ async function handleJoinRequest(ctx: BotContext, request: TgChatJoinRequest, up
 
   const chatTitle = chatTitleOf(request.chat);
   await upsertGroup(ctx.db, request.chat.id, request.chat.title ?? null);
+
+  // 黑名单：直接拒绝并封禁，不建验证记录、不占配额、不通知
+  if (await isBlacklisted(ctx.db, request.chat.id, user.id, user.username)) {
+    await ctx.tg.safe("declineChatJoinRequest", { chat_id: request.chat.id, user_id: user.id });
+    await ctx.tg.safe("banChatMember", { chat_id: request.chat.id, user_id: user.id });
+    await appendAudit(ctx.db, {
+      actorId: 0,
+      actorType: "system",
+      action: "verification.blocked",
+      chatId: request.chat.id,
+      targetUserId: user.id,
+      verificationId: null,
+      detail: { reason: "blacklist", source: "join_request" },
+    });
+    return;
+  }
 
   // 刚通过就重投的申请（或通过后立刻再申请）：直接放行，不占次数、不再发提示
   if (await findRecentlyApprovedForChat(ctx.db, request.chat.id, user.id, nowMs() - 10 * 60_000)) {
@@ -238,6 +254,21 @@ async function handleChatMember(ctx: BotContext, update: TgChatMemberUpdated, up
   const approvedRecently = await findRecentlyApprovedForChat(ctx.db, update.chat.id, user.id, nowMs() - 10 * 60_000);
   if (approvedRecently) return;
 
+
+  // 黑名单：人已经进来了，直接移出
+  if (await isBlacklisted(ctx.db, update.chat.id, user.id, user.username)) {
+    await ctx.tg.banChatMember(update.chat.id, user.id);
+    await appendAudit(ctx.db, {
+      actorId: 0,
+      actorType: "system",
+      action: "verification.blocked",
+      chatId: update.chat.id,
+      targetUserId: user.id,
+      verificationId: null,
+      detail: { reason: "blacklist", source: "group_join" },
+    });
+    return;
+  }
 
   // 直接入群模式：同一个人已经进来了，扫到广告词就直接移出，不再走验证
   if (ctx.config.screenEnabled) {

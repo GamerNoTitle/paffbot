@@ -1011,6 +1011,15 @@ md-filled-tonal-button {
   flex: 1 1 280px;
 }
 
+.filter-row--inline {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filter-row--inline .filter-actions {
+  margin-top: 0;
+}
+
 .filter-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1018,7 +1027,16 @@ md-filled-tonal-button {
   margin-top: 16px;
 }
 
-.filter-row .filter-actions {
+.filter-row .filter-row--inline {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filter-row--inline .filter-actions {
+  margin-top: 0;
+}
+
+.filter-actions {
   margin-top: 0;
 }
 
