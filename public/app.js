@@ -338,9 +338,74 @@ function renderMethodPanel(panel, data) {
   switchTo("ssh");
 }
 
+/**
+ * 有界轮询：setTimeout 链式（不会叠请求）、逐步退避、次数上限，
+ * 页面在后台时跳过网络请求。返回 { stop }。
+ *
+ * fn 返回 true 表示「不用再问了」。
+ */
+function startPoll(fn, { first = 2000, max = 10000, limit = 45 } = {}) {
+  let timer = 0;
+  let attempts = 0;
+  let delay = first;
+  let stopped = false;
+
+  const stop = () => {
+    stopped = true;
+    if (timer) {
+      clearTimeout(timer);
+      timer = 0;
+    }
+  };
+
+  const schedule = () => {
+    if (!stopped) timer = window.setTimeout(tick, delay);
+  };
+
+  const tick = async () => {
+    if (stopped) return;
+    // 后台标签页不烧请求：等下一次调度即可
+    if (document.hidden) {
+      schedule();
+      return;
+    }
+    attempts += 1;
+    let done = false;
+    try {
+      done = Boolean(await fn());
+    } catch {
+      /* 网络抖动继续轮询 */
+    }
+    if (done || attempts >= limit) {
+      stop();
+      return;
+    }
+    delay = Math.min(max, Math.round(delay * 1.5));
+    schedule();
+  };
+
+  // 回到前台时立刻补一次，不用等退避时间
+  const onVisible = () => {
+    if (stopped || document.hidden) return;
+    if (timer) clearTimeout(timer);
+    delay = first;
+    schedule();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+
+  schedule();
+  return {
+    stop: () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisible);
+    },
+  };
+}
+
 function stopCaptchaPolling() {
   if (state.captchaTimer) {
-    clearInterval(state.captchaTimer);
+    if (typeof state.captchaTimer === "object") state.captchaTimer.stop?.();
+    else clearInterval(state.captchaTimer);
     state.captchaTimer = null;
   }
 }
@@ -526,20 +591,26 @@ async function renderCaptchaPanel(body) {
     renderCaptchaPanel(body);
   });
 
-  // 兜底：没收到 solve 事件时，靠会话状态解锁
+  // 兜底：没收到 solve 事件时，靠验证状态解锁。只问轻量端点，有上限、后台不轮询。
   stopCaptchaPolling();
-  state.captchaTimer = setInterval(async () => {
-    const fresh = await api("/api/session").catch(() => null);
-    const current = fresh?.verification;
-    if (!current) return;
-    if (current.captchaPassed) {
-      stopCaptchaPolling();
-      state.verification = current;
-      renderCaptchaPanel(body);
-      return;
-    }
-    if (current.captchaSolved) enable();
-  }, 2000);
+  const verificationId = state.verification?.id;
+  if (!verificationId) return;
+  state.captchaTimer = startPoll(
+    async () => {
+      const fresh = await api(`/api/verify/status?id=${encodeURIComponent(verificationId)}`);
+      // 记录已经被处理/过期：没必要再问
+      if (fresh.status !== "pending") return true;
+      if (fresh.captchaPassed) {
+        const full = await api("/api/session").catch(() => null);
+        if (full?.verification) state.verification = full.verification;
+        renderCaptchaPanel(body);
+        return true;
+      }
+      if (fresh.captchaSolved) enable();
+      return false;
+    },
+    { first: 2500, max: 15000, limit: 40 },
+  );
 }
 
 function loadScriptOnce(src) {
@@ -563,7 +634,8 @@ function loadScriptOnce(src) {
 
 function stopOAuthPolling() {
   if (state.oauthTimer) {
-    clearInterval(state.oauthTimer);
+    if (typeof state.oauthTimer === "object") state.oauthTimer.stop?.();
+    else clearInterval(state.oauthTimer);
     state.oauthTimer = 0;
   }
 }
@@ -606,19 +678,17 @@ function renderOAuthPanel(panel) {
 
       $("oauth-status").textContent = t("panel.oauth.opened");
       stopOAuthPolling();
-      state.oauthTimer = window.setInterval(async () => {
-        try {
+      state.oauthTimer = startPoll(
+        async () => {
           const status = await api("/api/oauth/github/status");
-          if (status.bound) {
-            stopOAuthPolling();
-            state.githubLogin = status.bound.login;
-            $("oauth-status").textContent = t("panel.oauth.done", { login: status.bound.login });
-            onApproved({ chatTitle: state.verification?.chatTitle });
-          }
-        } catch {
-          /* 网络抖动时继续轮询 */
-        }
-      }, 2000);
+          if (!status.bound) return false;
+          state.githubLogin = status.bound.login;
+          $("oauth-status").textContent = t("panel.oauth.done", { login: status.bound.login });
+          onApproved({ chatTitle: state.verification?.chatTitle });
+          return true;
+        },
+        { first: 2000, max: 15000, limit: 40 },
+      );
     } catch (err) {
       $("oauth-status").textContent = err.message;
       button.disabled = false;

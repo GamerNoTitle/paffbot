@@ -165,6 +165,30 @@ export function createApi(): Hono<AppBindings> {
     });
   });
 
+  /**
+   * 轻量轮询端点：只回答「这条验证现在什么状态」。
+   * 前端验证码/OAuth 的兜底轮询用它，别再用 /api/session（那边要查群、查绑定、拼方法列表）。
+   */
+  api.get("/api/verify/status", async (c) => {
+    const auth = await readInitUser(c);
+    if (!auth.user) return c.json({ ok: false, error: "unauthorized" }, 401);
+    const ctx = c.get("ctx");
+    const id = c.req.query("id");
+    if (!id) return c.json({ ok: false, error: "missing id" }, 400);
+
+    const row = await getVerification(ctx.db, id);
+    if (!row || row.user_id !== auth.user.id) return c.json({ ok: false, error: "not found" }, 404);
+
+    const detail = parseDetail(row.detail);
+    return c.json({
+      ok: true,
+      status: row.status,
+      captchaPassed: Boolean(detail.captcha_passed),
+      captchaSolved: Boolean(detail.cap_solved_at),
+      expiresAt: row.expires_at,
+    });
+  });
+
   api.get("/api/session", async (c) => {
     const auth = await readInitUser(c);
     if (!auth.user) return c.json({ ok: false, error: `没拿到 Telegram 的登录信息（${auth.reason}），请从 Telegram 里打开` }, 401);

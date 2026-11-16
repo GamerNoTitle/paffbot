@@ -21,7 +21,17 @@ function fromBase64(text: string): Uint8Array {
   return out;
 }
 
-async function deriveKey(material: string): Promise<CryptoKey> {
+/** 派生一次就够：同一个 isolate 里密钥材料一般不变，别每个值都重新 HKDF。 */
+let keyCache: { material: string; key: Promise<CryptoKey> } | null = null;
+
+function deriveKey(material: string): Promise<CryptoKey> {
+  if (keyCache?.material === material) return keyCache.key;
+  const key = deriveKeyUncached(material);
+  keyCache = { material, key };
+  return key;
+}
+
+async function deriveKeyUncached(material: string): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(material), "HKDF", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
     { name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode(SALT), info: new TextEncoder().encode(INFO) },
