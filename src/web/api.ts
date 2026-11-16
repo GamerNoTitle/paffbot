@@ -687,50 +687,6 @@ export function createApi(): Hono<AppBindings> {
   });
 
   /** 审计日志：分页 + 动作筛选 + 关键字搜索。 */
-  /**
-   * 人机验证配置自检（仅超管）：告诉你 provider 现在是什么、密钥在不在、
-   * 以及拿一个假 token 打 siteverify 时 Cloudflare 怎么回——用来区分
-   * 「密钥没配」「密钥和 site key 不配对」「配置正常」。
-   */
-  api.get("/api/admin/captcha/check", async (c) => {
-    const ctx = c.get("ctx");
-    const auth = await readInitUser(c);
-    if (!auth.user || !isSuperAdmin(ctx.config, auth.user.id)) {
-      return c.json({ ok: false, error: "只有超级管理员可用" }, 403);
-    }
-
-    const provider = ctx.config.captchaProvider;
-    const base = {
-      ok: true,
-      enabled: ctx.config.captchaEnabled,
-      provider,
-      turnstileSiteKeySet: Boolean(ctx.config.turnstileSiteKey),
-      turnstileSecretSet: Boolean(ctx.config.turnstileSecret),
-      capjsUrl: ctx.config.capjsUrl,
-    };
-
-    if (provider !== "turnstile" || !ctx.config.turnstileSecret) return c.json(base);
-
-    try {
-      const res = await fetch(ctx.config.turnstileVerifyUrl, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        // 故意用一个假 token：密钥有效时只会嫌 token 不合法，配置错误才会抱怨密钥
-        body: new URLSearchParams({
-          secret: ctx.config.turnstileSecret,
-          response: "paffbot-config-probe",
-        }).toString(),
-      });
-      const data = (await res.json().catch(() => null)) as { success?: boolean; "error-codes"?: string[] } | null;
-      return c.json({
-        ...base,
-        siteverify: { success: Boolean(data?.success), errorCodes: data?.["error-codes"] ?? [] },
-      });
-    } catch (err) {
-      return c.json({ ...base, siteverify: { success: false, errorCodes: [`request-failed: ${String(err)}`] } });
-    }
-  });
-
   /** 用户绑定：通过的人都列出来，标出是不是靠验证码过的。 */
   api.get("/api/admin/bindings", async (c) => {
     const ctx = c.get("ctx");
