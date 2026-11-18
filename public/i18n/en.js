@@ -45,6 +45,7 @@ export default {
   "bindings.method.admin": "Admin approval",
   "bindings.method.captcha": "Captcha",
   "bindings.method.github": "GitHub signature",
+  "bindings.method.oauth": "GitHub OAuth",
   "bindings.method.other": "Other",
   "bindings.method.profile": "Profile blocked",
   "bindings.method.timeout": "Timed out",

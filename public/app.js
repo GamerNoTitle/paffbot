@@ -1528,7 +1528,7 @@ async function downloadBindingsCsv() {
 const METHOD_LABEL = {
   captcha: "bindings.method.captcha",
   github: "bindings.method.github",
-  github_oauth: "bindings.method.github",
+  github_oauth: "bindings.method.oauth",
   admin_pass: "bindings.method.admin",
   profile: "bindings.method.profile",
   timeout: "bindings.method.timeout",

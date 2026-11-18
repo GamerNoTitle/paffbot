@@ -45,6 +45,7 @@ export default {
   "bindings.method.admin": "管理员放行",
   "bindings.method.captcha": "验证码",
   "bindings.method.github": "GitHub 签名",
+  "bindings.method.oauth": "GitHub OAuth",
   "bindings.method.other": "其他方式",
   "bindings.method.profile": "个人资料页关键词拦截",
   "bindings.method.timeout": "超时",
